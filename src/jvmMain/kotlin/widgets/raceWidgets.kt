@@ -4,9 +4,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.*
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -16,7 +17,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import capitalizeOnlyFirst
-import data.*
+import data.AbilityScoreIncrease
+import data.Race
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.math.abs
 
@@ -32,113 +34,6 @@ fun nameStr(i: Int): String = when(i) {
     9 -> "nine"
     10 -> "ten"
     else -> "$i"
-}
-
-@Composable
-fun asiWidget(
-    modifier: Modifier = Modifier,
-    onSave: (Map<Ability, Int>) -> Unit
-) {
-    val options = listAbilities()
-    var set by remember { mutableStateOf(options.associateWith { 0 }) }
-
-    Column(modifier) {
-        LazyColumn {
-            set.forEach { (ability, mod) ->
-                item {
-                    Row {
-                        Text(ability.name, Modifier.weight(0.7f))
-                        IntField({ it ->
-                            set = set.map { (a, m) ->
-                                if(a == ability) Pair(a, it)
-                                else Pair(a, m)
-                            }.toMap()
-                        })
-                    }
-                }
-            }
-        }
-        Button(onClick = { onSave(set.filter { (_, mod) -> mod != 0 }) }) {
-            Text("Set Ability Score Increases")
-        }
-    }
-}
-
-@Composable
-fun traitsWidget(
-    fetcher: () -> List<Trait>,
-    modifier: Modifier = Modifier,
-    onAdd: (Trait) -> Unit,
-    onRemove: (Int) -> Unit,
-    onModify: (Int, Trait) -> Unit
-) {
-    var results by remember { mutableStateOf(fetcher()) }
-
-    LazyColumn {
-        itemsIndexed(results) {idx, trait ->
-            var name by remember { mutableStateOf(trait.name) }
-            var kind by remember { mutableStateOf(trait.kind) }
-            var desc by remember { mutableStateOf(trait.description) }
-            val save = { transaction {
-                trait.name = name
-                trait.kind = kind
-                trait.description = desc
-            } }
-            Column {
-                Row {
-                    OutlinedTextField(name, { name = it }, label = { Text("Trait name") })
-                    Spacer(Modifier.width(10.dp))
-                    Dropdown(
-                        items = TraitKind.values().toList(),
-                        onSelect = { kind = TraitKind.values()[it]; },
-                        unselected = "(Trait Kind)"
-                    ) {
-                        item, selected -> DisabledTextFieldOrText(item.name, selected)
-                    }
-                }
-                OutlinedTextField(desc, { desc = it }, label = { Text("Description") }, singleLine = false)
-                Row {
-                    Button(onClick = { save(); onModify(idx, trait); results = fetcher() }) {
-                        Text("Update")
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Button(onClick = { onRemove(idx); results = fetcher() }) {
-                        Text("Remove")
-                    }
-                }
-            }
-        }
-
-        item {
-            var name by remember { mutableStateOf("") }
-            var kind by remember { mutableStateOf(TraitKind.PASSIVE) }
-            var desc by remember { mutableStateOf("") }
-
-            val save = { transaction {
-                Trait.new { this.name = name; this.kind = kind; this.description = desc; this.tSource = TraitSource.RACE }
-            } }
-            Row {
-                OutlinedTextField(name, { name = it }, label = { Text("Trait name") })
-                Spacer(Modifier.width(10.dp))
-                Dropdown(
-                    items = TraitKind.values().toList(),
-                    onSelect = { kind = TraitKind.values()[it] },
-                    unselected = "(Trait Kind)"
-                ) {
-                    item, selected -> DisabledTextFieldOrText(item.name, selected)
-                }
-            }
-            OutlinedTextField(desc, { desc = it }, label = { Text("Description") }, singleLine = false)
-            Row {
-                Button(onClick = { save(); onAdd(save()); results = fetcher() }) {
-                    Text("Add")
-                }
-                Button(onClick = { name = ""; desc = ""; kind = TraitKind.PASSIVE }) {
-                    Text("Clear")
-                }
-            }
-        }
-    }
 }
 
 @Composable
