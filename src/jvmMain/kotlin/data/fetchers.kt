@@ -25,3 +25,23 @@ fun listBackgrounds(): List<Background> = transaction {
 fun listItems(): List<Item> = transaction {
     Item.all().toList()
 }
+
+fun listTypes(): List<CreatureType> = transaction {
+    CreatureType.all().toList()
+}
+
+fun listAbilities(): List<Ability> = transaction {
+    Ability.all().toList()
+}
+
+fun traitsFor(r: Race) : List<Trait> = transaction {
+    r.traits.toList()
+}
+
+fun listTraits(): List<Trait> = transaction {
+    Trait.all().toList()
+}
+
+fun listLanguages(): List<Language> = transaction {
+    Language.all().toList()
+}

@@ -1,12 +1,33 @@
 package data
 
+import capitalizeFirst
 import org.jetbrains.exposed.dao.id.IntIdTable
 
-enum class TraitSource { RACE, CLASS, BACKGROUND, ITEM, OTHER }
-enum class TraitKind { PASSIVE, ACTION, BONUS_ACTION, REACTION, ATTACK }
-enum class NoteKind { NOTE, PERSONALITY_TRAIT, BOND, FLAW, IDEAL }
-enum class CreatureSize { TINY, SMALL, MEDIUM, LARGE, HUGE, GARGANTUAN }
-enum class DiceType { D4, D6, D8, D10, D12, D20, D100 }
+enum class TraitSource {
+    RACE, CLASS, BACKGROUND, ITEM, OTHER;
+
+   override fun toString(): String = name.capitalizeFirst()
+}
+enum class TraitKind {
+    PASSIVE, ACTION, BONUS_ACTION, REACTION, ATTACK;
+
+    override fun toString(): String = name.split("_").joinToString("") { it.capitalizeFirst() }
+}
+enum class NoteKind {
+    NOTE, PERSONALITY_TRAIT, BOND, FLAW, IDEAL;
+
+    override fun toString(): String = name.split('_').joinToString(" ") { it.capitalizeFirst() }
+}
+enum class CreatureSize {
+    TINY, SMALL, MEDIUM, LARGE, HUGE, GARGANTUAN;
+
+    override fun toString(): String = name.capitalizeFirst()
+}
+enum class DiceType {
+    D4, D6, D8, D10, D12, D20, D100;
+
+    override fun toString(): String = name.capitalizeFirst()
+}
 
 object DataSources : IntIdTable() {
     val name = varchar("name", 50).uniqueIndex()
@@ -64,6 +85,7 @@ object Races : IntIdTable() {
     val size = enumeration<CreatureSize>("size")
     val type = reference("type", CreatureTypes)
     val baseWalkingSpeed = integer("base_walking_speed")
+    val chooseLanguages = integer("choose_languages")
 
     init {
         uniqueIndex(name, src)

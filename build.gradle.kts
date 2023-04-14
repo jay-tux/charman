@@ -22,6 +22,12 @@ dependencies {
     implementation("org.xerial:sqlite-jdbc:3.30.1")
     implementation("org.slf4j:slf4j-api:2.0.7")
     implementation("org.slf4j:slf4j-simple:2.0.7")
+//    implementation("org.jetbrains.compose.material:material-desktop:1.4.0")
+    implementation("org.jetbrains.compose.material:material:1.4.0")
+    implementation("org.jetbrains.compose.material3:material3:1.4.0")
+    implementation("org.jetbrains.compose:compose-full:1.4.0")
+    implementation("androidx.compose.material3:material3-window-size-class:1.0.1")
+    implementation("org.jetbrains.compose.material:material-icons-extended-desktop:1.4.0")
 }
 
 kotlin {

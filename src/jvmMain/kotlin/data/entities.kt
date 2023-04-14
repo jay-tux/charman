@@ -8,6 +8,11 @@ class DataSource(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<DataSource>(DataSources)
 
     var name by DataSources.name
+
+    val races by Race referrersOn Races.src
+    val classes by DnDClass referrersOn Classes.src
+    val backgrounds by Background referrersOn Backgrounds.src
+    val items by Item referrersOn Items.src
 }
 
 class Trait(id: EntityID<Int>) : IntEntity(id) {
@@ -85,9 +90,10 @@ class Race(id: EntityID<Int>) : IntEntity(id) {
     var name by Races.name
 
     var size by Races.size
-    var type by Races.type
+    var type by CreatureType referencedOn Races.type
     var baseWalkingSpeed by Races.baseWalkingSpeed
-    var src by Races.src
+    var src by DataSource referencedOn Races.src
+    var chooseLanguages by Races.chooseLanguages
 
     val abilityScoreIncreases by AbilityScoreIncrease referrersOn AbilityScoreIncreases.race
     val charactersWithRace by Character referrersOn Characters.race
