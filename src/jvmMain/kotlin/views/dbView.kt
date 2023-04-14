@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import data.listDataSources
 import data.listRaces
 import data.rmDataSource
+import data.rmRace
 import updateGet
 import widgets.*
 
@@ -51,10 +52,10 @@ fun dbView() {
 
                 CurrDbView.RACES -> singleDbView(
                     fetcher = { listRaces() },
-                    remover = {  },
-                    onAdd = { it -> addRaceDialog { it() } },
+                    remover = { rmRace(it) },
+                    onAdd = { addRaceDialog(it) { } },
                     enableFab = sourceCount > 0)
-                { race, onRemove, onEdit -> raceWidget(race, onRemove) }
+                { race, onRemove, onEdit -> raceWidget(race, onRemove, onEdit) }
 
                 else -> {}
             }

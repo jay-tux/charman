@@ -46,7 +46,7 @@ class RaceLanguage(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<RaceLanguage>(RaceLanguages)
 
     var race by Race referencedOn RaceLanguages.race
-    var language by Language optionalReferencedOn RaceLanguages.language
+    var language by Language referencedOn RaceLanguages.language
 }
 
 class ClassProficiency(id: EntityID<Int>) : IntEntity(id) {

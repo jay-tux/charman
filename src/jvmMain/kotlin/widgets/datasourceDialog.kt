@@ -78,7 +78,7 @@ fun datasourceDialog(
 }
 
 @Composable
-fun addDatasourceDialog(onExit: () -> Unit, onAdd: (DataSource) -> Unit) = datasourceDialog(null, onExit, onAdd) {  }
+fun addDatasourceDialog(onExit: () -> Unit, onAdd: (DataSource) -> Unit) = datasourceDialog(null, onExit, onAdd) { }
 
 @Composable
-fun updateDatasourceDialog(source: DataSource, onExit: () -> Unit, onMod: (DataSource) -> Unit) = datasourceDialog(null, onExit, { }) { onMod(it) }
+fun updateDatasourceDialog(source: DataSource, onExit: () -> Unit, onMod: (DataSource) -> Unit) = datasourceDialog(source, onExit, { }) { onMod(it) }

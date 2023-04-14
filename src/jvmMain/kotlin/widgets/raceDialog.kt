@@ -52,9 +52,39 @@ enum class RaceDialogPage(val pageName: String) {
     }
 }
 
-@Composable
-fun addRaceDialogContent(exitRequest: () -> Unit) {
+fun idxByEquality(l: List<CreatureType>, c: CreatureType?): Int? {
+    return if(c == null) null else l.map{ it.name }.indexOf(c.name)
+}
 
+fun idxByEquality(l: List<DataSource>, d: DataSource?): Int? {
+    return if(d == null) null else l.map{ it.name }.indexOf(d.name)
+}
+
+fun extractIncreases(race: Race?, abilities: List<Ability?>): List<Pair<Int, Int>> {
+    if(race == null) return listOf()
+
+    val got = transaction {
+        race.abilityScoreIncreases.map { it }
+    }
+
+    val mapped = abilities.filterNotNull().map { it.name }
+    val nullIdx = abilities.indexOf(null)
+
+    return got.map { asi -> transaction {
+        Pair(
+            if(asi.ability == null) nullIdx else mapped.indexOf(asi.ability!!.name),
+            asi.increase
+        )
+    } }
+}
+
+@Composable
+fun raceDialogContent(
+    race: Race?,
+    onExit: () -> Unit,
+    onAdd: (Race) -> Unit,
+    onMod: (Race) -> Unit
+) {
     val sources = listDataSources()
     val abilities = listAbilities()
     val types = listTypes()
@@ -63,21 +93,22 @@ fun addRaceDialogContent(exitRequest: () -> Unit) {
     val sizes = CreatureSize.values().toList()
     var page by remember { mutableStateOf(RaceDialogPage.NAME_BASIC) }
 
-    var name by remember { mutableStateOf("") }
-    var size by remember { mutableStateOf(CreatureSize.MEDIUM) }
-    var typeIdx by remember { mutableStateOf(0) }
-    var speed by remember { mutableStateOf(30) }
-    var speedStr by remember { mutableStateOf("30") }
-    var srcIdx by remember { mutableStateOf(0) }
-    var increases by remember { mutableStateOf(listOf<Pair<Int, Int>>()) }
+    // TODO: fetching of existing traits/languages/... doesn't really work yet
+    var name by remember { mutableStateOf(race?.name ?:"") }
+    var size by remember { mutableStateOf(race?.size ?: CreatureSize.MEDIUM) }
+    var typeIdx by remember { mutableStateOf(idxByEquality(types, if(race != null) { transaction { race.type } } else null) ?: 0) }
+    var speed by remember { mutableStateOf(race?.baseWalkingSpeed ?: 30) }
+    var speedStr by remember { mutableStateOf(speed.toString()) }
+    var srcIdx by remember { mutableStateOf(idxByEquality(sources, if(race != null) { transaction { race.src } } else null) ?: 0) }
+    var increases by remember { mutableStateOf(extractIncreases(race, abilityOrAny)) }
 
     var traits by remember { mutableStateOf(listTraits()) }
-    var selectedTraits by remember { mutableStateOf(listOf<Trait>()) }
+    var selectedTraits by remember { mutableStateOf(traitsFor(race)) }
     var languages by remember { mutableStateOf(listLanguages()) }
-    var selectedLanguages by remember { mutableStateOf(listOf<Language>()) }
+    var selectedLanguages by remember { mutableStateOf(languagesFor(race)) }
     var languagesToAdd by remember { mutableStateOf(listOf<String>()) }
     var languagesSelected by remember { mutableStateOf(listOf<Int>()) }
-    var anyLanguages by remember { mutableStateOf(0) }
+    var anyLanguages by remember { mutableStateOf(race?.chooseLanguages ?: 0) }
 
     var showTraitDialog by remember { mutableStateOf(false) }
     var traitDialogData by remember { mutableStateOf<Trait?>(null) }
@@ -124,21 +155,60 @@ fun addRaceDialogContent(exitRequest: () -> Unit) {
             languagesToAdd.map { l -> Language.new { this.name = l } }
         }
 
-        val lang = mutableListOf<Language?>()
+        val lang = mutableListOf<Language>()
         selectedLanguages.forEach { lang.add(it) }
         languagesSelected.forEach { lang.add(aLang[it]) }
 
-        mkRace(
-            name = name,
-            size = size,
-            type = typeOrAdd[typeIdx]!!,
-            speed = speed,
-            src = sources[srcIdx],
-            traits = selectedTraits,
-            languages = lang,
-            chooseLanguages = anyLanguages,
-            asi = increases.map { (a, i) -> Pair(abilityOrAny[a], i) }
-        )
+        if(race == null) {
+            onAdd(mkRace(
+                name = name,
+                size = size,
+                type = typeOrAdd[typeIdx]!!,
+                speed = speed,
+                src = sources[srcIdx],
+                traits = selectedTraits,
+                languages = lang,
+                chooseLanguages = anyLanguages,
+                asi = increases.map { (a, i) -> Pair(abilityOrAny[a], i) }
+            ))
+        }
+        else {
+            onMod(transaction {
+                race.name = name
+                race.size = size
+                race.type = typeOrAdd[typeIdx]!!
+                race.baseWalkingSpeed = speed
+                race. src = sources[srcIdx]
+                race.chooseLanguages = anyLanguages
+
+                // TODO: the following don't seem to work yet
+                val oldLang = RaceLanguage.find { RaceLanguages.race eq race.id }
+                val newLang = lang.map { it.name }
+                val oldLangNames = oldLang.map { it.language.name }
+
+                oldLang.filter { it.language.name !in newLang }.forEach { it.delete() }
+                lang.filter { it.name !in oldLangNames }.forEach {
+                    RaceLanguage.new {
+                        this.language = it
+                        this.race = race
+                    }
+                }
+
+                val oldTraits = RaceTrait.find { RaceTraits.race eq race.id }
+                val newTraits = selectedTraits.map { it.name }
+                val oldTraitsNames = oldTraits.map { it.trait.name }
+
+                oldTraits.filter { it.trait.name !in newTraits }.forEach { it.delete() }
+                traits.filter { it.name!in oldTraitsNames }.forEach {
+                    RaceTrait.new {
+                        this.trait = it
+                        this.race = race
+                    }
+                }
+
+                race
+            })
+        }
     }
 
     Column {
@@ -319,7 +389,7 @@ fun addRaceDialogContent(exitRequest: () -> Unit) {
         Row {
             val mod = Modifier.weight(0.45f)
             when(page) {
-                RaceDialogPage.NAME_BASIC -> Button({ exitRequest() }, mod) {
+                RaceDialogPage.NAME_BASIC -> Button({ onExit() }, mod) {
                     Icon(Icons.Default.Close, "Cancel")
                     Text("Cancel")
                 }
@@ -330,7 +400,7 @@ fun addRaceDialogContent(exitRequest: () -> Unit) {
             }
             Spacer(Modifier.weight(0.1f))
             when(page) {
-                RaceDialogPage.LANGUAGES -> Button({ onSave(); exitRequest() }, mod) {
+                RaceDialogPage.LANGUAGES -> Button({ onSave(); onExit() }, mod) {
                     Text("Save")
                     Icon(Icons.Default.Check, "Save")
                 }
@@ -362,7 +432,12 @@ fun addRaceDialogContent(exitRequest: () -> Unit) {
 }
 
 @Composable
-fun addRaceDialog(onExit: () -> Unit) = Dialog(
+fun raceDialog(
+    race: Race?,
+    onExit: () -> Unit,
+    onAdd: (Race) -> Unit,
+    onMod: (Race) -> Unit
+) = Dialog(
     onCloseRequest = { onExit() },
     state = rememberDialogState(
         position = WindowPosition.PlatformDefault,
@@ -370,8 +445,12 @@ fun addRaceDialog(onExit: () -> Unit) = Dialog(
     )
 ) {
     Box(Modifier.padding(15.dp)) {
-        addRaceDialogContent {
-            onExit()
-        }
+        raceDialogContent(race, onExit, onAdd, onMod)
     }
 }
+
+@Composable
+fun addRaceDialog(onExit: () -> Unit, onAdd: (Race) -> Unit) = raceDialog(null, onExit, onAdd) { }
+
+@Composable
+fun updateRaceDialog(race: Race, onExit: () -> Unit, onMod: (Race) -> Unit) = raceDialog(race, onExit, { }) { onMod(it) }

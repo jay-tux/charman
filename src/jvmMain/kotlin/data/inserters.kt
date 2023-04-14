@@ -6,11 +6,11 @@ fun mkDataSource(name: String): DataSource = transaction {
     DataSource.new { this.name = name }
 }
 
-fun mkCreatureType(name: String): CreatureType = transaction {
-    CreatureType.new { this.name = name }
-}
-
-fun mkRace(name: String, size: CreatureSize, type: CreatureType, speed: Int, src: DataSource, traits: List<Trait>, languages: List<Language?>, chooseLanguages: Int, asi: List<Pair<Ability?, Int>>) {
+fun mkRace(
+    name: String, size: CreatureSize, type: CreatureType, speed: Int, src: DataSource,
+    traits: List<Trait>, languages: List<Language>, chooseLanguages: Int,
+    asi: List<Pair<Ability?, Int>>
+ ): Race {
     val r = transaction {
         Race.new {
             this.name = name
@@ -45,4 +45,6 @@ fun mkRace(name: String, size: CreatureSize, type: CreatureType, speed: Int, src
             }
         }
     }
+
+    return r
 }

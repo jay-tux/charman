@@ -48,7 +48,7 @@ fun nameAndDesc(name: String, desc: String) = Row {
 }
 
 @Composable
-fun raceWidget(r: Race, onRemove: () -> Unit) = Column {
+fun raceWidget(r: Race, onRemove: () -> Unit, onModified: (Race) -> Unit) = Column {
     var showModify by remember { mutableStateOf(false) }
     var showRemove by remember { mutableStateOf(false) }
     val increases by remember { mutableStateOf(transaction { r.abilityScoreIncreases.map { it } }) }
@@ -88,10 +88,14 @@ fun raceWidget(r: Race, onRemove: () -> Unit) = Column {
     }
 
     if(showModify) {
-        TODO("Show Modify on Race Widget")
+        updateRaceDialog(r, { showModify = false }, onModified)
     }
     if(showRemove) {
-        TODO("Show Remove on Race Widget")
+        ConfirmRemoveDialog(
+            r.name,
+            "This might remove characters you created.",
+            onRemove
+        ) { showRemove = false }
     }
 }
 

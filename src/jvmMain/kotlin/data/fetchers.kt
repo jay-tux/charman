@@ -34,8 +34,8 @@ fun listAbilities(): List<Ability> = transaction {
     Ability.all().toList()
 }
 
-fun traitsFor(r: Race) : List<Trait> = transaction {
-    r.traits.toList()
+fun traitsFor(r: Race?) : List<Trait> = transaction {
+    r?.traits?.toList() ?: listOf()
 }
 
 fun listTraits(): List<Trait> = transaction {
@@ -44,4 +44,8 @@ fun listTraits(): List<Trait> = transaction {
 
 fun listLanguages(): List<Language> = transaction {
     Language.all().toList()
+}
+
+fun languagesFor(r: Race?) : List<Language> = transaction {
+    r?.languages?.toList() ?: listOf()
 }

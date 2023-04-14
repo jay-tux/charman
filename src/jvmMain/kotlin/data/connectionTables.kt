@@ -54,7 +54,7 @@ object RaceTraits : IntIdTable() {
 
 object RaceLanguages : IntIdTable() {
     val race = reference("race", Races)
-    val language = reference("language", Languages).nullable()
+    val language = reference("language", Languages)
 
     init {
         uniqueIndex(race, language)
