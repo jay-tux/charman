@@ -2,7 +2,7 @@ package views
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import data.listDataSources
 import data.listRaces
 import data.rmDataSource
+import updateGet
 import widgets.*
 
 enum class CurrDbView(val label: String) {
@@ -45,15 +46,15 @@ fun dbView() {
                 CurrDbView.SOURCES -> singleDbView(
                     fetcher = { listDataSources() },
                     remover = { rmDataSource(it); sourceCount = listDataSources().size },
-                    onAdd = { addDatasourceDialog { it(); sourceCount = listDataSources().size } })
-                { src, onRemove -> datasourceWidget(src, onRemove) }
+                    onAdd = { addDatasourceDialog(it) { sourceCount = listDataSources().size } })
+                { src, onRemove, onEdit -> datasourceWidget(src, onRemove, onEdit) }
 
                 CurrDbView.RACES -> singleDbView(
                     fetcher = { listRaces() },
-                    remover = { it -> },
+                    remover = {  },
                     onAdd = { it -> addRaceDialog { it() } },
                     enableFab = sourceCount > 0)
-                { race, onRemove -> raceWidget(race, onRemove) }
+                { race, onRemove, onEdit -> raceWidget(race, onRemove) }
 
                 else -> {}
             }
@@ -64,11 +65,11 @@ fun dbView() {
 @Composable
 fun <T> singleDbView(
     fetcher: () -> List<T>,
-    remover: (T) -> Unit,
-    onAdd: @Composable (() -> Unit) -> Unit,
+    remover: (toRemove: T) -> Unit,
+    onAdd: @Composable (onExit: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
     enableFab: Boolean = true,
-    render: @Composable (T, () -> Unit) -> Unit
+    render: @Composable (value: T, onRemove: () -> Unit, onEdit: (T) -> Unit) -> Unit
 ) {
     var values by remember { mutableStateOf(fetcher()) }
     var adding by remember { mutableStateOf(false) }
@@ -89,10 +90,9 @@ fun <T> singleDbView(
             noneYet("No data of this kind has been added yet.")
         } else {
             LazyColumn {
-                items(values) {single ->
-                    var expanded by remember { mutableStateOf(false) }
+                itemsIndexed(values) { idx, single ->
                     Column {
-                        render(single) { notifyRemove(single) }
+                        render(single, { notifyRemove(single) }) { values.updateGet(idx, it) }
                         Spacer(Modifier.height(5.dp))
                     }
                 }

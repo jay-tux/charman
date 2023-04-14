@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -20,8 +22,8 @@ fun ConfirmRemoveDialog(
 ) = Dialog(
     onCloseRequest = { requestExit() },
     state = rememberDialogState(
-        position = WindowPosition.PlatformDefault,
-        size = DpSize(600.dp, 250.dp)
+        position = WindowPosition(Alignment.Center),
+        size = DpSize(600.dp, Dp.Unspecified)
     )
 ) {
     Column(Modifier.padding(8.dp)) {
