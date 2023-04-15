@@ -122,13 +122,13 @@ fun raceDialogContent(
     val addRemoveTrait = { add: Boolean, t: Trait ->
         selectedTraits =
             if(add) selectedTraits.addGet(t)
-            else selectedTraits.removeGet(selectedTraits.indexOf(t))
+            else selectedTraits.removeGet(selectedTraits.map{ it.name }.indexOf(t.name))
     }
 
     val addRemoveLanguage = { add: Boolean, l: Language ->
         selectedLanguages =
             if(add) selectedLanguages.addGet(l)
-            else selectedLanguages.removeGet(selectedLanguages.indexOf(l))
+            else selectedLanguages.removeGet(selectedLanguages.map{ it.name }.indexOf(l.name))
     }
 
     val addRemoveTempLanguage = { add: Boolean, idx: Int ->
@@ -178,7 +178,7 @@ fun raceDialogContent(
                 race.size = size
                 race.type = typeOrAdd[typeIdx]!!
                 race.baseWalkingSpeed = speed
-                race. src = sources[srcIdx]
+                race.src = sources[srcIdx]
                 race.chooseLanguages = anyLanguages
 
                 // TODO: the following don't seem to work yet
@@ -186,7 +186,9 @@ fun raceDialogContent(
                 val newLang = lang.map { it.name }
                 val oldLangNames = oldLang.map { it.language.name }
 
-                oldLang.filter { it.language.name !in newLang }.forEach { it.delete() }
+                oldLang.filter { it.language.name !in newLang }.forEach {
+                    it.delete()
+                }
                 lang.filter { it.name !in oldLangNames }.forEach {
                     RaceLanguage.new {
                         this.language = it
@@ -307,7 +309,7 @@ fun raceDialogContent(
                         items(traits.toList()) {trait ->
                             Row {
                                 Checkbox(
-                                    checked = selectedTraits.contains(trait),
+                                    checked = selectedTraits.map{ it.name }.contains(trait.name),
                                     onCheckedChange = { addRemoveTrait(it, trait) },
                                     Modifier.weight(0.1f)
                                 )
@@ -328,7 +330,7 @@ fun raceDialogContent(
                         items(languages) { l ->
                             Row {
                                 Checkbox(
-                                    selectedLanguages.contains(l),
+                                    selectedLanguages.map { it.name }.contains(l.name),
                                     { addRemoveLanguage(it, l) },
                                     Modifier.weight(0.1f)
                                 )

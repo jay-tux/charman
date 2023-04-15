@@ -10,11 +10,10 @@ fun rmDataSource(ds: DataSource) = transaction {
     ds.delete()
 }
 
-// TODO: only for race :eyes:
 fun rmRace(r: Race) = transaction {
-    RaceLanguage.all().forEach { it.delete() }
-    RaceTrait.all().forEach { it.delete() }
-    AbilityScoreIncrease.all().forEach { it.delete() }
+    r.abilityScoreIncreases.forEach { it.delete() }
+    RaceTrait.find { RaceTraits.race eq r.id }.forEach { it.delete() }
+    RaceLanguage.find { RaceLanguages.race eq r.id }.forEach { it.delete() }
     r.charactersWithRace.forEach { it.delete() }
     r.delete()
 }
