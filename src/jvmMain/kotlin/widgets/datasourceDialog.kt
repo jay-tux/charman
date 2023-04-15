@@ -5,13 +5,8 @@ import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberDialogState
 import data.DataSource
 import data.listDataSources
 import data.mkDataSource
@@ -65,13 +60,7 @@ fun datasourceDialog(
     onExit: () -> Unit,
     onAdd: (DataSource) -> Unit,
     onMod: (DataSource) -> Unit
-) = Dialog(
-    onCloseRequest = { onExit() },
-    state = rememberDialogState(
-        position = WindowPosition(alignment = Alignment.Center),
-        size = DpSize(500.dp, 150.dp)
-    )
-) {
+) = DefaultDialog(onExit, 500.dp, 200.dp) {
     Box(Modifier.padding(5.dp)) {
         datasourceDialogContent(source, onExit, onAdd, onMod)
     }

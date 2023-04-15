@@ -1,17 +1,15 @@
 package widgets
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberDialogState
 
 @Composable
 fun ConfirmRemoveDialog(
@@ -19,13 +17,7 @@ fun ConfirmRemoveDialog(
     extraMsg: String? = null,
     onRemove: () -> Unit,
     requestExit: () -> Unit
-) = Dialog(
-    onCloseRequest = { requestExit() },
-    state = rememberDialogState(
-        position = WindowPosition(Alignment.Center),
-        size = DpSize(600.dp, Dp.Unspecified)
-    )
-) {
+) = DefaultDialog(requestExit, 600.dp, Dp.Unspecified) {
     Column(Modifier.padding(8.dp)) {
         Text("Are you sure you want to remove $name?")
         if(extraMsg != null) {
@@ -35,12 +27,12 @@ fun ConfirmRemoveDialog(
         Row {
             Button(
                 onClick = { onRemove(); requestExit() },
-                modifier = Modifier.fillMaxWidth(0.45f)
+                modifier = Modifier.weight(0.45f)
             ) { Text("Yes") }
-            Spacer(Modifier.fillMaxWidth(0.10f / 0.55f))
+            Spacer(Modifier.weight(0.10f))
             Button(
                 onClick = { requestExit() },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.weight(0.45f)
             ) { Text("No") }
         }
     }

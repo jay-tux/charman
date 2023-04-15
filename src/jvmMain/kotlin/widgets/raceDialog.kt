@@ -15,11 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberDialogState
 import capitalizeFirst
 import data.*
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -439,13 +435,7 @@ fun raceDialog(
     onExit: () -> Unit,
     onAdd: (Race) -> Unit,
     onMod: (Race) -> Unit
-) = Dialog(
-    onCloseRequest = { onExit() },
-    state = rememberDialogState(
-        position = WindowPosition.PlatformDefault,
-        size = DpSize(600.dp, 500.dp)
-    )
-) {
+) = DefaultDialog(onExit, 600.dp, 500.dp) {
     Box(Modifier.padding(15.dp)) {
         raceDialogContent(race, onExit, onAdd, onMod)
     }

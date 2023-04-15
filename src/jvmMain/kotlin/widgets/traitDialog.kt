@@ -7,11 +7,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberDialogState
 import atLeastNLines
 import data.Trait
 import data.TraitKind
@@ -64,9 +60,9 @@ fun traitDialogContent(
                 Text(description)
             }
             Row {
-                Button({ onExit() }, Modifier.fillMaxWidth(0.45f)) { Text("Close") }
-                Spacer(Modifier.fillMaxWidth(0.1f))
-                Button({ editing = true }, Modifier.fillMaxWidth(0.45f)) { Text("Enable editing") }
+                Button({ onExit() }, Modifier.weight(0.45f)) { Text("Close") }
+                Spacer(Modifier.weight(0.1f))
+                Button({ editing = true }, Modifier.weight(0.45f)) { Text("Enable editing") }
             }
         }
     }
@@ -118,14 +114,6 @@ fun traitDialogContent(
 }
 
 @Composable
-fun traitDialog(trait: Trait?, onExit: () -> Unit, onAdd: (Trait) -> Unit, onMod: (Trait, Trait) -> Unit) = Dialog(
-    onCloseRequest = { onExit() },
-    state = rememberDialogState(
-        position = WindowPosition.PlatformDefault,
-        size = DpSize(600.dp, 400.dp)
-    )
-) {
-    Box(Modifier.padding(15.dp)) {
-        traitDialogContent(trait, onExit, onAdd, onMod)
-    }
-}
+fun traitDialog(
+    trait: Trait?, onExit: () -> Unit, onAdd: (Trait) -> Unit, onMod: (Trait, Trait) -> Unit
+) = DefaultDialog(onExit, 600.dp, 400.dp) { traitDialogContent(trait, onExit, onAdd, onMod) }
