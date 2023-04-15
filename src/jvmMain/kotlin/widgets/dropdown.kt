@@ -8,6 +8,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,7 +44,8 @@ fun <T> Dropdown(items: List<T>, onSelect: (Int) -> Unit, chosen: Int = -1, unse
             Spacer(Modifier.width(8.dp))
             Icon(
                 imageVector = Icons.Filled.ArrowDropDown,
-                contentDescription = "Show dropdown content"
+                contentDescription = "Show dropdown content",
+                modifier = Modifier.align(Alignment.CenterVertically)
             )
         }
     }

@@ -89,7 +89,6 @@ fun raceDialogContent(
     val sizes = CreatureSize.values().toList()
     var page by remember { mutableStateOf(RaceDialogPage.NAME_BASIC) }
 
-    // TODO: fetching of existing traits/languages/... doesn't really work yet
     var name by remember { mutableStateOf(race?.name ?:"") }
     var size by remember { mutableStateOf(race?.size ?: CreatureSize.MEDIUM) }
     var typeIdx by remember { mutableStateOf(idxByEquality(types, if(race != null) { transaction { race.type } } else null) ?: 0) }
@@ -177,7 +176,6 @@ fun raceDialogContent(
                 race.src = sources[srcIdx]
                 race.chooseLanguages = anyLanguages
 
-                // TODO: the following don't seem to work yet
                 val oldLang = RaceLanguage.find { RaceLanguages.race eq race.id }
                 val newLang = lang.map { it.name }
                 val oldLangNames = oldLang.map { it.language.name }
@@ -268,14 +266,15 @@ fun raceDialogContent(
                             var deltaStr by remember { mutableStateOf(if(inc > 0) "+$inc" else "$inc") }
                             var delta by remember { mutableStateOf(inc) }
 
-                            Row {
-                                Column(Modifier.weight(0.45f)) {
+                            Row(Modifier.fillMaxWidth()) {
+                                Column(Modifier.fillMaxWidth(0.75f)) {
                                     Dropdown(
                                         items = abilityOrAny,
                                         onSelect = {
                                             increases = increases.updateGet(idx, Pair(it, inc))
                                         },
-                                        chosen = ab
+                                        chosen = ab,
+                                        modifier = Modifier.fillMaxWidth()
                                     ) { selection, selected ->
                                         DisabledTextFieldOrText(selection?.name ?: "(any ability)", selected)
                                     }
