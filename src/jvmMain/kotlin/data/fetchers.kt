@@ -49,3 +49,15 @@ fun listLanguages(): List<Language> = transaction {
 fun languagesFor(r: Race?) : List<Language> = transaction {
     r?.languages?.toList() ?: listOf()
 }
+
+fun listTags() : List<ItemTag> = transaction {
+    ItemTag.all().toList()
+}
+
+fun listCreatureTypes() : List<CreatureType> = transaction {
+    CreatureType.all().toList()
+}
+
+fun listSkills() : List<Skill> = transaction {
+    Skill.all().toList()
+}

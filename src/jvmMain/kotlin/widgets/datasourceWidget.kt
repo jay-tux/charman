@@ -15,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import data.DataSource
+import dialogs.ConfirmRemoveDialog
+import dialogs.updateDatasourceDialog
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @Composable

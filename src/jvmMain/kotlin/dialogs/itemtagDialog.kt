@@ -1,4 +1,4 @@
-package widgets
+package dialogs
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
@@ -7,39 +7,38 @@ import androidx.compose.material.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import data.DataSource
+import data.ItemTag
 import data.listDataSources
-import data.mkDataSource
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @Composable
-fun datasourceDialogContent(
-    source: DataSource?,
+fun itemTagDialogContent(
+    tag: ItemTag?,
     onExit: () -> Unit,
-    onAdd: (DataSource) -> Unit,
-    onMod: (DataSource) -> Unit
+    onAdd: (ItemTag) -> Unit,
+    onMod: (ItemTag) -> Unit
 ) {
     val already = listDataSources().map { it.name }
-    var name by remember { mutableStateOf(source?.name ?: "") }
+    var name by remember { mutableStateOf(tag?.name ?: "") }
 
     val save = {
-        if(source == null) {
-            onAdd(mkDataSource(name))
+        if(tag == null) {
+            onAdd(transaction { ItemTag.new { this.name = name } })
         }
         else {
-            onMod(transaction { source.name = name; source })
+            onMod(transaction { tag.name = name; tag })
         }
     }
 
     Column {
-        TextField(name, { name = it}, label = { Text("Data Source Name") }, modifier = Modifier.fillMaxWidth())
+        TextField(name, { name = it}, label = { Text("Tag") }, modifier = Modifier.fillMaxWidth())
         Row {
             Button(
                 onClick = { save(); onExit() },
                 enabled = !already.contains(name) && name.isNotBlank(),
                 modifier = Modifier.weight(0.45f)
             ) {
-                Text(if(source == null) "Add data source" else "Update data source")
+                Text(if(tag == null) "Add tag" else "Update tag")
             }
 
             Spacer(modifier = Modifier.weight(0.1f))
@@ -55,19 +54,19 @@ fun datasourceDialogContent(
 }
 
 @Composable
-fun datasourceDialog(
-    source: DataSource?,
+fun itemTagDialog(
+    source: ItemTag?,
     onExit: () -> Unit,
-    onAdd: (DataSource) -> Unit,
-    onMod: (DataSource) -> Unit
+    onAdd: (ItemTag) -> Unit,
+    onMod: (ItemTag) -> Unit
 ) = DefaultDialog(onExit, 500.dp, 200.dp) {
     Box(Modifier.padding(5.dp)) {
-        datasourceDialogContent(source, onExit, onAdd, onMod)
+        itemTagDialogContent(source, onExit, onAdd, onMod)
     }
 }
 
 @Composable
-fun addDatasourceDialog(onExit: () -> Unit, onAdd: (DataSource) -> Unit) = datasourceDialog(null, onExit, onAdd) { }
+fun addItemTagDialog(onExit: () -> Unit, onAdd: (ItemTag) -> Unit) = itemTagDialog(null, onExit, onAdd) { }
 
 @Composable
-fun updateDatasourceDialog(source: DataSource, onExit: () -> Unit, onMod: (DataSource) -> Unit) = datasourceDialog(source, onExit, { }) { onMod(it) }
+fun updateItemTagDialog(tag: ItemTag, onExit: () -> Unit, onMod: (ItemTag) -> Unit) = itemTagDialog(tag, onExit, { }) { onMod(it) }

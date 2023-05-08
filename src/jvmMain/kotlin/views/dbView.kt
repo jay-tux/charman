@@ -9,12 +9,15 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import data.listDataSources
-import data.listRaces
-import data.rmDataSource
-import data.rmRace
+import data.*
+import dialogs.addClassDialog
+import dialogs.addDatasourceDialog
+import dialogs.addRaceDialog
 import updateGet
-import widgets.*
+import widgets.classWidget
+import widgets.datasourceWidget
+import widgets.noneYet
+import widgets.raceWidget
 
 enum class CurrDbView(val label: String) {
     SOURCES("Data Sources"),
@@ -56,6 +59,13 @@ fun dbView() {
                     onAdd = { addRaceDialog(it) { } },
                     enableFab = sourceCount > 0)
                 { race, onRemove, onEdit -> raceWidget(race, onRemove, onEdit) }
+
+                CurrDbView.CLASSES -> singleDbView(
+                    fetcher = { listClasses() },
+                    remover = { _ -> TODO() },
+                    onAdd = { addClassDialog(it) { } },
+                    enableFab = sourceCount > 0)
+                { cls, onRemove, onEdit -> classWidget(cls, onRemove, onEdit) }
 
                 else -> {}
             }

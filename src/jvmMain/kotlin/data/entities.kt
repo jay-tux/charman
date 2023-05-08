@@ -37,7 +37,7 @@ class Skill(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<Skill>(Skills)
 
     var name by Skills.name
-    var ability by Skills.ability
+    var ability by Ability referencedOn Skills.ability
 }
 
 class Note(id: EntityID<Int>) : IntEntity(id) {
@@ -119,13 +119,33 @@ class ClassChoiceOption(id: EntityID<Int>) : IntEntity(id) {
     var src by ClassChoiceOptions.src
 }
 
+class Spellcasting(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<Spellcasting>(SpellcastingDetails)
+
+    var dndClass by DnDClass referencedOn SpellcastingDetails.dndClass
+    var prerequisite by ClassChoiceOption referencedOn SpellcastingDetails.prerequisite
+    var cantripCount by SpellcastingDetails.cantripCount
+    var lvl1Slots by SpellcastingDetails.lvl1Slots
+    var lvl2Slots by SpellcastingDetails.lvl2Slots
+    var lvl3Slots by SpellcastingDetails.lvl3Slots
+    var lvl4Slots by SpellcastingDetails.lvl4Slots
+    var lvl5Slots by SpellcastingDetails.lvl5Slots
+    var lvl6Slots by SpellcastingDetails.lvl6Slots
+    var lvl7Slots by SpellcastingDetails.lvl7Slots
+    var lvl8Slots by SpellcastingDetails.lvl8Slots
+    var lvl9Slots by SpellcastingDetails.lvl9Slots
+    var spellsKnown by SpellcastingDetails.spellsKnown
+    var nextLevel by SpellcastingDetails.nextLevel
+    var levelUpSpellcasting by Spellcasting optionalReferencedOn SpellcastingDetails.onReachNext
+}
+
 class DnDClass(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<DnDClass>(Classes)
 
     var name by Classes.name
     var hitDiceType by Classes.hitDiceType
     var chooseSkillCount by Classes.chooseSkillCount
-    var src by Classes.src
+    var src by DataSource referencedOn Classes.src
 
     val choices by ClassChoice referrersOn ClassChoices.classN
     val itemProficiencies by ItemTag via ClassProficiencies
@@ -133,6 +153,7 @@ class DnDClass(id: EntityID<Int>) : IntEntity(id) {
     val skillOptions by Skill via ClassSkillOptions
     val traits by ClassTrait referrersOn ClassTraits.classN
     val charactersWithClass by CharacterClass referrersOn CharacterClasses.classN
+    val spellcasting by Spellcasting referrersOn SpellcastingDetails.dndClass
 }
 
 class Background(id: EntityID<Int>) : IntEntity(id) {

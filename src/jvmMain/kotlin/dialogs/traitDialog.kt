@@ -1,4 +1,4 @@
-package widgets
+package dialogs
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
@@ -13,6 +13,8 @@ import data.Trait
 import data.TraitKind
 import data.TraitSource
 import org.jetbrains.exposed.sql.transactions.transaction
+import widgets.DisabledTextFieldOrText
+import widgets.Dropdown
 
 @Composable
 fun traitDialogContent(
@@ -79,7 +81,7 @@ fun traitDialogContent(
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Row {
-                            Text("Trait kind: ", Modifier.align(Alignment.CenterVertically))
+                            Text("Trait kind: ", Modifier.align(Alignment.CenterVertically).weight(0.25f))
                             Spacer(Modifier.width(5.dp))
                             Dropdown(
                                 items = TraitKind.values().toList(),
@@ -88,7 +90,7 @@ fun traitDialogContent(
                             ) { item, selected -> DisabledTextFieldOrText(item.toString(), selected) }
                         }
                         Row {
-                            Text("Trait source: ", Modifier.align(Alignment.CenterVertically))
+                            Text("Trait source: ", Modifier.align(Alignment.CenterVertically).weight(0.25f))
                             Spacer(Modifier.width(5.dp))
                             Dropdown(
                                 items = TraitSource.values().toList(),

@@ -48,3 +48,42 @@ fun mkRace(
 
     return r
 }
+
+fun mkClass(
+    name: String, hitDice: DiceType, saves: List<Ability>, itemP: List<ItemTag>, src: DataSource,
+    skillCount: Int, skillOptions: List<Skill>
+): DnDClass {
+    val cls = transaction {
+        DnDClass.new {
+            this.name = name
+            this.hitDiceType = hitDice
+            this.src = src
+            this.chooseSkillCount = skillCount
+        }
+    }
+
+    transaction {
+        saves.forEach {
+            ClassSaveProficiency.new {
+                this.classN = cls
+                this.savingThrow = it
+            }
+        }
+
+        itemP.forEach {
+            ClassProficiency.new {
+                this.classN = cls
+                this.itemTag = it
+            }
+        }
+
+        skillOptions.forEach {
+            ClassSkillOption.new {
+                this.classN = cls
+                this.skill = it
+            }
+        }
+    }
+
+    return transaction { cls.refresh(); cls }
+}

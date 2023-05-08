@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import capitalizeOnlyFirst
 import data.AbilityScoreIncrease
 import data.Race
+import dialogs.ConfirmRemoveDialog
+import dialogs.updateRaceDialog
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.math.abs
 
@@ -60,10 +62,10 @@ fun raceWidget(r: Race, onRemove: () -> Unit, onModified: (Race) -> Unit) = Colu
         {
             Row {
                 IconButton({ showModify = true }) {
-                    Icon(Icons.Filled.Edit, contentDescription = "Edit this data source")
+                    Icon(Icons.Filled.Edit, contentDescription = "Edit this race")
                 }
                 IconButton({ showRemove = true }) {
-                    Icon(Icons.Filled.Close, contentDescription = "Delete this data source")
+                    Icon(Icons.Filled.Close, contentDescription = "Delete this race")
                 }
             }
         }

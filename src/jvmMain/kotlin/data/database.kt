@@ -17,7 +17,7 @@ fun <Out: IntEntity> maybeInsert(comp1: IntEntityClass<Out>, sel: SqlExpressionB
 }
 
 fun mkSkill(name: String, ability: Ability): Skill = maybeInsert<Skill>(Skill.Companion, { Skills.name eq name }) {
-    Skill.new { this.name = name; this.ability = ability.id }
+    Skill.new { this.name = name; this.ability = ability }
 }
 
 fun mkAbility(name: String): Ability = transaction {
