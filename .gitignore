@@ -39,3 +39,6 @@ bin/
 .DS_Store
 
 charman.sqlite
+
+**/src/antlr/*
+!**/src/antlr/*.g4
