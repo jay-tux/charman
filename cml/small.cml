@@ -1,0 +1,13 @@
+data somekind something {
+    field base = 3;
+
+    fun update() {
+        base = 7;
+    }
+
+    fun updateUseArg(arg1) {
+        var temp = arg1;
+        update();
+        base = temp;
+    }
+}
