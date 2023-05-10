@@ -1,18 +1,18 @@
 package parsing
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
-import parsing.cmlParser.*
+import parsing.CMLParser.*
 
 // Generated from java-escape by ANTLR 4.11.1
 /**
- * This class provides an empty implementation of [cmlVisitor],
+ * This class provides an empty implementation of [CMLVisitor],
  * which can be extended to create a visitor which only needs to handle a subset
  * of the available methods.
  *
  * @param <T> The return type of the visit operation. Use [Void] for
  * operations with no return type.
 </T> */
-class cmlBaseVisitor<T> : AbstractParseTreeVisitor<T>(), cmlVisitor<T> {
+open class CMLBaseVisitor<T> : AbstractParseTreeVisitor<T>(), CMLVisitor<T> {
     /**
      * {@inheritDoc}
      *
@@ -31,7 +31,7 @@ class cmlBaseVisitor<T> : AbstractParseTreeVisitor<T>(), cmlVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
-    override fun visitRaceDesc(ctx: RaceDescContext?): T {
+    override fun visitTopLevel(ctx: CMLParser.TopLevelContext?): T {
         return visitChildren(ctx)
     }
 
@@ -42,40 +42,7 @@ class cmlBaseVisitor<T> : AbstractParseTreeVisitor<T>(), cmlVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
-    override fun visitClassDesc(ctx: ClassDescContext?): T {
-        return visitChildren(ctx)
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation returns the result of calling
-     * [.visitChildren] on `ctx`.
-     */
-    override fun visitBgDesc(ctx: BgDescContext?): T {
-        return visitChildren(ctx)
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation returns the result of calling
-     * [.visitChildren] on `ctx`.
-     */
-    override fun visitItemDesc(ctx: ItemDescContext?): T {
-        return visitChildren(ctx)
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation returns the result of calling
-     * [.visitChildren] on `ctx`.
-     */
-    override fun visitSpellDesc(ctx: SpellDescContext?): T {
+    override fun visitDeclSet(ctx: DeclSetContext?): T {
         return visitChildren(ctx)
     }
 
@@ -98,6 +65,28 @@ class cmlBaseVisitor<T> : AbstractParseTreeVisitor<T>(), cmlVisitor<T> {
      * [.visitChildren] on `ctx`.
      */
     override fun visitFieldDecl(ctx: FieldDeclContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitNoStmt(ctx: NoStmtContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitStmts(ctx: StmtsContext?): T {
         return visitChildren(ctx)
     }
 
@@ -229,7 +218,7 @@ class cmlBaseVisitor<T> : AbstractParseTreeVisitor<T>(), cmlVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
-    override fun visitCallExprNoArgs(ctx: CallExprNoArgsContext?): T {
+    override fun visitCallExpr(ctx: CallExprContext?): T {
         return visitChildren(ctx)
     }
 

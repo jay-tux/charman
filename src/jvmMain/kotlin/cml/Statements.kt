@@ -4,6 +4,10 @@ abstract class Statement(pos: PosInfo) : AstNode(pos) {
     abstract fun execute(ctxt: ExecEnvironment)
 }
 
+class StmtSet(pos: PosInfo) : AstNode(pos) {
+    val contained = mutableListOf<Statement>()
+}
+
 class ExprStmt(private val e: Expression, pos: PosInfo): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
         e.evaluate(ctxt)
@@ -11,8 +15,8 @@ class ExprStmt(private val e: Expression, pos: PosInfo): Statement(pos) {
 }
 
 class VarDeclStmt(
-    private val name: String,
-    private val init: Expression,
+    val name: String,
+    val init: Expression,
     pos: PosInfo
 ): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {

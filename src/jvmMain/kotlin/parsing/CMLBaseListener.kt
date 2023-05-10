@@ -3,15 +3,15 @@ package parsing
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.tree.ErrorNode
 import org.antlr.v4.runtime.tree.TerminalNode
-import parsing.cmlParser.*
+import parsing.CMLParser.*
 
 // Generated from java-escape by ANTLR 4.11.1
 /**
- * This class provides an empty implementation of [cmlListener],
+ * This class provides an empty implementation of [CMLListener],
  * which can be extended to create a listener which only needs to handle a subset
  * of the available methods.
  */
-class cmlBaseListener : cmlListener {
+class CMLBaseListener : CMLListener {
     /**
      * {@inheritDoc}
      *
@@ -34,7 +34,7 @@ class cmlBaseListener : cmlListener {
      *
      * The default implementation does nothing.
      */
-    override fun enterRaceDesc(ctx: RaceDescContext?) {}
+    override fun enterTopLevel(ctx: CMLParser.TopLevelContext?) {}
 
     /**
      * {@inheritDoc}
@@ -42,7 +42,7 @@ class cmlBaseListener : cmlListener {
      *
      * The default implementation does nothing.
      */
-    override fun exitRaceDesc(ctx: RaceDescContext?) {}
+    override fun exitTopLevel(ctx: CMLParser.TopLevelContext?) {}
 
     /**
      * {@inheritDoc}
@@ -50,7 +50,7 @@ class cmlBaseListener : cmlListener {
      *
      * The default implementation does nothing.
      */
-    override fun enterClassDesc(ctx: ClassDescContext?) {}
+    override fun enterDeclSet(ctx: DeclSetContext?) {}
 
     /**
      * {@inheritDoc}
@@ -58,55 +58,7 @@ class cmlBaseListener : cmlListener {
      *
      * The default implementation does nothing.
      */
-    override fun exitClassDesc(ctx: ClassDescContext?) {}
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation does nothing.
-     */
-    override fun enterBgDesc(ctx: BgDescContext?) {}
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation does nothing.
-     */
-    override fun exitBgDesc(ctx: BgDescContext?) {}
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation does nothing.
-     */
-    override fun enterItemDesc(ctx: ItemDescContext?) {}
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation does nothing.
-     */
-    override fun exitItemDesc(ctx: ItemDescContext?) {}
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation does nothing.
-     */
-    override fun enterSpellDesc(ctx: SpellDescContext?) {}
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation does nothing.
-     */
-    override fun exitSpellDesc(ctx: SpellDescContext?) {}
+    override fun exitDeclSet(ctx: DeclSetContext?) {}
 
     /**
      * {@inheritDoc}
@@ -139,6 +91,38 @@ class cmlBaseListener : cmlListener {
      * The default implementation does nothing.
      */
     override fun exitFieldDecl(ctx: FieldDeclContext?) {}
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation does nothing.
+     */
+    override fun enterNoStmt(ctx: NoStmtContext?) {}
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation does nothing.
+     */
+    override fun exitNoStmt(ctx: NoStmtContext?) {}
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation does nothing.
+     */
+    override fun enterStmts(ctx: StmtsContext?) {}
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation does nothing.
+     */
+    override fun exitStmts(ctx: StmtsContext?) {}
 
     /**
      * {@inheritDoc}
@@ -322,7 +306,7 @@ class cmlBaseListener : cmlListener {
      *
      * The default implementation does nothing.
      */
-    override fun enterCallExprNoArgs(ctx: CallExprNoArgsContext?) {}
+    override fun enterCallExpr(ctx: CallExprContext?) {}
 
     /**
      * {@inheritDoc}
@@ -330,7 +314,7 @@ class cmlBaseListener : cmlListener {
      *
      * The default implementation does nothing.
      */
-    override fun exitCallExprNoArgs(ctx: CallExprNoArgsContext?) {}
+    override fun exitCallExpr(ctx: CallExprContext?) {}
 
     /**
      * {@inheritDoc}

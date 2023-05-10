@@ -1,67 +1,41 @@
 package parsing
 
 import org.antlr.v4.runtime.tree.ParseTreeVisitor
-import parsing.cmlParser.*
+import parsing.CMLParser.*
 
 // Generated from java-escape by ANTLR 4.11.1
 /**
  * This interface defines a complete generic visitor for a parse tree produced
- * by [cmlParser].
+ * by [CMLParser].
  *
  * @param <T> The return type of the visit operation. Use [Void] for
  * operations with no return type.
 </T> */
-interface cmlVisitor<T> : ParseTreeVisitor<T> {
+interface CMLVisitor<T> : ParseTreeVisitor<T> {
     /**
-     * Visit a parse tree produced by [cmlParser.program].
+     * Visit a parse tree produced by [CMLParser.program].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitProgram(ctx: ProgramContext?): T
 
     /**
-     * Visit a parse tree produced by the `raceDesc`
-     * labeled alternative in [cmlParser.topLevel].
+     * Visit a parse tree produced by [CMLParser.topLevel].
      * @param ctx the parse tree
      * @return the visitor result
      */
-    fun visitRaceDesc(ctx: RaceDescContext?): T
+    fun visitTopLevel(ctx: CMLParser.TopLevelContext?): T
 
     /**
-     * Visit a parse tree produced by the `classDesc`
-     * labeled alternative in [cmlParser.topLevel].
+     * Visit a parse tree produced by [CMLParser.declSet].
      * @param ctx the parse tree
      * @return the visitor result
      */
-    fun visitClassDesc(ctx: ClassDescContext?): T
-
-    /**
-     * Visit a parse tree produced by the `bgDesc`
-     * labeled alternative in [cmlParser.topLevel].
-     * @param ctx the parse tree
-     * @return the visitor result
-     */
-    fun visitBgDesc(ctx: BgDescContext?): T
-
-    /**
-     * Visit a parse tree produced by the `itemDesc`
-     * labeled alternative in [cmlParser.topLevel].
-     * @param ctx the parse tree
-     * @return the visitor result
-     */
-    fun visitItemDesc(ctx: ItemDescContext?): T
-
-    /**
-     * Visit a parse tree produced by the `spellDesc`
-     * labeled alternative in [cmlParser.topLevel].
-     * @param ctx the parse tree
-     * @return the visitor result
-     */
-    fun visitSpellDesc(ctx: SpellDescContext?): T
+    fun visitDeclSet(ctx: DeclSetContext?): T
 
     /**
      * Visit a parse tree produced by the `funDecl`
-     * labeled alternative in [cmlParser.decl].
+     * labeled alternative in [CMLParser.decl].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -69,21 +43,37 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `fieldDecl`
-     * labeled alternative in [cmlParser.decl].
+     * labeled alternative in [CMLParser.decl].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitFieldDecl(ctx: FieldDeclContext?): T
 
     /**
-     * Visit a parse tree produced by [cmlParser.argDs].
+     * Visit a parse tree produced by the `noStmt`
+     * labeled alternative in [CMLParser.stmtSet].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitNoStmt(ctx: NoStmtContext?): T
+
+    /**
+     * Visit a parse tree produced by the `stmts`
+     * labeled alternative in [CMLParser.stmtSet].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitStmts(ctx: StmtsContext?): T
+
+    /**
+     * Visit a parse tree produced by [CMLParser.argDs].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitArgDs(ctx: ArgDsContext?): T
 
     /**
-     * Visit a parse tree produced by [cmlParser.argDsNonEmpty].
+     * Visit a parse tree produced by [CMLParser.argDsNonEmpty].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -91,7 +81,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `exprStmt`
-     * labeled alternative in [cmlParser.stmt].
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -99,7 +89,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `varDeclStmt`
-     * labeled alternative in [cmlParser.stmt].
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -107,7 +97,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `varStoreStmt`
-     * labeled alternative in [cmlParser.stmt].
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -115,7 +105,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `ifStmt`
-     * labeled alternative in [cmlParser.stmt].
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -123,7 +113,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `ifElseStmt`
-     * labeled alternative in [cmlParser.stmt].
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -131,7 +121,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `whileStmt`
-     * labeled alternative in [cmlParser.stmt].
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -139,7 +129,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `forStmt`
-     * labeled alternative in [cmlParser.stmt].
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -147,7 +137,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `breakStmt`
-     * labeled alternative in [cmlParser.stmt].
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -155,23 +145,23 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `returnStmt`
-     * labeled alternative in [cmlParser.stmt].
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitReturnStmt(ctx: ReturnStmtContext?): T
 
     /**
-     * Visit a parse tree produced by the `callExprNoArgs`
-     * labeled alternative in [cmlParser.stmt].
+     * Visit a parse tree produced by the `callExpr`
+     * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
-    fun visitCallExprNoArgs(ctx: CallExprNoArgsContext?): T
+    fun visitCallExpr(ctx: CallExprContext?): T
 
     /**
      * Visit a parse tree produced by the `addSubExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -179,7 +169,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `modExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -187,7 +177,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `untilExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -195,7 +185,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `parenExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -203,7 +193,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `bitwiseExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -211,7 +201,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `stringLit`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -219,7 +209,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `varExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -227,7 +217,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `unaryExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -235,7 +225,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `ternaryExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -243,7 +233,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `boolLit`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -251,7 +241,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `logicExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -259,7 +249,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `intLit`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -267,7 +257,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `diceExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -275,7 +265,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `dictExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -283,7 +273,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `listExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -291,7 +281,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `mulDivExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -299,7 +289,7 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `rangeExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
@@ -307,42 +297,42 @@ interface cmlVisitor<T> : ParseTreeVisitor<T> {
 
     /**
      * Visit a parse tree produced by the `compareExpr`
-     * labeled alternative in [cmlParser.expr].
+     * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitCompareExpr(ctx: CompareExprContext?): T
 
     /**
-     * Visit a parse tree produced by [cmlParser.kvpList].
+     * Visit a parse tree produced by [CMLParser.kvpList].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitKvpList(ctx: KvpListContext?): T
 
     /**
-     * Visit a parse tree produced by [cmlParser.nonEmptyKvp].
+     * Visit a parse tree produced by [CMLParser.nonEmptyKvp].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitNonEmptyKvp(ctx: NonEmptyKvpContext?): T
 
     /**
-     * Visit a parse tree produced by [cmlParser.argsList].
+     * Visit a parse tree produced by [CMLParser.argsList].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitArgsList(ctx: ArgsListContext?): T
 
     /**
-     * Visit a parse tree produced by [cmlParser.nonEmptyArgs].
+     * Visit a parse tree produced by [CMLParser.nonEmptyArgs].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitNonEmptyArgs(ctx: NonEmptyArgsContext?): T
 
     /**
-     * Visit a parse tree produced by [cmlParser.stringExpr].
+     * Visit a parse tree produced by [CMLParser.stringExpr].
      * @param ctx the parse tree
      * @return the visitor result
      */

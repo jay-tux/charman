@@ -1,15 +1,20 @@
 package cml
 
+class ArgsDecl(pos: PosInfo) : AstNode(pos) {
+    val names = mutableListOf<String>()
+}
+
 class FunDecl(
+    val name: String,
     private val argNames: List<String>,
     private val body: List<Statement>,
-    private val instance: ExecEnvironment,
     declPos: PosInfo
 ) : AstNode(declPos) {
+    lateinit var parent: TopLevelDecl
     fun call(args: List<Value>) {
         if(argNames.size != args.size) TODO("Error")
 
-        val baseEnv = ExecEnvironment(instance)
+        val baseEnv = parent.fields
         val argEnv = ExecEnvironment.constVarEnv(baseEnv)
         argNames.zip(args).forEach { (n, v) ->
             // "declaration" of this "variable" is at top of function
@@ -28,7 +33,8 @@ class FunDecl(
     fun argCount(): Int = argNames.size
 }
 
-abstract class TopLevelDecl(
+class TopLevelDecl(
+    val kind: String,
     val name: String,
     val functions: Map<String, FunDecl>,
     fieldsPre: Map<String, Expression>,
@@ -41,61 +47,13 @@ abstract class TopLevelDecl(
             fields.addVar(it.key, it.value.evaluate(fields), it.value.pos)
         }
     }
-
-    abstract fun verify(): Boolean
 }
 
-class RaceDecl(
-    name: String,
-    functions: Map<String, FunDecl>,
-    fieldsPre: Map<String, Expression>,
-    declPos: PosInfo
-) : TopLevelDecl(name, functions, fieldsPre, declPos) {
-    override fun verify(): Boolean {
-        TODO()
-    }
+class DeclSet(pos: PosInfo) : AstNode(pos) {
+    val functions = mutableListOf<FunDecl>()
+    val fields = mutableListOf<VarDeclStmt>()
 }
 
-class ClassDecl(
-    name: String,
-    functions: Map<String, FunDecl>,
-    fieldsPre: Map<String, Expression>,
-    declPos: PosInfo
-) : TopLevelDecl(name, functions, fieldsPre, declPos) {
-    override fun verify(): Boolean {
-        TODO()
-    }
-}
-
-class BackgroundDecl(
-    name: String,
-    functions: Map<String, FunDecl>,
-    fieldsPre: Map<String, Expression>,
-    declPos: PosInfo
-) : TopLevelDecl(name, functions, fieldsPre, declPos) {
-    override fun verify(): Boolean {
-        TODO()
-    }
-}
-
-class ItemDecl(
-    name: String,
-    functions: Map<String, FunDecl>,
-    fieldsPre: Map<String, Expression>,
-    declPos: PosInfo
-) : TopLevelDecl(name, functions, fieldsPre, declPos) {
-    override fun verify(): Boolean {
-        TODO()
-    }
-}
-
-class SpellDecl(
-    name: String,
-    functions: Map<String, FunDecl>,
-    fieldsPre: Map<String, Expression>,
-    declPos: PosInfo
-) : TopLevelDecl(name, functions, fieldsPre, declPos) {
-    override fun verify(): Boolean {
-        TODO()
-    }
+class TLDeclSet(pos: PosInfo) : AstNode(pos) {
+    val declarations = mutableListOf<TopLevelDecl>()
 }

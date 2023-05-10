@@ -4,6 +4,14 @@ abstract class Expression(pos: PosInfo) : AstNode(pos) {
     abstract fun evaluate(ctxt: ExecEnvironment): Value
 }
 
+class ExpressionSet(pos: PosInfo) : AstNode(pos) {
+    val values = mutableListOf<Expression>()
+}
+
+class KvpSet(pos: PosInfo) : AstNode(pos) {
+    val values = mutableListOf<Pair<Expression, Expression>>()
+}
+
 class LiteralExpr(private val literal: Value, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         return literal
