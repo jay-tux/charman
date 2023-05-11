@@ -4,6 +4,7 @@ package cml
 
 abstract class Expression(pos: PosInfo) : AstNode(pos) {
     abstract fun evaluate(ctxt: ExecEnvironment): Value
+    abstract fun instantiate(instantiations: Map<String, Expression>): Expression
 }
 
 class ExpressionSet(pos: PosInfo) : AstNode(pos) {
@@ -18,18 +19,27 @@ class LiteralExpr(private val literal: Value, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         return literal
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        LiteralExpr(literal, pos)
 }
 
 class VarExpr(private val ident: String, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
-        return ctxt.getVar(ident)?.value ?: TODO("Error")
+        return ctxt.getVar(ident)?.value ?: throw CMLException.undeclaredVar(ident, pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        VarExpr(ident, pos)
 }
 
 class ParenExpr(private val expr: Expression, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         return expr.evaluate(ctxt)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression
+        = ParenExpr(expr.instantiate(instantiations), pos)
 }
 
 class DiceExpr(
@@ -40,10 +50,13 @@ class DiceExpr(
     override fun evaluate(ctxt: ExecEnvironment): Value {
         val cnt = count.evaluate(ctxt)
         val knd = kind.evaluate(ctxt)
-        if(cnt !is IntVal) { TODO("Error") }
-        if(knd !is IntVal) { TODO("Error") }
+        if(cnt !is IntVal) { throw CMLException.typeError("dice count", "int", cnt, pos) }
+        if(knd !is IntVal) { throw CMLException.typeError("dice kind", "int", knd, pos) }
         return DiceVal(cnt.value, knd.value, pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        DiceExpr(count.instantiate(instantiations), kind.instantiate(instantiations), pos)
 }
 
 class BinOperExpr(
@@ -55,26 +68,26 @@ class BinOperExpr(
     enum class Op { ADD, SUB, MUL, DIV, MOD, EQ, NEQ, LT, GT, GEQ, LEQ, AND, OR, B_AND, B_OR, XOR }
 
     private fun withAsInt(l: Value, r: Value, op: (Int, Int) -> Int): Value {
-        if(l !is IntVal) { TODO("Error") }
-        if(r !is IntVal) { TODO("Error") }
+        if(l !is IntVal) { throw CMLException.typeError("left operand", "int", l, pos) }
+        if(r !is IntVal) { throw CMLException.typeError("right operand", "int", r, pos) }
         return IntVal(op(l.value, r.value), pos)
     }
 
     private fun withAsIntToBool(l: Value, r: Value, op: (Int, Int) -> Boolean): Value {
-        if(l !is IntVal) { TODO("Error") }
-        if(r !is IntVal) { TODO("Error") }
+        if(l !is IntVal) { throw CMLException.typeError("left operand", "int", l, pos) }
+        if(r !is IntVal) { throw CMLException.typeError("right operand", "int", r, pos) }
         return BoolVal(op(l.value, r.value), pos)
     }
 
     private fun withAsBool(l: Value, r: Value, op: (Boolean, Boolean) -> Boolean): Value {
-        if(l !is BoolVal) { TODO("Error") }
-        if(r !is BoolVal) { TODO("Error") }
+        if(l !is BoolVal) { throw CMLException.typeError("left operand", "bool", l, pos) }
+        if(r !is BoolVal) { throw CMLException.typeError("right operand", "bool", r, pos) }
         return BoolVal(op(l.value, r.value), pos)
     }
 
     private inline fun <reified T : Any> withAs(l: BaseValue<T>, r: Value, op: (Any, Any) -> Boolean): Value {
         if(r is BaseValue<*> && r.value is T) return BoolVal(op(l.value, r.value), pos)
-        else TODO("Error")
+        else throw CMLException.typeError("right operand", typeName(l), r, pos)
     }
 
     private fun withAsSame(l: Value, r: Value, op: (Any, Any) -> Boolean): Value {
@@ -86,17 +99,17 @@ class BinOperExpr(
             is DictVal -> withAs<MutableMap<Value, Value>>(l, r, op)
             is RangeVal -> {
                 if(r is RangeVal) BoolVal(op(l, r), pos)
-                else TODO("Error")
+                else throw CMLException.typeError("right operand", "range", r, pos)
             }
             is UntilVal -> {
                 if(r is UntilVal) BoolVal(op(l, r), pos)
-                else TODO("Error")
+                else throw CMLException.typeError("right operand", "until", r, pos)
             }
             is DiceVal -> {
                 if(r is DiceVal) BoolVal(op(l, r), pos)
-                else TODO("Error")
+                else throw CMLException.typeError("right operand", "dice", r, pos)
             }
-            else -> TODO()
+            else -> throw CMLException.typeError("left operand", "comparable", l, pos)
         }
     }
 
@@ -120,6 +133,9 @@ class BinOperExpr(
             Op.XOR -> withAsInt(left.evaluate(ctxt), right.evaluate(ctxt)) { a, b -> a xor b }
         }
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        BinOperExpr(left.instantiate(instantiations), operator, right.instantiate(instantiations), pos)
 }
 
 class UnOperExpr(val oper: Op, val target: Expression, pos: PosInfo): Expression(pos) {
@@ -127,13 +143,13 @@ class UnOperExpr(val oper: Op, val target: Expression, pos: PosInfo): Expression
 
     private fun withAsInt(ctxt: ExecEnvironment, op: (Int) -> Int): Value {
         val res = target.evaluate(ctxt)
-        if(res !is IntVal) TODO("Error")
+        if(res !is IntVal) throw CMLException.typeError("int", res, pos)
         return IntVal(op(res.value), pos)
     }
 
     private fun withAsBool(ctxt: ExecEnvironment, op: (Boolean) -> Boolean): Value {
         val res = target.evaluate(ctxt)
-        if(res !is BoolVal) TODO("Error")
+        if(res !is BoolVal) throw CMLException.typeError("bool", res, pos)
         return BoolVal(op(res.value), pos)
     }
 
@@ -144,6 +160,9 @@ class UnOperExpr(val oper: Op, val target: Expression, pos: PosInfo): Expression
             Op.UN_MINUS -> withAsInt(ctxt) { -it }
         }
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        UnOperExpr(oper, target.instantiate(instantiations), pos)
 }
 
 class TernaryExpr(
@@ -154,38 +173,55 @@ class TernaryExpr(
 ): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         val rCond = cond.evaluate(ctxt)
-        if(rCond !is BoolVal) { TODO("Error") }
+        if(rCond !is BoolVal) { throw CMLException.typeError("condition to ternary operator", "bool", rCond, pos) }
         return when(rCond.value) {
             true -> bTrue.evaluate(ctxt)
             false -> bFalse.evaluate(ctxt)
         }
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        TernaryExpr(
+            cond.instantiate(instantiations),
+            bTrue.instantiate(instantiations),
+            bFalse.instantiate(instantiations),
+            pos
+        )
 }
 
 class RangeExpr(val begin: Expression, val end: Expression, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         val b = begin.evaluate(ctxt)
         val e = end.evaluate(ctxt)
-        if(b !is IntVal) { TODO("Error") }
-        if(e !is IntVal) { TODO("Error") }
+        if(b !is IntVal) { throw CMLException.typeError("range begin", "int", b, pos) }
+        if(e !is IntVal) { throw CMLException.typeError("range end", "int", e, pos) }
         return RangeVal(b.value, e.value, pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        RangeExpr(begin.instantiate(instantiations), end.instantiate(instantiations), pos)
 }
 
 class UntilExpr(val begin: Expression, val end: Expression, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         val b = begin.evaluate(ctxt)
         val e = end.evaluate(ctxt)
-        if(b !is IntVal) { TODO("Error") }
-        if(e !is IntVal) { TODO("Error") }
+        if(b !is IntVal) { throw CMLException.typeError("until begin", "int", b, pos) }
+        if(e !is IntVal) { throw CMLException.typeError("until end", "int", e, pos) }
         return UntilVal(b.value, e.value, pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        UntilExpr(begin.instantiate(instantiations), end.instantiate(instantiations), pos)
 }
 
 class ListExpr(val vals: List<Expression>, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         return ListVal(vals.map { it.evaluate(ctxt) }.toMutableList(), pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        ListExpr(vals.map{ it.instantiate(instantiations) }, pos)
 }
 
 class DictExpr(val kvps: List<Pair<Expression, Expression>>, pos: PosInfo): Expression(pos) {
@@ -195,6 +231,9 @@ class DictExpr(val kvps: List<Pair<Expression, Expression>>, pos: PosInfo): Expr
             pos
         )
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        DictExpr(kvps.map{ (k, v) -> Pair(k.instantiate(instantiations), v.instantiate(instantiations)) }, pos)
 }
 
 class FuncCallExpr(
@@ -203,13 +242,28 @@ class FuncCallExpr(
     pos: PosInfo
 ): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
-        if(!ctxt.isFunction(name)) TODO("Error")
-        return ctxt.invoke(name, args.map{ it.evaluate(ctxt) }) ?: TODO("Error")
+        return ctxt.invoke(name, args.map{ it.evaluate(ctxt) }, pos) ?: throw CMLException.invokeNonFun(name, pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        FuncCallExpr(name, args.map { it.instantiate(instantiations) }, pos)
 }
 
 class CtorExpr(val type: String, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
-        return Library.construct(type, pos) ?: TODO("Error")
+        return Library.construct(type, pos) ?: throw CMLException.constructNonType(type, pos)
+    }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression =
+        CtorExpr(type, pos)
+}
+
+class PlaceholderExpr(val name: String, pos: PosInfo): Expression(pos) {
+    override fun evaluate(ctxt: ExecEnvironment): Value {
+        throw CMLException.evaluatePlaceholder(name, pos)
+    }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression {
+        return instantiations[name] ?: throw AstException.undefinedPlaceholder(name, pos)
     }
 }

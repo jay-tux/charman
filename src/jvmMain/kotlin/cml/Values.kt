@@ -36,20 +36,31 @@ class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
 }
 
+fun typeName(v: Value): String = when(v) {
+    is BoolVal -> "bool"
+    is IntVal -> "int"
+    is StringVal -> "string"
+    is ListVal -> "list"
+    is DictVal -> "dict"
+    is RangeVal -> "range"
+    is UntilVal -> "until"
+    is DiceVal -> "dice"
+    is VoidVal -> "void"
+    is InstanceVal -> "instance(${v.type.name})"
+    else -> throw CMLException.invalidType()
+}
+
 class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos: PosInfo) {
     var value: Value = v
         private set
 
     init {
-        if(v is VoidVal) TODO("Big error!")
+        if(v is VoidVal) throw CMLException.voidVarException(name, declPos)
     }
 
-    fun safeOverwrite(v: Value) {
+    fun safeOverwrite(v: Value, pos: PosInfo) {
         // overwrite position is given by the value
-        if(isImmutable) TODO("Error")
-        if(v.javaClass != value.javaClass) {
-            TODO("Do some error stuff?")
-        }
+        if(isImmutable) throw CMLException.overwriteImmutable(name, declPos, pos)
         else {
             value = v
         }
@@ -93,10 +104,11 @@ class ExecEnvironment private constructor(
     fun isFunction(name: String): Boolean =
         StdLib.isStd(name) || Library.isLibFunc(name) || functions.containsKey(name)
 
-    fun invoke(name: String, args: List<Value>): Value? =
-        StdLib.invoke(name, args) ?: Library.invoke(name, args) ?: functions[name]?.call(args)
+    fun invoke(name: String, args: List<Value>, callSite: PosInfo): Value? =
+        StdLib.invoke(name, args, callSite) ?: Library.invoke(name, args, callSite) ?: functions[name]?.call(args, callSite)
 
     fun addVar(name: String, value: Value, currPos: PosInfo) {
+        if(variables.containsKey(name)) throw CMLException.redeclareVar(name, variables[name]!!.declPos, currPos)
         variables[name] = Variable(name, value, varsAreImmutable, currPos)
     }
 

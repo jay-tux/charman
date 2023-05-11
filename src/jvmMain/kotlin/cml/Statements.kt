@@ -2,6 +2,8 @@ package cml
 
 abstract class Statement(pos: PosInfo) : AstNode(pos) {
     abstract fun execute(ctxt: ExecEnvironment)
+
+    abstract fun instantiate(instantiations: Map<String, Expression>): Statement
 }
 
 class StmtSet(pos: PosInfo) : AstNode(pos) {
@@ -12,6 +14,9 @@ class ExprStmt(private val e: Expression, pos: PosInfo): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
         e.evaluate(ctxt)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Statement =
+        ExprStmt(e.instantiate(instantiations), pos)
 }
 
 class VarDeclStmt(
@@ -20,9 +25,11 @@ class VarDeclStmt(
     pos: PosInfo
 ): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
-        if(ctxt.isInThisEnv(name)) TODO("Error")
         ctxt.addVar(name, init.evaluate(ctxt), pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Statement =
+        VarDeclStmt(name, init.instantiate(instantiations), pos)
 }
 
 class VarStoreStmt(
@@ -31,9 +38,12 @@ class VarStoreStmt(
     pos: PosInfo
 ): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
-        if(!ctxt.isInEnv(name)) TODO("Error")
-        ctxt.getVar(name)?.safeOverwrite(upd.evaluate(ctxt))
+        if(!ctxt.isInEnv(name)) throw CMLException.undeclaredVar(name, pos)
+        ctxt.getVar(name)?.safeOverwrite(upd.evaluate(ctxt), pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Statement =
+        VarStoreStmt(name, upd.instantiate(instantiations), pos)
 }
 
 class IfStmt(
@@ -44,7 +54,7 @@ class IfStmt(
 ): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
         val result = cond.evaluate(ctxt)
-        if(result !is BoolVal) TODO("Error")
+        if(result !is BoolVal) throw CMLException.typeError("bool", result, pos)
 
         run returning@{
             val subScope = ExecEnvironment.defaultEnv(ctxt)
@@ -68,6 +78,14 @@ class IfStmt(
             }
         }
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Statement =
+        IfStmt(
+            cond.instantiate(instantiations),
+            bodyTrue.map { it.instantiate(instantiations) },
+            bodyFalse.map { it.instantiate(instantiations) },
+            pos
+        )
 }
 
 class WhileStmt(
@@ -76,8 +94,8 @@ class WhileStmt(
     pos: PosInfo
 ): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
-        var value: Value = cond.evaluate(ctxt)
-        if(value !is BoolVal) TODO("Error")
+        var value = cond.evaluate(ctxt)
+        if(value !is BoolVal) throw CMLException.typeError("bool", value, pos)
 
         run breaking@{
             while ((value as BoolVal).value) {
@@ -92,10 +110,13 @@ class WhileStmt(
                 }
 
                 value = cond.evaluate(ctxt)
-                if (value !is BoolVal) TODO("Error")
+                if (value !is BoolVal) throw CMLException.typeError("bool", value, pos)
             }
         }
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Statement =
+        WhileStmt(cond.instantiate(instantiations), body.map{ it.instantiate(instantiations) }, pos)
 }
 
 class ForStmt(
@@ -107,7 +128,7 @@ class ForStmt(
     private fun <T> runLoop(check: ExecEnvironment, range: Iterable<T>, conversion: (T) -> Value) {
         run breaking@{
             range.forEach { elem ->
-                check.getVar(varN)?.safeOverwrite(conversion(elem))
+                check.getVar(varN)?.safeOverwrite(conversion(elem), pos)
                 val subScope = ExecEnvironment.loopEnv(check)
                 body.forEach {
                     it.execute(subScope)
@@ -151,7 +172,7 @@ class ForStmt(
                 runLoop(checkScope, rangeE.value.asIterable()) { it.key }
             }
 
-            else -> TODO("Error")
+            else -> throw CMLException.typeError("iterable (range/until/list/dict)", rangeE, pos)
         }
 
         if(checkScope.hitReturn) {
@@ -159,13 +180,18 @@ class ForStmt(
             ctxt.returnValue = checkScope.returnValue
         }
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Statement =
+        ForStmt(varN, range.instantiate(instantiations), body.map { it.instantiate(instantiations) }, pos)
 }
 
 class BreakStmt(pos: PosInfo): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
         if(ctxt.isInLoop) ctxt.hitBreak = true
-        else TODO("Error")
+        else throw CMLException.invalidBreak(pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Statement = BreakStmt(pos)
 }
 
 class ReturnStmt(val value: Expression?, pos: PosInfo): Statement(pos) {
@@ -173,4 +199,7 @@ class ReturnStmt(val value: Expression?, pos: PosInfo): Statement(pos) {
         ctxt.hitReturn = true
         ctxt.returnValue = value?.evaluate(ctxt) ?: VoidVal(pos)
     }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Statement =
+        ReturnStmt(value?.instantiate(instantiations), pos)
 }

@@ -40,5 +40,5 @@ bin/
 
 charman.sqlite
 
-**/src/antlr/*
-!**/src/antlr/*.g4
+
+!.gitkeep

@@ -6,13 +6,13 @@ class ArgsDecl(pos: PosInfo) : AstNode(pos) {
 
 class FunDecl(
     val name: String,
-    private val argNames: List<String>,
-    private val body: List<Statement>,
+    val argNames: List<String>,
+    val body: List<Statement>,
     declPos: PosInfo
 ) : AstNode(declPos) {
     lateinit var parent: TopLevelDecl
-    fun call(args: List<Value>): Value {
-        if(argNames.size != args.size) TODO("Error")
+    fun call(args: List<Value>, callSite: PosInfo): Value {
+        if(argNames.size != args.size) throw CMLException.argCount(name, argNames.size, args.size, pos, callSite)
 
         val baseEnv = parent.fields
         val argEnv = ExecEnvironment.constVarEnv(baseEnv)
@@ -37,11 +37,11 @@ class FunDecl(
     fun argCount(): Int = argNames.size
 }
 
-class TopLevelDecl(
+open class TopLevelDecl(
     val kind: String,
     val name: String,
     val functions: Map<String, FunDecl>,
-    fieldsPre: Map<String, Expression>,
+    val fieldsPre: Map<String, Expression>,
     declPos: PosInfo
 ) : AstNode(declPos) {
     val fields = ExecEnvironment(functions)
@@ -53,6 +53,29 @@ class TopLevelDecl(
     }
 }
 
+class TemplateDecl(
+    val kind: String, val argNames: List<String>, val functions: Map<String, FunDecl>,
+    val fieldsPre: Map<String, Expression>, declPos: PosInfo
+): AstNode(declPos) {
+    fun instantiate(target: InstanceDecl): TopLevelDecl {
+        if(argNames.size != target.args.size)
+            throw AstException.templateArgCount(kind, target.name, argNames.size, target.args.size, target.pos)
+
+        val inst = argNames.zip(target.args).associate { it }
+        return TopLevelDecl(
+            kind = kind,
+            name = target.name,
+            functions = functions.map { (k, v) -> Pair(k, v.instantiate(inst)) }.toMap(),
+            fieldsPre = fieldsPre.map { (k, v) -> Pair(k, v.instantiate(inst)) }.toMap(),
+            declPos = pos
+        )
+    }
+}
+
+class InstanceDecl(
+    val template: String, val name: String, val args: List<Expression>, declPos: PosInfo
+) : AstNode(declPos)
+
 class DeclSet(pos: PosInfo) : AstNode(pos) {
     val functions = mutableListOf<FunDecl>()
     val fields = mutableListOf<VarDeclStmt>()
@@ -60,4 +83,6 @@ class DeclSet(pos: PosInfo) : AstNode(pos) {
 
 class TLDeclSet(pos: PosInfo) : AstNode(pos) {
     val declarations = mutableListOf<TopLevelDecl>()
+    val templates = mutableListOf<TemplateDecl>()
+    val instances = mutableListOf<InstanceDecl>()
 }

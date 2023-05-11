@@ -2,7 +2,11 @@ parser grammar cmlParser;
 
 program:        topLevel* EOF ;
 
-topLevel:       DATA kind=IDENT name=IDENT B_O body=declSet B_C
+topLevel:       DATA kind=IDENT name=IDENT B_O body=declSet B_C     #type
+        |       INSTANCE templ=IDENT name=IDENT BR_O args=argsList BR_C SEMI
+                                                                    #instance
+        |       TEMPLATE kind=IDENT BR_O args=argDs BR_C B_O body=declSet B_C
+                                                                    #template
         ;
 
 declSet:
@@ -49,6 +53,7 @@ expr:
     |           value=INT                                           #intLit
     |           value=BOOL                                          #boolLit
     |           value=IDENT                                         #varExpr
+    |           ph=PLACEHOLDER                                      #placeholderExpr
 // Pseudo-constructors
     |           DOT type=IDENT                                      #ctorExpr
 // Arithmetic and operators
