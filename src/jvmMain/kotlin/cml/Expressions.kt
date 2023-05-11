@@ -267,6 +267,7 @@ class FuncCallExpr(
     pos: PosInfo
 ): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
-        return ctxt.functions[name]?.call(args.map{ it.evaluate(ctxt) }) ?: TODO("Error")
+        if(!ctxt.isFunction(name)) TODO("Error")
+        return ctxt.invoke(name, args.map{ it.evaluate(ctxt) }) ?: TODO("Error")
     }
 }

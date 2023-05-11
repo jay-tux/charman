@@ -73,8 +73,7 @@ class ExecEnvironment private constructor(
         functions = funcs
     }
 
-    var functions = mapOf<String, FunDecl>()
-        private set
+    private var functions = mapOf<String, FunDecl>()
     private val variables = mutableMapOf<String, Variable>()
     var varsAreImmutable: Boolean = false
         private set
@@ -87,6 +86,10 @@ class ExecEnvironment private constructor(
     fun isInThisEnv(name: String) = variables.containsKey(name)
     fun isInEnv(name: String): Boolean = isInThisEnv(name) || (parent?.isInEnv(name) ?: false)
     fun getVar(name: String): Variable? = variables[name] ?: parent?.getVar(name)
+
+    fun isFunction(name: String): Boolean = StdLib.isStd(name) || functions.containsKey(name)
+
+    fun invoke(name: String, args: List<Value>): Value? = StdLib.invoke(name, args) ?: functions[name]?.call(args)
 
     fun addVar(name: String, value: Value, currPos: PosInfo) {
         variables[name] = Variable(name, value, varsAreImmutable, currPos)
