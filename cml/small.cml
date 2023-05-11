@@ -10,4 +10,8 @@ data somekind something {
         update();
         base = temp;
     }
+
+    fun squareAddBase(x) {
+        return x * x + base;
+    }
 }

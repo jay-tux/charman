@@ -1,20 +1,45 @@
 package cml
 
-abstract class Value(pos: PosInfo) : AstNode(pos)
+abstract class Value(pos: PosInfo) : AstNode(pos) {
+    abstract fun repr(): String
+}
 abstract class BaseValue<T>(val value: T, pos: PosInfo) : Value(pos)
 
-class BoolVal(value: Boolean, pos: PosInfo): BaseValue<Boolean>(value, pos)
-class IntVal(value: Int, pos: PosInfo) : BaseValue<Int>(value, pos)
-class StringVal(value: String, pos: PosInfo): BaseValue<String>(value, pos)
-class ListVal(value: MutableList<Value>, pos: PosInfo): BaseValue<MutableList<Value>>(value, pos)
-class DictVal(value: MutableMap<Value, Value>, pos: PosInfo): BaseValue<MutableMap<Value, Value>>(value, pos)
-class RangeVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos)
-class UntilVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos)
-class DiceVal(val count: Int, val kind: Int, pos: PosInfo): Value(pos)
+class BoolVal(value: Boolean, pos: PosInfo): BaseValue<Boolean>(value, pos) {
+    override fun repr(): String = "$value"
+}
+class IntVal(value: Int, pos: PosInfo) : BaseValue<Int>(value, pos) {
+    override fun repr(): String = "$value"
+}
+class StringVal(value: String, pos: PosInfo): BaseValue<String>(value, pos){
+    override fun repr(): String = value
+}
+class ListVal(value: MutableList<Value>, pos: PosInfo): BaseValue<MutableList<Value>>(value, pos) {
+    override fun repr(): String = "[ ${value.joinToString(", ") { it.repr() }} ]"
+}
+class DictVal(value: MutableMap<Value, Value>, pos: PosInfo): BaseValue<MutableMap<Value, Value>>(value, pos) {
+    override fun repr(): String = "{ ${value.map { "(${it.key.repr()} = ${it.value.repr()})" }.joinToString(", ")} }"
+}
+class RangeVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
+    override fun repr(): String = "(${begin}..$end)"
+}
+class UntilVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
+    override fun repr(): String = "($begin until $end)"
+}
+class DiceVal(val count: Int, val kind: Int, pos: PosInfo): Value(pos) {
+    override fun repr(): String = "${count}d$kind"
+}
+class VoidVal(pos: PosInfo): Value(pos) {
+    override fun repr(): String = "(void)"
+}
 
 class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos: PosInfo) {
     var value: Value = v
         private set
+
+    init {
+        if(v is VoidVal) TODO("Big error!")
+    }
 
     fun safeOverwrite(v: Value) {
         // overwrite position is given by the value
@@ -57,6 +82,7 @@ class ExecEnvironment private constructor(
         private set
     var hitBreak = false
     var hitReturn = false
+    var returnValue: Value = VoidVal(PosInfo("", 0, 0))
 
     fun isInThisEnv(name: String) = variables.containsKey(name)
     fun isInEnv(name: String): Boolean = isInThisEnv(name) || (parent?.isInEnv(name) ?: false)

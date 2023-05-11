@@ -306,7 +306,7 @@ class CMLBaseListener : CMLListener {
      *
      * The default implementation does nothing.
      */
-    override fun enterCallExpr(ctx: CallExprContext?) {}
+    override fun enterReturnValStmt(ctx: ReturnValStmtContext?) {}
 
     /**
      * {@inheritDoc}
@@ -314,7 +314,7 @@ class CMLBaseListener : CMLListener {
      *
      * The default implementation does nothing.
      */
-    override fun exitCallExpr(ctx: CallExprContext?) {}
+    override fun exitReturnValStmt(ctx: ReturnValStmtContext?) {}
 
     /**
      * {@inheritDoc}
@@ -539,6 +539,22 @@ class CMLBaseListener : CMLListener {
      * The default implementation does nothing.
      */
     override fun exitDictExpr(ctx: DictExprContext?) {}
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation does nothing.
+     */
+    override fun enterCallExpr(ctx: CallExprContext?) {}
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation does nothing.
+     */
+    override fun exitCallExpr(ctx: CallExprContext?) {}
 
     /**
      * {@inheritDoc}

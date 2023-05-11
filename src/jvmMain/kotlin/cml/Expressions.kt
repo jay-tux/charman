@@ -1,5 +1,7 @@
 package cml
 
+// TODO: in evaluate - handle void
+
 abstract class Expression(pos: PosInfo) : AstNode(pos) {
     abstract fun evaluate(ctxt: ExecEnvironment): Value
 }
@@ -256,5 +258,15 @@ class DictExpr(val kvps: List<Pair<Expression, Expression>>, pos: PosInfo): Expr
         })
 
         return DictVal(res, pos)
+    }
+}
+
+class FuncCallExpr(
+    private val name: String,
+    private val args: List<Expression>,
+    pos: PosInfo
+): Expression(pos) {
+    override fun evaluate(ctxt: ExecEnvironment): Value {
+        return ctxt.functions[name]?.call(args.map{ it.evaluate(ctxt) }) ?: TODO("Error")
     }
 }

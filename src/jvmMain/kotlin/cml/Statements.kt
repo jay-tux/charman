@@ -61,6 +61,7 @@ class IfStmt(
                     it.execute(subScope)
                     if(subScope.hitReturn) {
                         ctxt.hitReturn = true
+                        ctxt.returnValue = subScope.returnValue
                         return@returning
                     }
                 }
@@ -84,9 +85,9 @@ class WhileStmt(
                 body.forEach {
                     it.execute(subScope)
                     if (subScope.hitBreak) return@breaking
-                    if (subScope.hitReturn) {
+                    if(subScope.hitReturn) {
                         ctxt.hitReturn = true
-                        return@breaking
+                        ctxt.returnValue = subScope.returnValue
                     }
                 }
 
@@ -114,6 +115,7 @@ class ForStmt(
 
                     if(subScope.hitReturn) {
                         check.hitReturn = true
+                        check.returnValue = subScope.returnValue
                         return@breaking
                     }
                 }
@@ -152,7 +154,10 @@ class ForStmt(
             else -> TODO("Error")
         }
 
-        if(checkScope.hitReturn) ctxt.hitReturn = true
+        if(checkScope.hitReturn) {
+            ctxt.hitReturn = true
+            ctxt.returnValue = checkScope.returnValue
+        }
     }
 }
 
@@ -163,19 +168,9 @@ class BreakStmt(pos: PosInfo): Statement(pos) {
     }
 }
 
-class ReturnStmt(pos: PosInfo): Statement(pos) {
+class ReturnStmt(val value: Expression?, pos: PosInfo): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
         ctxt.hitReturn = true
-    }
-}
-
-class FuncCallStmt(
-    private val name: String,
-    private val args: List<Expression>,
-    pos: PosInfo
-): Statement(pos) {
-    override fun execute(ctxt: ExecEnvironment) {
-        if(!ctxt.functions.containsKey(name)) TODO("Error")
-        ctxt.functions[name]?.call(args.map{ it.evaluate(ctxt) })
+        ctxt.returnValue = value?.evaluate(ctxt) ?: VoidVal(pos)
     }
 }

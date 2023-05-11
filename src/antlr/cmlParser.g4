@@ -40,8 +40,7 @@ stmt:
                                                                     #forStmt
     |           BREAK SEMI                                          #breakStmt
     |           RETURN SEMI                                         #returnStmt
-// Function call
-    |           ftor=IDENT P_O args=argsList P_C SEMI               #callExpr
+    |           RETURN v=expr SEMI                                  #returnValStmt
     ;
 
 expr:
@@ -66,6 +65,8 @@ expr:
     |           begin=expr UNTIL end=expr                           #untilExpr
     |           BR_O values=argsList BR_C                           #listExpr
     |           B_O values=kvpList B_C                              #dictExpr
+// Function call
+    |           ftor=IDENT P_O args=argsList P_C                    #callExpr
     ;
 
 kvpList:

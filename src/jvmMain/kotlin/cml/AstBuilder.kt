@@ -272,12 +272,18 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     }
 
     override fun visitReturnStmt(ctx: CMLParser.ReturnStmtContext?): AstNode {
-        return ReturnStmt(nonNull(ctx?.start?.getPos(file)))
+        return ReturnStmt(null, nonNull(ctx?.start?.getPos(file)))
+    }
+
+    override fun visitReturnValStmt(ctx: CMLParser.ReturnValStmtContext?): AstNode {
+        return nonNull(ctx) {
+            ReturnStmt(visit(it.v) as Expression, it.start.getPos(file))
+        }
     }
 
     override fun visitCallExpr(ctx: CMLParser.CallExprContext?): AstNode {
         return nonNull(ctx?.args) { args ->
-            FuncCallStmt(
+            FuncCallExpr(
                 name = nonNull(ctx?.ftor?.text),
                 args = (visit(args) as ExpressionSet).values,
                 pos = nonNull(ctx?.start?.getPos(file))

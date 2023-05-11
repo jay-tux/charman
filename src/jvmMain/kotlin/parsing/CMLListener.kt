@@ -252,18 +252,18 @@ interface CMLListener : ParseTreeListener {
     fun exitReturnStmt(ctx: ReturnStmtContext?)
 
     /**
-     * Enter a parse tree produced by the `callExpr`
+     * Enter a parse tree produced by the `returnValStmt`
      * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      */
-    fun enterCallExpr(ctx: CallExprContext?)
+    fun enterReturnValStmt(ctx: ReturnValStmtContext?)
 
     /**
-     * Exit a parse tree produced by the `callExpr`
+     * Exit a parse tree produced by the `returnValStmt`
      * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      */
-    fun exitCallExpr(ctx: CallExprContext?)
+    fun exitReturnValStmt(ctx: ReturnValStmtContext?)
 
     /**
      * Enter a parse tree produced by the `addSubExpr`
@@ -460,6 +460,20 @@ interface CMLListener : ParseTreeListener {
      * @param ctx the parse tree
      */
     fun exitDictExpr(ctx: DictExprContext?)
+
+    /**
+     * Enter a parse tree produced by the `callExpr`
+     * labeled alternative in [CMLParser.expr].
+     * @param ctx the parse tree
+     */
+    fun enterCallExpr(ctx: CallExprContext?)
+
+    /**
+     * Exit a parse tree produced by the `callExpr`
+     * labeled alternative in [CMLParser.expr].
+     * @param ctx the parse tree
+     */
+    fun exitCallExpr(ctx: CallExprContext?)
 
     /**
      * Enter a parse tree produced by the `listExpr`

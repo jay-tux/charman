@@ -15,8 +15,8 @@ class Scripts {
         return tmp
     }
 
-    fun maybeInvoke(type: String, func: String, args: List<Value>) {
-        data[type]?.functions?.get(func)?.call(args)
+    fun maybeInvoke(type: String, func: String, args: List<Value>): Value? {
+        return data[type]?.functions?.get(func)?.call(args)
     }
 
     fun loadFile(file: String) {
@@ -37,6 +37,11 @@ class Scripts {
             println(maybeGetVar<IntVal>("something", "base")?.value)
             maybeInvoke("something", "updateUseArg", listOf(IntVal(42, PosInfo("<repl>", 0, 0))))
             println(maybeGetVar<IntVal>("something", "base")?.value)
+            println(maybeInvoke(
+                "something",
+                "squareAddBase",
+                listOf(IntVal(12, PosInfo("<repl>", 0, 0)))
+            )?.repr())
         }
     }
 }

@@ -152,12 +152,12 @@ interface CMLVisitor<T> : ParseTreeVisitor<T> {
     fun visitReturnStmt(ctx: ReturnStmtContext?): T
 
     /**
-     * Visit a parse tree produced by the `callExpr`
+     * Visit a parse tree produced by the `returnValStmt`
      * labeled alternative in [CMLParser.stmt].
      * @param ctx the parse tree
      * @return the visitor result
      */
-    fun visitCallExpr(ctx: CallExprContext?): T
+    fun visitReturnValStmt(ctx: ReturnValStmtContext?): T
 
     /**
      * Visit a parse tree produced by the `addSubExpr`
@@ -270,6 +270,14 @@ interface CMLVisitor<T> : ParseTreeVisitor<T> {
      * @return the visitor result
      */
     fun visitDictExpr(ctx: DictExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `callExpr`
+     * labeled alternative in [CMLParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitCallExpr(ctx: CallExprContext?): T
 
     /**
      * Visit a parse tree produced by the `listExpr`

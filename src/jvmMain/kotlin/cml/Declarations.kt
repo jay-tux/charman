@@ -11,7 +11,7 @@ class FunDecl(
     declPos: PosInfo
 ) : AstNode(declPos) {
     lateinit var parent: TopLevelDecl
-    fun call(args: List<Value>) {
+    fun call(args: List<Value>): Value {
         if(argNames.size != args.size) TODO("Error")
 
         val baseEnv = parent.fields
@@ -25,9 +25,13 @@ class FunDecl(
         run returning@{
             body.forEach {
                 it.execute(callEnv)
-                if(callEnv.hitReturn) return@returning
+                if(callEnv.hitReturn) {
+                    return@returning
+                }
             }
         }
+
+        return callEnv.returnValue
     }
 
     fun argCount(): Int = argNames.size
