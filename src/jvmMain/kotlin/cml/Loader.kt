@@ -7,16 +7,20 @@ import parsing.CMLParser
 import java.io.FileInputStream
 
 class Scripts {
-    val data = mutableMapOf<String, TopLevelDecl>()
+    val pos = PosInfo("<repl>", 0, 0)
 
-    inline fun <reified T : Value> maybeGetVar(type: String, name: String) : T? {
-        val tmp = data[type]?.fields?.getVar(name)?.value
+    private fun maybeConstruct(type: String): InstanceVal? {
+        return Library.construct(type, pos)
+    }
+
+    private inline fun <reified T : Value> maybeGetVar(type: TopLevelDecl, name: String) : T? {
+        val tmp = type.fields.getVar(name)?.value
         if(tmp !is T?) return null
         return tmp
     }
 
-    fun maybeInvoke(type: String, func: String, args: List<Value>): Value? {
-        return data[type]?.functions?.get(func)?.call(args)
+    private fun maybeInvoke(type: TopLevelDecl, func: String, args: List<Value>): Value? {
+        return type.functions[func]?.call(args)
     }
 
     fun loadFile(file: String) {
@@ -28,20 +32,30 @@ class Scripts {
             val ast = AstBuilder(file).visit(tree) as TLDeclSet
 
             ast.declarations.forEach {
-                if(data.containsKey(it.name)) TODO()
-                data[it.name] = it
+                Library.addType(it.name, it)
             }
 
-            println(maybeGetVar<IntVal>("something", "base")?.value)
-            maybeInvoke("something", "update", listOf())
-            println(maybeGetVar<IntVal>("something", "base")?.value)
-            maybeInvoke("something", "updateUseArg", listOf(IntVal(42, PosInfo("<repl>", 0, 0))))
-            println(maybeGetVar<IntVal>("something", "base")?.value)
-            println(maybeInvoke(
-                "something",
-                "squareAddBase",
-                listOf(IntVal(12, PosInfo("<repl>", 0, 0)))
-            )?.repr())
+            maybeConstruct("something")?.let {
+                println(maybeGetVar<IntVal>(it.type, "base")?.value)
+                println(maybeInvoke(it.type, "update", listOf())?.repr())
+                println(maybeGetVar<IntVal>(it.type, "base")?.value)
+                println(maybeInvoke(
+                    it.type,
+                    "updateUseArg",
+                    listOf(IntVal(42, PosInfo("<repl>", 0, 0)))
+                )?.repr())
+                println(maybeGetVar<IntVal>(it.type, "base")?.value)
+                println(maybeInvoke(
+                    it.type,
+                    "squareAddBase",
+                    listOf(IntVal(12, PosInfo("<repl>", 0, 0)))
+                )?.repr())
+                println(maybeInvoke(
+                    it.type,
+                    "construct",
+                    listOf()
+                )?.repr())
+            }
         }
     }
 }

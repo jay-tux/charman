@@ -207,3 +207,9 @@ class FuncCallExpr(
         return ctxt.invoke(name, args.map{ it.evaluate(ctxt) }) ?: TODO("Error")
     }
 }
+
+class CtorExpr(val type: String, pos: PosInfo): Expression(pos) {
+    override fun evaluate(ctxt: ExecEnvironment): Value {
+        return Library.construct(type, pos) ?: TODO("Error")
+    }
+}

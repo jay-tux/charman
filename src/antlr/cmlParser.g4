@@ -49,6 +49,8 @@ expr:
     |           value=INT                                           #intLit
     |           value=BOOL                                          #boolLit
     |           value=IDENT                                         #varExpr
+// Pseudo-constructors
+    |           DOT type=IDENT                                      #ctorExpr
 // Arithmetic and operators
     |           P_O content=expr P_C                                #parenExpr
     |           count=expr DICE dice=expr                           #diceExpr

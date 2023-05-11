@@ -434,6 +434,22 @@ class CMLBaseListener : CMLListener {
      *
      * The default implementation does nothing.
      */
+    override fun enterCtorExpr(ctx: CtorExprContext?) {}
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation does nothing.
+     */
+    override fun exitCtorExpr(ctx: CtorExprContext?) {}
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation does nothing.
+     */
     override fun enterUnaryExpr(ctx: UnaryExprContext?) {}
 
     /**

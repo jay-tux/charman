@@ -306,6 +306,17 @@ open class CMLBaseVisitor<T> : AbstractParseTreeVisitor<T>(), CMLVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
+    override fun visitCtorExpr(ctx: CtorExprContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
     override fun visitUnaryExpr(ctx: UnaryExprContext?): T {
         return visitChildren(ctx)
     }

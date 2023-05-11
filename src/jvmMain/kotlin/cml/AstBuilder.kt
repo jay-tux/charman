@@ -74,6 +74,12 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
+    override fun visitCtorExpr(ctx: CMLParser.CtorExprContext?): AstNode {
+        return nonNull(ctx) {
+            CtorExpr(it.type?.text ?: TODO("Unk?"), it.start.getPos(file))
+        }
+    }
+
     fun mkBinopExpr(left: CMLParser.ExprContext?, op: String?, right: CMLParser.ExprContext?, opPos: PosInfo?): BinOperExpr {
         return BinOperExpr(
             left = visit(left) as Expression,

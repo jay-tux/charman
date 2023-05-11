@@ -216,6 +216,14 @@ interface CMLVisitor<T> : ParseTreeVisitor<T> {
     fun visitVarExpr(ctx: VarExprContext?): T
 
     /**
+     * Visit a parse tree produced by the `ctorExpr`
+     * labeled alternative in [CMLParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitCtorExpr(ctx: CtorExprContext?): T
+
+    /**
      * Visit a parse tree produced by the `unaryExpr`
      * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree

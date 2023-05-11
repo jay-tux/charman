@@ -14,4 +14,8 @@ data somekind something {
     fun squareAddBase(x) {
         return x * x + base;
     }
+
+    fun construct() {
+        return .something;
+    }
 }

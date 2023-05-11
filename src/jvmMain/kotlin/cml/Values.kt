@@ -32,6 +32,9 @@ class DiceVal(val count: Int, val kind: Int, pos: PosInfo): Value(pos) {
 class VoidVal(pos: PosInfo): Value(pos) {
     override fun repr(): String = "(void)"
 }
+class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
+    override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
+}
 
 class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos: PosInfo) {
     var value: Value = v
@@ -87,9 +90,11 @@ class ExecEnvironment private constructor(
     fun isInEnv(name: String): Boolean = isInThisEnv(name) || (parent?.isInEnv(name) ?: false)
     fun getVar(name: String): Variable? = variables[name] ?: parent?.getVar(name)
 
-    fun isFunction(name: String): Boolean = StdLib.isStd(name) || functions.containsKey(name)
+    fun isFunction(name: String): Boolean =
+        StdLib.isStd(name) || Library.isLibFunc(name) || functions.containsKey(name)
 
-    fun invoke(name: String, args: List<Value>): Value? = StdLib.invoke(name, args) ?: functions[name]?.call(args)
+    fun invoke(name: String, args: List<Value>): Value? =
+        StdLib.invoke(name, args) ?: Library.invoke(name, args) ?: functions[name]?.call(args)
 
     fun addVar(name: String, value: Value, currPos: PosInfo) {
         variables[name] = Variable(name, value, varsAreImmutable, currPos)

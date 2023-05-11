@@ -12,6 +12,7 @@ COMMA:          ',';
 QMARK:          '?';
 COLON:          ':';
 STRING_DELIM:   '"';
+DOT:            '.';
 ELIPSIS:        '...';
 MD_OP:          '*'|'/';
 AS_OP:          '+'|'-';

@@ -364,6 +364,20 @@ interface CMLListener : ParseTreeListener {
     fun exitVarExpr(ctx: VarExprContext?)
 
     /**
+     * Enter a parse tree produced by the `ctorExpr`
+     * labeled alternative in [CMLParser.expr].
+     * @param ctx the parse tree
+     */
+    fun enterCtorExpr(ctx: CtorExprContext?)
+
+    /**
+     * Exit a parse tree produced by the `ctorExpr`
+     * labeled alternative in [CMLParser.expr].
+     * @param ctx the parse tree
+     */
+    fun exitCtorExpr(ctx: CtorExprContext?)
+
+    /**
      * Enter a parse tree produced by the `unaryExpr`
      * labeled alternative in [CMLParser.expr].
      * @param ctx the parse tree
