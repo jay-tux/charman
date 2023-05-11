@@ -183,81 +183,17 @@ class UntilExpr(val begin: Expression, val end: Expression, pos: PosInfo): Expre
 }
 
 class ListExpr(val vals: List<Expression>, pos: PosInfo): Expression(pos) {
-    private inline fun <reified T> tryMapTo(ctxt: ExecEnvironment) : List<Value> {
-        return vals.drop(1).map {
-            val tmp = it.evaluate(ctxt)
-            if(tmp !is T) TODO("Error")
-            tmp
-        }
-    }
-
     override fun evaluate(ctxt: ExecEnvironment): Value {
-        if(vals.isEmpty()) return ListVal(mutableListOf(), pos)
-        val fst = vals[0].evaluate(ctxt)
-        val res = mutableListOf(fst)
-
-        res.addAll(when(fst) {
-            is BoolVal -> tryMapTo<BoolVal>(ctxt)
-            is IntVal -> tryMapTo<IntVal>(ctxt)
-            is StringVal -> tryMapTo<StringVal>(ctxt)
-            is ListVal -> tryMapTo<ListVal>(ctxt)
-            is DictVal -> tryMapTo<DictVal>(ctxt)
-            is RangeVal -> tryMapTo<RangeVal>(ctxt)
-            is UntilVal -> tryMapTo<UntilVal>(ctxt)
-            is DiceVal -> tryMapTo<DiceVal>(ctxt)
-            else -> TODO("Impossible case")
-        })
-
-        return ListVal(res, pos)
+        return ListVal(vals.map { it.evaluate(ctxt) }.toMutableList(), pos)
     }
 }
 
 class DictExpr(val kvps: List<Pair<Expression, Expression>>, pos: PosInfo): Expression(pos) {
-    private inline fun <reified TK, reified TV> tryMapTo(ctxt: ExecEnvironment) : List<Pair<Value, Value>> {
-        return kvps.drop(1).map {
-            val (k, v) = it
-            val key = k.evaluate(ctxt)
-            val value = v.evaluate(ctxt)
-            if(key !is TK) TODO("Error")
-            if(value !is TV) TODO("Error")
-            Pair(key, value)
-        }
-    }
-
-    private inline fun <reified TK> tryMapTo(ctxt: ExecEnvironment, v: Value): List<Pair<Value, Value>> {
-        return when(v) {
-            is BoolVal -> tryMapTo<TK, BoolVal>(ctxt)
-            is IntVal -> tryMapTo<TK, IntVal>(ctxt)
-            is StringVal -> tryMapTo<TK, StringVal>(ctxt)
-            is ListVal -> tryMapTo<TK, ListVal>(ctxt)
-            is DictVal -> tryMapTo<TK, DictVal>(ctxt)
-            is RangeVal -> tryMapTo<TK, RangeVal>(ctxt)
-            is UntilVal -> tryMapTo<TK, UntilVal>(ctxt)
-            is DiceVal -> tryMapTo<TK, DiceVal>(ctxt)
-            else -> TODO("Impossible case")
-        }
-    }
-
     override fun evaluate(ctxt: ExecEnvironment): Value {
-        if(kvps.isEmpty()) return ListVal(mutableListOf(), pos)
-        val (k0, v0) = kvps[0]
-        val key0 = k0.evaluate(ctxt)
-        val val0 = v0.evaluate(ctxt)
-        val res = mutableMapOf(key0 to val0)
-
-        res.putAll(when(key0) {
-            is BoolVal -> tryMapTo<BoolVal>(ctxt, val0)
-            is IntVal -> tryMapTo<IntVal>(ctxt, val0)
-            is StringVal -> tryMapTo<StringVal>(ctxt, val0)
-            is ListVal -> tryMapTo<ListVal>(ctxt, val0)
-            is DictVal -> tryMapTo<DictVal>(ctxt, val0)
-            is RangeVal -> tryMapTo<RangeVal>(ctxt, val0)
-            is UntilVal -> tryMapTo<UntilVal>(ctxt, val0)
-            is DiceVal -> tryMapTo<DiceVal>(ctxt, val0)
-            else -> TODO("Impossible case")
-        })
-
-        return DictVal(res, pos)
+        return DictVal(
+            kvps.associate { Pair(it.first.evaluate(ctxt), it.second.evaluate(ctxt)) }.toMutableMap(),
+            pos
+        )
     }
 }
 
