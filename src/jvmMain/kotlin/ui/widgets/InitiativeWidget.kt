@@ -1,8 +1,6 @@
 package ui.widgets
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -25,7 +23,7 @@ fun InitiativeWidget() {
     var showBulkAdd by remember { mutableStateOf(false) }
 
     Row {
-        LazyRow(Modifier.weight(0.9f)) {
+        LazyScrollRow(modContaining = Modifier.weight(0.9f)) {
             itemsIndexed(initiatives) { index, (name, _) ->
                 Button({ InitiativeData.nextTurn() }, enabled = index == currentInitiative) {
                     Text(if(index == currentInitiative) "$name\n" else name)
@@ -92,7 +90,7 @@ fun InitiativeDialog(onExit: () -> Unit, onAdd: (Pair<String, Int>) -> Unit) = D
 fun InitiativeBulkDialog(onExit: () -> Unit, onAdd: (List<Pair<String, Int>>) -> Unit) = DefaultDialog(onExit, 400.dp, 500.dp) {
     var values by remember { mutableStateOf(listOf(Pair("", 0), Pair("", 0))) }
     Column(Modifier.align(Alignment.Center)) {
-        LazyColumn(Modifier.weight(0.8f)) {
+        LazyScrollColumn(modContaining = Modifier.weight(0.8f)) {
             itemsIndexed(values) { index, (name, init) ->
                 var currName by remember { mutableStateOf(name) }
                 var currInit by remember { mutableStateOf(init) }

@@ -4,7 +4,6 @@ import CMLOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -15,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import ui.widgets.InitiativeWidget
+import ui.widgets.LazyScrollColumn
 import uiData.UIData
 
 enum class BottomPart(val text: String) {
@@ -30,22 +30,21 @@ fun mainUI() = MaterialTheme {
         currentBottom = if(currentBottom == v) BottomPart.NONE else v
     }
 
-    Scaffold(
-        bottomBar = { BottomAppBar { bottomBar(msg, currentBottom) { toggle(it) } } }
-    ) {
-        Column {
-            Box(Modifier.weight(1.0f).fillMaxWidth()) {
-                // TODO
-            }
-            if(currentBottom != BottomPart.NONE) {
-                Box(Modifier.weight(0.3f)) {
-                    when (currentBottom) {
-                        BottomPart.CONSOLE -> cmlConsole()
-                        BottomPart.INITIATIVE -> InitiativeWidget()
-                        else -> {}
-                    }
+    Column {
+        Box(Modifier.weight(if(currentBottom != BottomPart.NONE) 0.75f else 0.97f).fillMaxWidth()) {
+            // TODO
+        }
+        if(currentBottom != BottomPart.NONE) {
+            Box(Modifier.weight(0.22f).padding(top = 10.dp, start = 10.dp)) {
+                when (currentBottom) {
+                    BottomPart.CONSOLE -> cmlConsole()
+                    BottomPart.INITIATIVE -> InitiativeWidget()
+                    else -> {}
                 }
             }
+        }
+        Box(Modifier.weight(0.03f)) {
+            bottomBar(msg, currentBottom) { toggle(it) }
         }
     }
 }
@@ -75,7 +74,7 @@ fun cmlConsole() {
         Modifier.fillMaxWidth().fillMaxHeight(),
         color = MaterialTheme.colors.secondary
     ) {
-        LazyColumn(Modifier.horizontalScroll(rememberScrollState())) {
+        LazyScrollColumn(modContaining = Modifier.horizontalScroll(rememberScrollState())) {
             items(messages) { (k, m) ->
                 Text(
                     m,
