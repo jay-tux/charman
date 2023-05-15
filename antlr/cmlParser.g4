@@ -76,6 +76,7 @@ expr:
     |           B_O values=kvpList B_C                              #dictExpr
 // Function call
     |           ftor=IDENT P_O args=argsList P_C                    #callExpr
+    |           base=expr DOT func=IDENT P_O args=argsList P_C      #objCallExpr
     ;
 
 kvpList:

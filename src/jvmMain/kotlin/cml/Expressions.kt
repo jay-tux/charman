@@ -299,6 +299,30 @@ class FuncCallExpr(
         FuncCallExpr(name, args.map { it.instantiate(instantiations) }, pos)
 }
 
+class ObjFuncCallExpr(
+    private val obj: Expression,
+    private val name: String,
+    private val args: List<Expression>,
+    pos: PosInfo
+): Expression(pos) {
+    override fun evaluate(ctxt: ExecEnvironment): Value {
+        val objE = obj.evaluate(ctxt)
+        if(objE !is InstanceVal) throw CMLException.nonObjectVar(name, pos)
+
+        val argsE = args.map { it.evaluate(ctxt) }
+        return objE.type.functions[name]?.call(argsE, pos) ?: throw CMLException.invalidMemberFunction(objE.type.name, name, pos)
+    }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression {
+        return ObjFuncCallExpr(
+            obj = obj.instantiate(instantiations),
+            name = name,
+            args = args.map { it.instantiate(instantiations) },
+            pos = pos
+        )
+    }
+}
+
 class CtorExpr(val type: String, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         return Library.construct(type, pos) ?: throw CMLException.constructNonType(type, pos)

@@ -114,7 +114,7 @@ object Scripts {
 
         CMLOut.addInfo("Cache directory is ${cacheP.absolutePathString()}")
         CMLOut.addInfo("Scripts directory is ${scriptCache.absolutePathString()}")
-        CMLOut.addInfo("data.Character cache directory is ${characterCache.absolutePathString()}")
+        CMLOut.addInfo("Character cache directory is ${characterCache.absolutePathString()}")
     }
 
     @OptIn(ExperimentalPathApi::class)

@@ -221,6 +221,17 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
+    override fun visitObjCallExpr(ctx: CMLParser.ObjCallExprContext?): AstNode {
+        return nonNull(ctx) {
+            ObjFuncCallExpr(
+                obj = visit(it.base) as Expression,
+                name = it.func.text,
+                args = (visit(it.args) as ExpressionSet).values,
+                pos = it.DOT().symbol.getPos(file)
+            )
+        }
+    }
+
     override fun visitDictExpr(ctx: CMLParser.DictExprContext?): AstNode {
         return nonNull(ctx?.values) { kvps ->
             DictExpr(

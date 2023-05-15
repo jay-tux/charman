@@ -45,7 +45,7 @@ class CMLException(msg: String) : Exception(msg) {
             CMLException("Attempt to evaluate a non-instantiated placeholder `$name' at $pos")
 
         fun nonObjectVar(field: String, pos: PosInfo): CMLException =
-            CMLException("Attempt to access field `$field' on a non-object value at $pos")
+            CMLException("Attempt to access field or member function `$field' on a non-object value at $pos")
 
         fun invalidField(type: String, field: String, pos: PosInfo): CMLException =
             CMLException("Type `$type' does not have a field named `$field' at $pos")
@@ -61,5 +61,8 @@ class CMLException(msg: String) : Exception(msg) {
 
         fun keyError(keyRepr: String, pos: PosInfo): CMLException =
             CMLException("Key `$keyRepr' is not a valid key for this dict value at $pos")
+
+        fun invalidMemberFunction(type: String, func: String, pos: PosInfo): CMLException =
+            CMLException("Type `$type' is not a member function named `$func' at $pos")
     }
 }
