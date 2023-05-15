@@ -33,6 +33,56 @@ class VarExpr(private val ident: String, pos: PosInfo): Expression(pos) {
         VarExpr(ident, pos)
 }
 
+class FieldExpr(val base: Expression, val name: String, pos: PosInfo): Expression(pos) {
+    override fun evaluate(ctxt: ExecEnvironment): Value {
+        val baseE = base.evaluate(ctxt)
+        if(baseE !is InstanceVal) throw CMLException.nonObjectVar(name, pos)
+        return baseE.type.getField(name) ?: throw CMLException.invalidField(baseE.type.name, name, pos)
+    }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression {
+        return FieldExpr(base.instantiate(instantiations), name, pos)
+    }
+}
+
+class IndexExpr(val base: Expression, val index: Expression, pos: PosInfo) : Expression(pos) {
+    override fun evaluate(ctxt: ExecEnvironment): Value {
+        return when(val baseE = base.evaluate(ctxt)) {
+            is ListVal -> {
+                val indexE = index.evaluate(ctxt)
+                if(indexE !is IntVal) throw CMLException.invalidIndexType("list", "int", pos)
+                if(indexE.value < 0 || indexE.value >= baseE.value.size)
+                    throw CMLException.listOutOfRange(indexE.value, baseE.value.size, pos)
+                baseE.value[indexE.value]
+            }
+            is RangeVal -> {
+                val indexE = index.evaluate(ctxt)
+                if(indexE !is IntVal) throw CMLException.invalidIndexType("range", "int", pos)
+                if(indexE.value < 0 || indexE.value > baseE.end - baseE.begin)
+                    throw CMLException.listOutOfRange(indexE.value, baseE.end - baseE.begin + 1, pos)
+                IntVal(baseE.begin + 1, pos)
+            }
+            is UntilVal -> {
+                val indexE = index.evaluate(ctxt)
+                if(indexE !is IntVal) throw CMLException.invalidIndexType("until", "int", pos)
+                if(indexE.value < 0 || indexE.value >= baseE.end - baseE.begin)
+                    throw CMLException.listOutOfRange(indexE.value, baseE.end - baseE.begin + 1, pos)
+                IntVal(baseE.begin + 1, pos)
+            }
+            is DictVal -> {
+                val indexE = index.evaluate(ctxt)
+                baseE.value[indexE] ?: throw CMLException.keyError(indexE.repr(), pos)
+            }
+            else -> throw CMLException.nonIndexableVar(pos)
+        }
+    }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression {
+        return IndexExpr(base.instantiate(instantiations), index.instantiate(instantiations), pos)
+    }
+
+}
+
 class ParenExpr(private val expr: Expression, pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         return expr.evaluate(ctxt)

@@ -53,6 +53,8 @@ expr:
     |           value=INT                                           #intLit
     |           value=BOOL                                          #boolLit
     |           value=IDENT                                         #varExpr
+    |           base=expr DOT name=IDENT                            #fieldExpr
+    |           base=expr BR_O index=expr BR_C                      #indexExpr
     |           ph=PLACEHOLDER                                      #placeholderExpr
 // Pseudo-constructors
     |           DOT type=IDENT                                      #ctorExpr

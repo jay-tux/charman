@@ -56,6 +56,8 @@ open class TopLevelDecl(
         }
         readied = true
     }
+
+    fun getField(field: String): Value? = fields.getVar(field)?.value
 }
 
 class TemplateDecl(

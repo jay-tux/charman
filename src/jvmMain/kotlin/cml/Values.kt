@@ -7,33 +7,59 @@ abstract class BaseValue<T>(val value: T, pos: PosInfo) : Value(pos)
 
 class BoolVal(value: Boolean, pos: PosInfo): BaseValue<Boolean>(value, pos) {
     override fun repr(): String = "$value"
+    override fun equals(other: Any?): Boolean {
+        return if(other is BoolVal) value == other.value else false
+    }
 }
 class IntVal(value: Int, pos: PosInfo) : BaseValue<Int>(value, pos) {
     override fun repr(): String = "$value"
+    override fun equals(other: Any?): Boolean {
+        return if(other is IntVal) value == other.value else false
+    }
 }
 class StringVal(value: String, pos: PosInfo): BaseValue<String>(value, pos){
     override fun repr(): String = value
+    override fun equals(other: Any?): Boolean {
+        return if(other is StringVal) value == other.value else false
+    }
 }
 class ListVal(value: MutableList<Value>, pos: PosInfo): BaseValue<MutableList<Value>>(value, pos) {
     override fun repr(): String = "[ ${value.joinToString(", ") { it.repr() }} ]"
+    override fun equals(other: Any?): Boolean {
+        return if(other is ListVal) value == other.value else false
+    }
 }
 class DictVal(value: MutableMap<Value, Value>, pos: PosInfo): BaseValue<MutableMap<Value, Value>>(value, pos) {
     override fun repr(): String = "{ ${value.map { "(${it.key.repr()} = ${it.value.repr()})" }.joinToString(", ")} }"
+    override fun equals(other: Any?): Boolean {
+        return if(other is DictVal) value == other.value else false
+    }
 }
 class RangeVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(${begin}..$end)"
+    override fun equals(other: Any?): Boolean {
+        return if(other is RangeVal) (begin == other.begin && end == other.end) else false
+    }
 }
 class UntilVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
     override fun repr(): String = "($begin until $end)"
+    override fun equals(other: Any?): Boolean {
+        return if(other is UntilVal) (begin == other.begin && end == other.end) else false
+    }
 }
 class DiceVal(val count: Int, val kind: Int, pos: PosInfo): Value(pos) {
     override fun repr(): String = "${count}d$kind"
+    override fun equals(other: Any?): Boolean {
+        return if(other is DiceVal) (count == other.count && kind == other.kind) else false
+    }
 }
 class VoidVal(pos: PosInfo): Value(pos) {
     override fun repr(): String = "(void)"
+    override fun equals(other: Any?): Boolean = false
 }
 class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
+    // TODO: override equals
 }
 
 fun typeName(v: Value): String = when(v) {

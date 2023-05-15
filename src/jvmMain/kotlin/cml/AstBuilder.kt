@@ -39,39 +39,55 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     }
 
     // region Expressions
-    override fun visitStringExpr(ctx: com.jaytux.cml_parser.CMLParser.StringExprContext?): AstNode {
+    override fun visitStringExpr(ctx: CMLParser.StringExprContext?): AstNode {
         return nonNull(ctx) { ctx2 ->
             StringVal(ctx2.STRING_LIT().text, ctx2.start.getPos(file))
         }
     }
 
-    override fun visitStringLit(ctx: com.jaytux.cml_parser.CMLParser.StringLitContext?): AstNode {
+    override fun visitStringLit(ctx: CMLParser.StringLitContext?): AstNode {
         return nonNull(ctx) { LiteralExpr(visit(it.str) as Value, it.start.getPos(file)) }
     }
 
-    override fun visitIntLit(ctx: com.jaytux.cml_parser.CMLParser.IntLitContext?): AstNode {
+    override fun visitIntLit(ctx: CMLParser.IntLitContext?): AstNode {
         return nonNull(ctx, { it.value }) {
             LiteralExpr(IntVal(it.text.toInt(), it.getPos(file)), it.getPos(file))
         }
     }
 
-    override fun visitBoolLit(ctx: com.jaytux.cml_parser.CMLParser.BoolLitContext?): AstNode {
+    override fun visitBoolLit(ctx: CMLParser.BoolLitContext?): AstNode {
         return nonNull(ctx, { it.value }) {
             LiteralExpr(BoolVal(it.text == "true", it.getPos(file)), it.getPos(file))
         }
     }
 
-    override fun visitVarExpr(ctx: com.jaytux.cml_parser.CMLParser.VarExprContext?): AstNode {
+    override fun visitVarExpr(ctx: CMLParser.VarExprContext?): AstNode {
         return nonNull(ctx, { it.value }) {
             VarExpr(it.text, it.getPos(file))
         }
     }
 
-    override fun visitParenExpr(ctx: com.jaytux.cml_parser.CMLParser.ParenExprContext?): AstNode {
+    override fun visitFieldExpr(ctx: CMLParser.FieldExprContext?): AstNode {
+        return nonNull(ctx) {
+            FieldExpr(visit(it.base) as Expression, it.name.text, it.DOT().symbol.getPos(file))
+        }
+    }
+
+    override fun visitIndexExpr(ctx: CMLParser.IndexExprContext?): AstNode {
+        return nonNull(ctx) {
+            IndexExpr(
+                visit(it.base) as Expression,
+                visit(it.index) as Expression,
+                it.BR_O().symbol.getPos(file)
+            )
+        }
+    }
+
+    override fun visitParenExpr(ctx: CMLParser.ParenExprContext?): AstNode {
         return nonNull(ctx) { ParenExpr(visit(it.expr()) as Expression, it.start.getPos(file)) }
     }
 
-    override fun visitDiceExpr(ctx: com.jaytux.cml_parser.CMLParser.DiceExprContext?): AstNode {
+    override fun visitDiceExpr(ctx: CMLParser.DiceExprContext?): AstNode {
         return nonNull(ctx) {
             DiceExpr(
                 count = visit(it.count) as Expression,
@@ -81,16 +97,16 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitCtorExpr(ctx: com.jaytux.cml_parser.CMLParser.CtorExprContext?): AstNode {
+    override fun visitCtorExpr(ctx: CMLParser.CtorExprContext?): AstNode {
         return nonNull(ctx) {
             CtorExpr(it.type?.text ?: throw AstException.unexpectedNull(), it.start.getPos(file))
         }
     }
 
     fun mkBinopExpr(
-        left: com.jaytux.cml_parser.CMLParser.ExprContext?,
+        left: CMLParser.ExprContext?,
         op: String?,
-        right: com.jaytux.cml_parser.CMLParser.ExprContext?,
+        right: CMLParser.ExprContext?,
         opPos: PosInfo?
     ): BinOperExpr {
         return BinOperExpr(
@@ -124,25 +140,25 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         )
     }
 
-    override fun visitMulDivExpr(ctx: com.jaytux.cml_parser.CMLParser.MulDivExprContext?): AstNode =
+    override fun visitMulDivExpr(ctx: CMLParser.MulDivExprContext?): AstNode =
         mkBinopExpr(ctx?.left, ctx?.op?.text, ctx?.right, ctx?.op?.getPos(file))
 
-    override fun visitAddSubExpr(ctx: com.jaytux.cml_parser.CMLParser.AddSubExprContext?): AstNode =
+    override fun visitAddSubExpr(ctx: CMLParser.AddSubExprContext?): AstNode =
         mkBinopExpr(ctx?.left, ctx?.op?.text, ctx?.right, ctx?.op?.getPos(file))
 
-    override fun visitModExpr(ctx: com.jaytux.cml_parser.CMLParser.ModExprContext?): AstNode =
+    override fun visitModExpr(ctx: CMLParser.ModExprContext?): AstNode =
         mkBinopExpr(ctx?.left, "%", ctx?.right, ctx?.start?.getPos(file))
 
-    override fun visitCompareExpr(ctx: com.jaytux.cml_parser.CMLParser.CompareExprContext?): AstNode =
+    override fun visitCompareExpr(ctx: CMLParser.CompareExprContext?): AstNode =
         mkBinopExpr(ctx?.left, ctx?.op?.text, ctx?.right, ctx?.op?.getPos(file))
 
-    override fun visitLogicExpr(ctx: com.jaytux.cml_parser.CMLParser.LogicExprContext?): AstNode =
+    override fun visitLogicExpr(ctx: CMLParser.LogicExprContext?): AstNode =
         mkBinopExpr(ctx?.left, ctx?.op?.text, ctx?.right, ctx?.op?.getPos(file))
 
-    override fun visitBitwiseExpr(ctx: com.jaytux.cml_parser.CMLParser.BitwiseExprContext?): AstNode =
+    override fun visitBitwiseExpr(ctx: CMLParser.BitwiseExprContext?): AstNode =
         mkBinopExpr(ctx?.left, ctx?.op?.text, ctx?.right, ctx?.op?.getPos(file))
 
-    override fun visitUnaryExpr(ctx: com.jaytux.cml_parser.CMLParser.UnaryExprContext?): AstNode {
+    override fun visitUnaryExpr(ctx: CMLParser.UnaryExprContext?): AstNode {
         val op = ctx?.op?.text
         return UnOperExpr(
             oper = when (op) {
@@ -157,7 +173,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         )
     }
 
-    override fun visitTernaryExpr(ctx: com.jaytux.cml_parser.CMLParser.TernaryExprContext?): AstNode {
+    override fun visitTernaryExpr(ctx: CMLParser.TernaryExprContext?): AstNode {
         return nonNull(ctx?.condition) { cnd ->
             nonNull(ctx?.bTrue) { btr ->
                 nonNull(ctx?.bFalse) { bf ->
@@ -172,7 +188,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitRangeExpr(ctx: com.jaytux.cml_parser.CMLParser.RangeExprContext?): AstNode {
+    override fun visitRangeExpr(ctx: CMLParser.RangeExprContext?): AstNode {
         return nonNull(ctx?.begin) { b ->
             nonNull(ctx?.end) { e ->
                 RangeExpr(
@@ -184,7 +200,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitUntilExpr(ctx: com.jaytux.cml_parser.CMLParser.UntilExprContext?): AstNode {
+    override fun visitUntilExpr(ctx: CMLParser.UntilExprContext?): AstNode {
         return nonNull(ctx?.begin) { b ->
             nonNull(ctx?.end) { e ->
                 UntilExpr(
@@ -196,7 +212,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitListExpr(ctx: com.jaytux.cml_parser.CMLParser.ListExprContext?): AstNode {
+    override fun visitListExpr(ctx: CMLParser.ListExprContext?): AstNode {
         return nonNull(ctx?.values) { vs ->
             ListExpr(
                 vals = (visit(vs) as ExpressionSet).values,
@@ -205,7 +221,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitDictExpr(ctx: com.jaytux.cml_parser.CMLParser.DictExprContext?): AstNode {
+    override fun visitDictExpr(ctx: CMLParser.DictExprContext?): AstNode {
         return nonNull(ctx?.values) { kvps ->
             DictExpr(
                 kvps = (visit(kvps) as KvpSet).values,
@@ -214,7 +230,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitPlaceholderExpr(ctx: com.jaytux.cml_parser.CMLParser.PlaceholderExprContext?): AstNode {
+    override fun visitPlaceholderExpr(ctx: CMLParser.PlaceholderExprContext?): AstNode {
         return nonNull(ctx?.ph) { p ->
             PlaceholderExpr(
                 name = p.text.substring(1 until (p.text.length - 1)),
@@ -225,11 +241,11 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     // endregion
 
     // region Statements
-    override fun visitExprStmt(ctx: com.jaytux.cml_parser.CMLParser.ExprStmtContext?): AstNode {
+    override fun visitExprStmt(ctx: CMLParser.ExprStmtContext?): AstNode {
         return nonNull(ctx?.e) { ExprStmt(visit(it) as Expression, it.start.getPos(file)) }
     }
 
-    override fun visitVarDeclStmt(ctx: com.jaytux.cml_parser.CMLParser.VarDeclStmtContext?): AstNode {
+    override fun visitVarDeclStmt(ctx: CMLParser.VarDeclStmtContext?): AstNode {
         return nonNull(ctx?.init) {
             VarDeclStmt(
                 name = nonNull(ctx?.name?.text),
@@ -239,7 +255,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitVarStoreStmt(ctx: com.jaytux.cml_parser.CMLParser.VarStoreStmtContext?): AstNode {
+    override fun visitVarStoreStmt(ctx: CMLParser.VarStoreStmtContext?): AstNode {
         return nonNull(ctx?.value) { v ->
             VarStoreStmt(
                 name = nonNull(ctx?.name?.text),
@@ -249,7 +265,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitIfStmt(ctx: com.jaytux.cml_parser.CMLParser.IfStmtContext?): AstNode {
+    override fun visitIfStmt(ctx: CMLParser.IfStmtContext?): AstNode {
         return nonNull(ctx?.cond) { c ->
             nonNull(ctx?.bTrue) { bt ->
                 IfStmt(
@@ -262,7 +278,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitIfElseStmt(ctx: com.jaytux.cml_parser.CMLParser.IfElseStmtContext?): AstNode {
+    override fun visitIfElseStmt(ctx: CMLParser.IfElseStmtContext?): AstNode {
         return nonNull(ctx?.cond) { c ->
             nonNull(ctx?.bTrue) { bt ->
                 nonNull(ctx?.bFalse) { bf ->
@@ -277,7 +293,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitWhileStmt(ctx: com.jaytux.cml_parser.CMLParser.WhileStmtContext?): AstNode {
+    override fun visitWhileStmt(ctx: CMLParser.WhileStmtContext?): AstNode {
         return nonNull(ctx?.cond) { c ->
             nonNull(ctx?.body) { b ->
                 WhileStmt(
@@ -289,7 +305,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitForStmt(ctx: com.jaytux.cml_parser.CMLParser.ForStmtContext?): AstNode {
+    override fun visitForStmt(ctx: CMLParser.ForStmtContext?): AstNode {
         return nonNull(ctx?.range) { r ->
             nonNull(ctx?.body) { b ->
                 ForStmt(
@@ -302,21 +318,21 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitBreakStmt(ctx: com.jaytux.cml_parser.CMLParser.BreakStmtContext?): AstNode {
+    override fun visitBreakStmt(ctx: CMLParser.BreakStmtContext?): AstNode {
         return BreakStmt(nonNull(ctx?.start?.getPos(file)))
     }
 
-    override fun visitReturnStmt(ctx: com.jaytux.cml_parser.CMLParser.ReturnStmtContext?): AstNode {
+    override fun visitReturnStmt(ctx: CMLParser.ReturnStmtContext?): AstNode {
         return ReturnStmt(null, nonNull(ctx?.start?.getPos(file)))
     }
 
-    override fun visitReturnValStmt(ctx: com.jaytux.cml_parser.CMLParser.ReturnValStmtContext?): AstNode {
+    override fun visitReturnValStmt(ctx: CMLParser.ReturnValStmtContext?): AstNode {
         return nonNull(ctx) {
             ReturnStmt(visit(it.v) as Expression, it.start.getPos(file))
         }
     }
 
-    override fun visitCallExpr(ctx: com.jaytux.cml_parser.CMLParser.CallExprContext?): AstNode {
+    override fun visitCallExpr(ctx: CMLParser.CallExprContext?): AstNode {
         return nonNull(ctx?.args) { args ->
             FuncCallExpr(
                 name = nonNull(ctx?.ftor?.text),
@@ -328,14 +344,14 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     // endregion
 
     //region Special cases (aggregators)
-    override fun visitArgsList(ctx: com.jaytux.cml_parser.CMLParser.ArgsListContext?): AstNode {
+    override fun visitArgsList(ctx: CMLParser.ArgsListContext?): AstNode {
         return nonNull(ctx) {
             if (it.args == null) ExpressionSet(it.start.getPos(file))
             else visit(it.args) as ExpressionSet
         }
     }
 
-    override fun visitNonEmptyArgs(ctx: com.jaytux.cml_parser.CMLParser.NonEmptyArgsContext?): AstNode {
+    override fun visitNonEmptyArgs(ctx: CMLParser.NonEmptyArgsContext?): AstNode {
         return nonNull(ctx) {
             (
                     if (it.prev == null) ExpressionSet(it.start.getPos(file))
@@ -346,14 +362,14 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitKvpList(ctx: com.jaytux.cml_parser.CMLParser.KvpListContext?): AstNode {
+    override fun visitKvpList(ctx: CMLParser.KvpListContext?): AstNode {
         return nonNull(ctx) {
             if (it.values == null) KvpSet(it.start.getPos(file))
             visit(it.values) as KvpSet
         }
     }
 
-    override fun visitNonEmptyKvp(ctx: com.jaytux.cml_parser.CMLParser.NonEmptyKvpContext?): AstNode {
+    override fun visitNonEmptyKvp(ctx: CMLParser.NonEmptyKvpContext?): AstNode {
         return nonNull(ctx) {
             (
                     if (it.prev == null) KvpSet(it.start.getPos(file))
@@ -369,14 +385,14 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitArgDs(ctx: com.jaytux.cml_parser.CMLParser.ArgDsContext?): AstNode {
+    override fun visitArgDs(ctx: CMLParser.ArgDsContext?): AstNode {
         return nonNull(ctx) {
             if (it.args == null) ArgsDecl(it.start.getPos(file))
             else visit(it.args) as ArgsDecl
         }
     }
 
-    override fun visitArgDsNonEmpty(ctx: com.jaytux.cml_parser.CMLParser.ArgDsNonEmptyContext?): AstNode {
+    override fun visitArgDsNonEmpty(ctx: CMLParser.ArgDsNonEmptyContext?): AstNode {
         return nonNull(ctx) {
             (
                     if (it.args == null) ArgsDecl(it.start.getPos(file))
@@ -387,7 +403,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitDeclSet(ctx: com.jaytux.cml_parser.CMLParser.DeclSetContext?): AstNode {
+    override fun visitDeclSet(ctx: CMLParser.DeclSetContext?): AstNode {
         return nonNull(ctx) {
             if (it.isEmpty || it.prev == null) DeclSet(it.start.getPos(file))
             else (visit(it.prev) as DeclSet).also { set ->
@@ -400,11 +416,11 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitNoStmt(ctx: com.jaytux.cml_parser.CMLParser.NoStmtContext?): AstNode {
+    override fun visitNoStmt(ctx: CMLParser.NoStmtContext?): AstNode {
         return StmtSet(nonNull(ctx?.start?.getPos(file)))
     }
 
-    override fun visitStmts(ctx: com.jaytux.cml_parser.CMLParser.StmtsContext?): AstNode {
+    override fun visitStmts(ctx: CMLParser.StmtsContext?): AstNode {
         return nonNull(ctx) {
             val prev = visit(it.prev) as StmtSet
             prev.contained.add(visit(it.s) as Statement)
@@ -414,7 +430,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     //endregion
 
     // region Declarations
-    override fun visitFunDecl(ctx: com.jaytux.cml_parser.CMLParser.FunDeclContext?): AstNode {
+    override fun visitFunDecl(ctx: CMLParser.FunDeclContext?): AstNode {
         return nonNull(ctx?.args) { args ->
             nonNull(ctx?.body) { body ->
                 FunDecl(
@@ -427,7 +443,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitFieldDecl(ctx: com.jaytux.cml_parser.CMLParser.FieldDeclContext?): AstNode {
+    override fun visitFieldDecl(ctx: CMLParser.FieldDeclContext?): AstNode {
         return nonNull(ctx?.init) { init ->
             VarDeclStmt(
                 name = nonNull(ctx?.name?.text),
@@ -437,7 +453,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitTemplate(ctx: com.jaytux.cml_parser.CMLParser.TemplateContext?): AstNode {
+    override fun visitTemplate(ctx: CMLParser.TemplateContext?): AstNode {
         return nonNull(ctx) { c ->
             val argNames = visit(c.args) as ArgsDecl
             val body = visit(c.body) as DeclSet
@@ -452,7 +468,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitInstance(ctx: com.jaytux.cml_parser.CMLParser.InstanceContext?): AstNode {
+    override fun visitInstance(ctx: CMLParser.InstanceContext?): AstNode {
         return nonNull(ctx) { c ->
             val args = visit(c.args) as ExpressionSet
             InstanceDecl(
@@ -464,7 +480,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
-    override fun visitType(ctx: com.jaytux.cml_parser.CMLParser.TypeContext?): AstNode {
+    override fun visitType(ctx: CMLParser.TypeContext?): AstNode {
         return nonNull(ctx) { c ->
             val body = visit(c.body) as DeclSet
 

@@ -43,5 +43,23 @@ class CMLException(msg: String) : Exception(msg) {
 
         fun evaluatePlaceholder(name: String, pos: PosInfo): CMLException =
             CMLException("Attempt to evaluate a non-instantiated placeholder `$name' at $pos")
+
+        fun nonObjectVar(field: String, pos: PosInfo): CMLException =
+            CMLException("Attempt to access field `$field' on a non-object value at $pos")
+
+        fun invalidField(type: String, field: String, pos: PosInfo): CMLException =
+            CMLException("Type `$type' does not have a field named `$field' at $pos")
+
+        fun nonIndexableVar(pos: PosInfo): CMLException =
+            CMLException("Attempt to use array-like indexing on a type that doesn't support it at $pos")
+
+        fun invalidIndexType(iterableT: String, desc: String, pos: PosInfo): CMLException =
+            CMLException("Indexing into `$iterableT' can only be done using `$desc' at $pos")
+
+        fun listOutOfRange(index: Int, length: Int, pos: PosInfo): CMLException =
+            CMLException("Index $index is out of range for iterable (list, range, until) of length $length at $pos")
+
+        fun keyError(keyRepr: String, pos: PosInfo): CMLException =
+            CMLException("Key `$keyRepr' is not a valid key for this dict value at $pos")
     }
 }
