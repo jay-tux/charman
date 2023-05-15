@@ -31,4 +31,8 @@ object Library {
         if(types.containsKey(name)) throw LibraryException.libTypeAlreadyExists(name)
         types[name] = type
     }
+
+    fun readyAll() {
+        types.forEach { it.value.ready() }
+    }
 }

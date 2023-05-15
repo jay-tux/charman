@@ -9,7 +9,7 @@ object CMLOut {
     val stream: StateFlow<List<Pair<MessageKind, String>>> = _stream
 
     fun clearStream() { _stream.value = listOf() }
-    fun add(msg: String, kind: MessageKind) { _stream.value = _stream.value + Pair(kind, msg) }
+    fun add(msg: String, kind: MessageKind) { _stream.value = _stream.value + Pair(kind, msg.replace("\t", "  ")) }
     fun addInfo(msg: String) { add(msg, MessageKind.INFO) }
     fun addWarning(msg: String) { add(msg, MessageKind.WARNING) }
     fun addError(msg: String) { add(msg, MessageKind.ERROR) }

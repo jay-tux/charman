@@ -29,6 +29,9 @@ object Scripts {
     lateinit var characterCache: Path
         private set
 
+    var file: String = ""
+        private set
+
     private fun maybeConstruct(type: String): InstanceVal? {
         return Library.construct(type, pos)
     }
@@ -43,13 +46,18 @@ object Scripts {
         return type.functions[func]?.call(args, pos)
     }
 
-    private fun loadFile(file: String) {
+    private fun loadFile(f: String) {
+        file = f
         FileInputStream(file).use { stream ->
             lateinit var ast: TLDeclSet
             try {
                 val lexer = CMLLexer(CharStreams.fromStream(stream))
+                lexer.removeErrorListeners()
+                lexer.addErrorListener(AntlrError)
                 val tokStream = CommonTokenStream(lexer)
                 val parser = CMLParser(tokStream)
+                parser.removeErrorListeners()
+                parser.addErrorListener(AntlrError)
                 val tree = parser.program()
                 ast = AstBuilder(file).visit(tree) as TLDeclSet
             } catch(ex: AstException) {
@@ -82,6 +90,8 @@ object Scripts {
             } catch(ex: LibraryException) {
                 ex.message?.let { CMLOut.addError(it) }
             } catch(ex: AstException) {
+                ex.message?.let { CMLOut.addError(it) }
+            } catch(ex: CMLException) {
                 ex.message?.let { CMLOut.addError(it) }
             }
         }
@@ -118,8 +128,15 @@ object Scripts {
                 CMLOut.addInfo("  Loading script ${it.absolutePathString()}")
                 loadFile(it.absolutePathString())
             }
+
             instantiateAll()
             instances.clear()
+            try {
+                Library.readyAll()
+            } catch(ex: CMLException) {
+                ex.message?.let { CMLOut.addError(it) }
+            }
+
 
             UIData.clearIf(message)
             loading = false

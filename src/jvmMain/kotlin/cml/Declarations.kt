@@ -45,11 +45,16 @@ open class TopLevelDecl(
     declPos: PosInfo
 ) : AstNode(declPos) {
     val fields = ExecEnvironment(functions)
+    var readied = false
+        private set
 
-    init {
+    fun ready() {
+        if(readied) return;
+
         fieldsPre.forEach {
             fields.addVar(it.key, it.value.evaluate(fields), it.value.pos)
         }
+        readied = true
     }
 }
 
