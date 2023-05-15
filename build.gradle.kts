@@ -27,7 +27,7 @@ dependencies {
     implementation("org.jetbrains.compose:compose-full:1.4.0")
     implementation("androidx.compose.material3:material3-window-size-class:1.0.1")
     implementation("org.jetbrains.compose.material:material-icons-extended-desktop:1.4.0")
-    implementation("org.antlr:antlr4-runtime:4.11.1")
+    implementation("org.antlr:antlr4-runtime:4.12.0")
     implementation("ca.gosyer:kotlin-multiplatform-appdirs:1.1.0")
     implementation(project(":cml_parser"))
 }
