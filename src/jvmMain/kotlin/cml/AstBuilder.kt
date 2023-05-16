@@ -68,7 +68,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     // region Expressions
     override fun visitStringExpr(ctx: CMLParser.StringExprContext?): AstNode {
         return nonNull(ctx) { ctx2 ->
-            StringVal(ctx2.STRING_LIT().text, ctx2.start.getPos(file))
+            StringVal(ctx2.STRING_LIT().text.trim { it == '"' }, ctx2.start.getPos(file))
         }
     }
 
