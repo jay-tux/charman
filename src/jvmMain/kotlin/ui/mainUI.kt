@@ -24,7 +24,7 @@ enum class BottomPart(val text: String) {
 @Composable
 fun mainUI() = MaterialTheme {
     var currentBottom by remember { mutableStateOf(BottomPart.NONE) }
-    val msg by UIData.messages.collectAsState()
+    val msg by UIData.messages
 
     val toggle = { v: BottomPart ->
         currentBottom = if(currentBottom == v) BottomPart.NONE else v
@@ -72,7 +72,7 @@ fun cmlConsole() {
     val messages by CMLOut.stream.collectAsState()
     Surface(
         Modifier.fillMaxWidth().fillMaxHeight(),
-        color = MaterialTheme.colors.secondary
+//        color = MaterialTheme.colors.secondary
     ) {
         LazyScrollColumn(modContaining = Modifier.horizontalScroll(rememberScrollState())) {
             items(messages) { (k, m) ->

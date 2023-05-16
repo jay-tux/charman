@@ -2,6 +2,10 @@ package cml
 
 abstract class Value(pos: PosInfo) : AstNode(pos) {
     abstract fun repr(): String
+
+    abstract fun copy(): Value
+
+    companion object
 }
 abstract class BaseValue<T>(val value: T, pos: PosInfo) : Value(pos)
 
@@ -10,56 +14,66 @@ class BoolVal(value: Boolean, pos: PosInfo): BaseValue<Boolean>(value, pos) {
     override fun equals(other: Any?): Boolean {
         return if(other is BoolVal) value == other.value else false
     }
+    override fun copy(): Value = BoolVal(value, pos)
 }
 class IntVal(value: Int, pos: PosInfo) : BaseValue<Int>(value, pos) {
     override fun repr(): String = "$value"
     override fun equals(other: Any?): Boolean {
         return if(other is IntVal) value == other.value else false
     }
+    override fun copy(): Value = IntVal(value, pos)
 }
 class StringVal(value: String, pos: PosInfo): BaseValue<String>(value, pos){
     override fun repr(): String = value
     override fun equals(other: Any?): Boolean {
         return if(other is StringVal) value == other.value else false
     }
+    override fun copy(): Value = StringVal(value, pos)
 }
 class ListVal(value: MutableList<Value>, pos: PosInfo): BaseValue<MutableList<Value>>(value, pos) {
     override fun repr(): String = "[ ${value.joinToString(", ") { it.repr() }} ]"
     override fun equals(other: Any?): Boolean {
         return if(other is ListVal) value == other.value else false
     }
+    override fun copy(): Value = ListVal(value.map { it.copy() }.toMutableList(), pos)
 }
 class DictVal(value: MutableMap<Value, Value>, pos: PosInfo): BaseValue<MutableMap<Value, Value>>(value, pos) {
     override fun repr(): String = "{ ${value.map { "(${it.key.repr()} = ${it.value.repr()})" }.joinToString(", ")} }"
     override fun equals(other: Any?): Boolean {
         return if(other is DictVal) value == other.value else false
     }
+    override fun copy(): Value = DictVal(value.map { (k, v) -> Pair(k.copy(), v.copy()) }.associate { it }.toMutableMap(), pos)
 }
 class RangeVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(${begin}..$end)"
     override fun equals(other: Any?): Boolean {
         return if(other is RangeVal) (begin == other.begin && end == other.end) else false
     }
+    override fun copy(): Value = RangeVal(begin, end, pos)
 }
 class UntilVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
     override fun repr(): String = "($begin until $end)"
     override fun equals(other: Any?): Boolean {
         return if(other is UntilVal) (begin == other.begin && end == other.end) else false
     }
+    override fun copy(): Value = UntilVal(begin, end, pos)
 }
 class DiceVal(val count: Int, val kind: Int, pos: PosInfo): Value(pos) {
     override fun repr(): String = "${count}d$kind"
     override fun equals(other: Any?): Boolean {
         return if(other is DiceVal) (count == other.count && kind == other.kind) else false
     }
+    override fun copy(): Value = DiceVal(count, kind, pos)
 }
 class VoidVal(pos: PosInfo): Value(pos) {
     override fun repr(): String = "(void)"
     override fun equals(other: Any?): Boolean = false
+    override fun copy(): Value = VoidVal(pos)
 }
 class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
     // TODO: override equals
+    override fun copy(): Value = InstanceVal(type.construct(), pos)
 }
 
 fun typeName(v: Value): String = when(v) {
@@ -100,6 +114,8 @@ class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos
     fun isRange() = value is RangeVal
     fun isUntil() = value is UntilVal
     fun isDice() = value is DiceVal
+
+    fun copy(): Variable = Variable(name, value.copy(), isImmutable, declPos)
 }
 
 class ExecEnvironment private constructor(
@@ -136,6 +152,19 @@ class ExecEnvironment private constructor(
     fun addVar(name: String, value: Value, currPos: PosInfo) {
         if(variables.containsKey(name)) throw CMLException.redeclareVar(name, variables[name]!!.declPos, currPos)
         variables[name] = Variable(name, value, varsAreImmutable, currPos)
+    }
+
+    fun copy(): ExecEnvironment {
+        if(parent != null) throw CMLException.internalCopyExecEnv()
+        val res = ExecEnvironment(functions)
+        res.varsAreImmutable = varsAreImmutable
+        res.isInLoop = isInLoop
+        res.hitBreak = hitBreak
+        res.hitReturn = hitReturn
+        res.returnValue = returnValue
+        res.variables.clear()
+        variables.mapValuesTo(res.variables) { (_, v) -> v.copy() }
+        return res
     }
 
     companion object {

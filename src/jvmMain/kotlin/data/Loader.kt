@@ -119,7 +119,7 @@ object Scripts {
 
     @OptIn(ExperimentalPathApi::class)
     fun loadCache() {
-        val message = "Loading script cache..."
+        val message = "Loading script and character cache..."
         Dispatchers.IO.run {
             UIData.send(message)
 
@@ -127,6 +127,18 @@ object Scripts {
             scriptCache.walk().forEach {
                 CMLOut.addInfo("  Loading script ${it.absolutePathString()}")
                 loadFile(it.absolutePathString())
+            }
+
+            instantiateAll()
+            instances.clear()
+            try {
+                Library.readyAll()
+            } catch(ex: CMLException) {
+                ex.message?.let { CMLOut.addError(it) }
+            }
+
+            characterCache.walk().forEach {
+                CMLOut.addInfo("  Loading character ${it.absolutePathString()}")
             }
 
             instantiateAll()

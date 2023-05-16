@@ -7,7 +7,7 @@ import ui.mainUI
 fun main() {
     Scripts.loadCache()
     application {
-        Window(onCloseRequest = ::exitApplication) {
+        Window(title = "D&D Character Manager", onCloseRequest = ::exitApplication) {
             mainUI()
         }
     }
