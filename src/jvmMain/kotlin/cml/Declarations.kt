@@ -44,7 +44,15 @@ open class TopLevelDecl(
     val fieldsPre: Map<String, Expression>,
     declPos: PosInfo
 ) : AstNode(declPos) {
-    val fields = ExecEnvironment(functions)
+    private constructor(
+        kind: String, name: String, functions: Map<String, FunDecl>,
+        env: ExecEnvironment, declPos: PosInfo
+    ) : this(kind, name, functions, mapOf(), declPos) {
+        fields = env
+    }
+
+    var fields = ExecEnvironment(functions)
+        private set
     private var readied = false
 
     fun ready() {
@@ -56,7 +64,11 @@ open class TopLevelDecl(
         readied = true
     }
 
-    fun getField(field: String): Value? = fields.getVar(field)?.value
+    fun getField(field: String): Value? = getFieldAsVar(field)?.value
+
+    fun getFieldAsVar(field: String): Variable? = fields.getVar(field)
+
+    fun construct() = TopLevelDecl(kind, name, functions, fields.copy(), pos)
 }
 
 class TemplateDecl(

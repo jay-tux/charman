@@ -7,6 +7,14 @@ abstract class Expression(pos: PosInfo) : AstNode(pos) {
     abstract fun instantiate(instantiations: Map<String, Expression>): Expression
 }
 
+abstract class VarRef(pos: PosInfo) : Expression(pos) {
+    override fun instantiate(instantiations: Map<String, Expression>): Expression = instantiateVR(instantiations)
+    override fun evaluate(ctxt: ExecEnvironment): Value = evaluateToRef(ctxt).value
+    abstract fun instantiateVR(instantiations: Map<String, Expression>): VarRef
+    abstract fun evaluateToRef(ctxt: ExecEnvironment): Variable
+
+}
+
 class ExpressionSet(pos: PosInfo) : AstNode(pos) {
     val values = mutableListOf<Expression>()
 }
@@ -24,28 +32,28 @@ class LiteralExpr(private val literal: Value, pos: PosInfo): Expression(pos) {
         LiteralExpr(literal, pos)
 }
 
-class VarExpr(private val ident: String, pos: PosInfo): Expression(pos) {
-    override fun evaluate(ctxt: ExecEnvironment): Value {
-        return ctxt.getVar(ident)?.value ?: throw CMLException.undeclaredVar(ident, pos)
+class VarExpr(private val ident: String, pos: PosInfo): VarRef(pos) {
+    override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
+        return ctxt.getVar(ident) ?: throw CMLException.undeclaredVar(ident, pos)
     }
 
-    override fun instantiate(instantiations: Map<String, Expression>): Expression =
-        VarExpr(ident, pos)
+    override fun instantiateVR(instantiations: Map<String, Expression>) = VarExpr(ident, pos)
 }
 
-class FieldExpr(val base: Expression, val name: String, pos: PosInfo): Expression(pos) {
-    override fun evaluate(ctxt: ExecEnvironment): Value {
-        val baseE = base.evaluate(ctxt)
-        if(baseE !is InstanceVal) throw CMLException.nonObjectVar(name, pos)
-        return baseE.type.getField(name) ?: throw CMLException.invalidField(baseE.type.name, name, pos)
+class FieldExpr(val base: VarRef, val name: String, pos: PosInfo): VarRef(pos) {
+    override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
+        val baseE = base.evaluateToRef(ctxt)
+        if(baseE.value !is InstanceVal) throw CMLException.nonObjectVar(name, pos)
+        return (baseE.value as InstanceVal).type.getFieldAsVar(name)
+            ?: throw CMLException.invalidField((baseE.value as InstanceVal).type.name, name, pos)
     }
 
-    override fun instantiate(instantiations: Map<String, Expression>): Expression {
-        return FieldExpr(base.instantiate(instantiations), name, pos)
+    override fun instantiateVR(instantiations: Map<String, Expression>): VarRef {
+        return FieldExpr(base.instantiateVR(instantiations), name, pos)
     }
 }
 
-class IndexExpr(val base: Expression, val index: Expression, pos: PosInfo) : Expression(pos) {
+class IndexExpr(val base: VarRef, val index: Expression, pos: PosInfo) : VarRef(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         return when(val baseE = base.evaluate(ctxt)) {
             is ListVal -> {
@@ -77,8 +85,12 @@ class IndexExpr(val base: Expression, val index: Expression, pos: PosInfo) : Exp
         }
     }
 
-    override fun instantiate(instantiations: Map<String, Expression>): Expression {
-        return IndexExpr(base.instantiate(instantiations), index.instantiate(instantiations), pos)
+    override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
+        throw CMLException.assignToArrayIndex(pos)
+    }
+
+    override fun instantiateVR(instantiations: Map<String, Expression>): VarRef {
+        return IndexExpr(base.instantiateVR(instantiations), index.instantiate(instantiations), pos)
     }
 
 }

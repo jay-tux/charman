@@ -65,6 +65,9 @@ class CMLException(msg: String) : Exception(msg) {
         fun invalidMemberFunction(type: String, func: String, pos: PosInfo): CMLException =
             CMLException("Type `$type' is not a member function named `$func' at $pos")
 
+        fun assignToArrayIndex(pos: PosInfo): CMLException =
+            CMLException("Assigning to values in a list is not supported at $pos")
+
         fun internalCopyExecEnv(): CMLException =
             CMLException("Internal error: Copying a non-root execution environment is not allowed")
     }

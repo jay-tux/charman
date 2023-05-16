@@ -33,13 +33,13 @@ class VarDeclStmt(
 }
 
 class VarStoreStmt(
-    private val name: String,
+    private val name: VarRef,
     private val upd: Expression,
     pos: PosInfo
 ): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
-        if(!ctxt.isInEnv(name)) throw CMLException.undeclaredVar(name, pos)
-        ctxt.getVar(name)?.safeOverwrite(upd.evaluate(ctxt), pos)
+        val variable = name.evaluateToRef(ctxt)
+        variable.safeOverwrite(upd.evaluate(ctxt), pos)
     }
 
     override fun instantiate(instantiations: Map<String, Expression>): Statement =

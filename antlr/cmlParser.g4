@@ -34,7 +34,7 @@ stmt:
 // base statements
                 e=expr SEMI                                         #exprStmt
     |           VAR name=IDENT ASSIGN init=expr SEMI                #varDeclStmt
-    |           name=IDENT ASSIGN value=expr SEMI                   #varStoreStmt
+    |           name=varRef ASSIGN value=expr SEMI                  #varStoreStmt
 // conditionals and flow control
     |           IF P_O cond=expr P_C B_O bTrue=stmtSet B_C          #ifStmt
     |           IF P_O cond=expr P_C B_O bTrue=stmtSet B_C ELSE B_O bFalse=stmtSet B_C
@@ -47,14 +47,21 @@ stmt:
     |           RETURN v=expr SEMI                                  #returnValStmt
     ;
 
+varRef:
+                value=IDENT                                         #varName
+    |           base=varRef DOT name=IDENT                          #fieldExpr
+    |           base=varRef BR_O index=expr BR_C                    #indexExpr
+    ;
+
 expr:
 // Literals
                 str=stringExpr                                      #stringLit
     |           value=INT                                           #intLit
     |           value=BOOL                                          #boolLit
-    |           value=IDENT                                         #varExpr
-    |           base=expr DOT name=IDENT                            #fieldExpr
-    |           base=expr BR_O index=expr BR_C                      #indexExpr
+    |           value=varRef                                        #varExpr
+//    |           value=IDENT                                         #varExpr
+//    |           base=expr DOT name=IDENT                            #fieldExpr
+//    |           base=expr BR_O index=expr BR_C                      #indexExpr
     |           ph=PLACEHOLDER                                      #placeholderExpr
 // Pseudo-constructors
     |           DOT type=IDENT                                      #ctorExpr
@@ -84,7 +91,7 @@ kvpList:
        ;
 
 nonEmptyKvp:    key=expr ASSIGN value=expr
-           |    prev=nonEmptyKvp COMMA key=expr ASSIGN val=expr
+           |    prev=nonEmptyKvp COMMA key=expr ASSIGN value=expr
            ;
 
 argsList:

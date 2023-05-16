@@ -8,6 +8,7 @@ import com.jaytux.cml_parser.CMLParser
 import kotlinx.coroutines.Dispatchers
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
+import uiData.CharacterData
 import uiData.UIData
 import java.io.FileInputStream
 import java.nio.file.Files
@@ -139,6 +140,7 @@ object Scripts {
 
             characterCache.walk().forEach {
                 CMLOut.addInfo("  Loading character ${it.absolutePathString()}")
+                loadFile(it.absolutePathString())
             }
 
             instantiateAll()
@@ -149,7 +151,8 @@ object Scripts {
                 ex.message?.let { CMLOut.addError(it) }
             }
 
-
+            CharacterData.loadFromLibrary()
+            UIData.getTypesFromLibrary()
             UIData.clearIf(message)
             loading = false
         }

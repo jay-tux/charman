@@ -32,6 +32,9 @@ object Library {
         types[name] = type
     }
 
+    fun types() = types
+    fun typesByKind(kind: String): List<TopLevelDecl> = types.filter { it.value.kind == kind }.map { it.value }
+
     fun readyAll() {
         types.forEach { it.value.ready() }
     }

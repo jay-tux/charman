@@ -38,6 +38,33 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
+    // region Variable References
+    override fun visitFieldExpr(ctx: CMLParser.FieldExprContext?): AstNode {
+        return nonNull(ctx) {
+            FieldExpr(visit(it.base) as VarRef, it.name.text, it.DOT().symbol.getPos(file))
+        }
+    }
+
+    override fun visitIndexExpr(ctx: CMLParser.IndexExprContext?): AstNode {
+        return nonNull(ctx) {
+            IndexExpr(
+                visit(it.base) as VarRef,
+                visit(it.index) as Expression,
+                it.BR_O().symbol.getPos(file)
+            )
+        }
+    }
+
+    override fun visitVarName(ctx: CMLParser.VarNameContext?): AstNode {
+        return nonNull(ctx) {
+            VarExpr(
+                it.value.text,
+                it.value.getPos(file)
+            )
+        }
+    }
+    // endregion
+
     // region Expressions
     override fun visitStringExpr(ctx: CMLParser.StringExprContext?): AstNode {
         return nonNull(ctx) { ctx2 ->
@@ -63,23 +90,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
 
     override fun visitVarExpr(ctx: CMLParser.VarExprContext?): AstNode {
         return nonNull(ctx, { it.value }) {
-            VarExpr(it.text, it.getPos(file))
-        }
-    }
-
-    override fun visitFieldExpr(ctx: CMLParser.FieldExprContext?): AstNode {
-        return nonNull(ctx) {
-            FieldExpr(visit(it.base) as Expression, it.name.text, it.DOT().symbol.getPos(file))
-        }
-    }
-
-    override fun visitIndexExpr(ctx: CMLParser.IndexExprContext?): AstNode {
-        return nonNull(ctx) {
-            IndexExpr(
-                visit(it.base) as Expression,
-                visit(it.index) as Expression,
-                it.BR_O().symbol.getPos(file)
-            )
+            visit(it)
         }
     }
 
@@ -267,11 +278,12 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     }
 
     override fun visitVarStoreStmt(ctx: CMLParser.VarStoreStmtContext?): AstNode {
-        return nonNull(ctx?.value) { v ->
+        return nonNull(ctx) { c ->
+            val visited = visit(c.name)
             VarStoreStmt(
-                name = nonNull(ctx?.name?.text),
-                upd = visit(v) as Expression,
-                pos = v.start.getPos(file)
+                name = visited as VarRef,
+                upd = visit(c.value) as Expression,
+                pos = c.start.getPos(file)
             )
         }
     }
@@ -376,7 +388,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     override fun visitKvpList(ctx: CMLParser.KvpListContext?): AstNode {
         return nonNull(ctx) {
             if (it.values == null) KvpSet(it.start.getPos(file))
-            visit(it.values) as KvpSet
+            else visit(it.values) as KvpSet
         }
     }
 

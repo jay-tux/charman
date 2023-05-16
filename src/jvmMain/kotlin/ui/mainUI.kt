@@ -1,24 +1,23 @@
 package ui
 
-import CMLOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.*
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import ui.widgets.InitiativeWidget
-import ui.widgets.LazyScrollColumn
+import ui.widgets.*
+import uiData.CharacterData
 import uiData.UIData
 
 enum class BottomPart(val text: String) {
-    NONE(""), CONSOLE("CML Console"), INITIATIVE("Initiative Order")
+    NONE(""), CONSOLE("CML Console"), TYPE_LIST("CML Type List"), INITIATIVE("Initiative Order")
 }
 
 @Composable
@@ -32,12 +31,13 @@ fun mainUI() = MaterialTheme {
 
     Column {
         Box(Modifier.weight(if(currentBottom != BottomPart.NONE) 0.75f else 0.97f).fillMaxWidth()) {
-            // TODO
+            body()
         }
         if(currentBottom != BottomPart.NONE) {
             Box(Modifier.weight(0.22f).padding(top = 10.dp, start = 10.dp)) {
                 when (currentBottom) {
-                    BottomPart.CONSOLE -> cmlConsole()
+                    BottomPart.CONSOLE -> CmlConsole()
+                    BottomPart.TYPE_LIST -> TypeList()
                     BottomPart.INITIATIVE -> InitiativeWidget()
                     else -> {}
                 }
@@ -68,24 +68,11 @@ fun bottomBar(message: String, enabled: BottomPart, onToggle: (BottomPart) -> Un
 }
 
 @Composable
-fun cmlConsole() {
-    val messages by CMLOut.stream.collectAsState()
-    Surface(
-        Modifier.fillMaxWidth().fillMaxHeight(),
-//        color = MaterialTheme.colors.secondary
-    ) {
-        LazyScrollColumn(modContaining = Modifier.horizontalScroll(rememberScrollState())) {
-            items(messages) { (k, m) ->
-                Text(
-                    m,
-                    color = when (k) {
-                        CMLOut.MessageKind.INFO -> Color.Blue
-                        CMLOut.MessageKind.WARNING -> Color.Yellow
-                        CMLOut.MessageKind.ERROR -> Color.Red
-                    },
-                    fontFamily = FontFamily.Monospace
-                )
-            }
+fun body() {
+    val values by CharacterData.characters
+    LazyScrollColumn {
+        itemsIndexed(items = values) { index, value ->
+            CharacterCard(value, index, { _ -> })
         }
     }
 }
