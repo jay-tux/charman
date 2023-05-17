@@ -10,8 +10,14 @@ import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import arrow.core.flatMap
+import compose
+import ui.views.CharacterView
+import ui.views.CharacterViewError
+import ui.views.extractCharacterViewData
 import ui.widgets.*
 import uiData.CharacterData
 import uiData.UIData
@@ -30,11 +36,13 @@ fun mainUI() = MaterialTheme {
     }
 
     Column {
-        Box(Modifier.weight(if(currentBottom != BottomPart.NONE) 0.75f else 0.97f).fillMaxWidth()) {
+        Box(
+            Modifier.weight(if(currentBottom != BottomPart.NONE) 0.76f else 0.96f).fillMaxWidth().padding(5.dp)
+        ) {
             body()
         }
         if(currentBottom != BottomPart.NONE) {
-            Box(Modifier.weight(0.22f).padding(top = 10.dp, start = 10.dp)) {
+            Box(Modifier.weight(0.20f).padding(top = 10.dp, start = 10.dp)) {
                 when (currentBottom) {
                     BottomPart.CONSOLE -> CmlConsole()
                     BottomPart.TYPE_LIST -> TypeList()
@@ -43,7 +51,7 @@ fun mainUI() = MaterialTheme {
                 }
             }
         }
-        Box(Modifier.weight(0.03f)) {
+        Box(Modifier.weight(0.04f)) {
             bottomBar(msg, currentBottom) { toggle(it) }
         }
     }
@@ -70,9 +78,36 @@ fun bottomBar(message: String, enabled: BottomPart, onToggle: (BottomPart) -> Un
 @Composable
 fun body() {
     val values by CharacterData.characters
-    LazyScrollColumn {
-        itemsIndexed(items = values) { index, value ->
-            CharacterCard(value, index, { _ -> })
+    val mapped = values.map { pre -> pre.mapLeft { it.second }.flatMap { extractCharacterViewData(it) } }
+    var current by remember { mutableStateOf(-1) }
+    Row {
+        LazyScrollColumn(
+            Modifier.weight(0.2f).fillMaxHeight().background(MaterialTheme.colors.primary)
+                .padding(top = 7.dp, start = 7.dp, bottom = 7.dp)
+        ) {
+            itemsIndexed(items = mapped) { index, value ->
+                CharacterCard(
+                    values[index].fold({ it.first },{ it.type.name }),
+                    value,
+                    index,
+                    { current = if (current == it) -1 else it },
+                    current == index,
+                    Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        Box(Modifier.weight(0.8f).fillMaxHeight()) {
+            if(current == -1) {
+                Text(
+                    "Select a character to see their details.",
+                    Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colors.primaryVariant
+                )
+            }
+            else {
+                mapped[current].compose({ CharacterViewError(it) }, { CharacterView(it) })
+            }
         }
     }
 }

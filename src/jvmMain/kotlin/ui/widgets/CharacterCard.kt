@@ -1,68 +1,58 @@
 package ui.widgets
 
-import CMLOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.Button
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import arrow.core.Either
 import cml.CMLException
-import cml.InstanceVal
-import cml.StringVal
-import uiData.CharacterData
-import uiData.OrError
+import compose
+import ui.views.CharacterViewData
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CharacterCard(
-    character: OrError<InstanceVal>,
+    typeName: String,
+    character: Either<CMLException, CharacterViewData>,
     index: Int,
     onSelect: (Int) -> Unit,
+    isSelected: Boolean = false,
     modifier: Modifier = Modifier
-) = Button({ onSelect(index) }, modifier) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-            Modifier.size(64.dp).clip(CircleShape)
-        ) {
-            // TODO: add image?
-        }
+) {
+    Button(
+        { onSelect(index) },
+        modifier,
+        colors = ButtonDefaults.buttonColors(backgroundColor = if(isSelected) MaterialTheme.colors.onPrimary else MaterialTheme.colors.primary)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(0.25f)) {
+                Surface(
+                    Modifier.size(64.dp).clip(CircleShape),
+                ) {
+                    // TODO: add image?
+                }
+            }
 
-        Column {
-            if (character.isError) {
-                Text(character.content.type.name)
-                Text(character.message)
-            } else if (character.content.type.kind != "Character") {
-                CharacterData.setInvalidType(index)
-            } else {
-                val (name, nameErr) = charName(character.content, index)
-                Text(name)
-                if(nameErr != null) {
-                    Row { Spacer(Modifier.width(10.dp)); Text(nameErr) }
+            Spacer(Modifier.weight(0.05f))
+
+            Column(Modifier.weight(0.70f)) {
+                character.compose({ error ->
+                    Text(typeName)
+                    WithTooltip(error.message ?: "Error has no message.") {
+                        Text(error.message ?: "Error has no message", color = Color.Red, overflow = TextOverflow.Ellipsis, maxLines = 1)
+                    }
+                }) { value ->
+                    Text(value.name)
+                    Text("Level ${value.classes.values.sum()} ${value.race}")
                 }
             }
         }
     }
-}
-
-fun charName(c: InstanceVal, index: Int): Pair<String, String?> {
-    val name = c.type.fields.getVar("name")
-    if(name == null) {
-        val errorMsg = "Character `${c.type.name}' has no field `name'."
-        CharacterData.setError(index, errorMsg)
-        CMLOut.addError(CMLException.invalidField(c.type.name, "name", CharacterData.runtimeRenderPos).message ?: "")
-        return Pair(c.type.name, errorMsg)
-    }
-
-    if(name.value !is StringVal) {
-        val errorMsg = "Character `${c.type.name}' has a name field that is not of type `String'."
-        CharacterData.setError(index, errorMsg)
-        CMLOut.addError(CMLException.typeError("String", name.value, CharacterData.runtimeRenderPos).message ?: "")
-        return Pair(c.type.name, errorMsg)
-    }
-
-    return Pair((name.value as StringVal).value, null)
 }

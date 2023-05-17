@@ -1,6 +1,8 @@
 package cml
 
-class CMLException(msg: String) : Exception(msg) {
+import androidx.compose.ui.util.fastForEachReversed
+
+class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
     companion object {
         fun voidVarException(name: String, pos: PosInfo): CMLException =
             CMLException("Attempt to declare variable `$name' as (void) at $pos")
@@ -68,7 +70,25 @@ class CMLException(msg: String) : Exception(msg) {
         fun assignToArrayIndex(pos: PosInfo): CMLException =
             CMLException("Assigning to values in a list is not supported at $pos")
 
+        fun wrongKind(expected: String, got: String, pos: PosInfo): CMLException =
+            CMLException("Expected an instance value of type `$expected', but got `${got}' at $pos")
+
         fun internalCopyExecEnv(): CMLException =
             CMLException("Internal error: Copying a non-root execution environment is not allowed")
+    }
+}
+
+object ExecutionStack {
+    private val stack = mutableListOf<PosInfo>()
+
+    fun push(pos: PosInfo) { stack.add(pos) }
+    fun pop() { stack.removeLast() }
+
+    fun formatError(msg: String): String {
+        var res = "$msg\n"
+        stack.fastForEachReversed {
+            res += "    at $it\n"
+        }
+        return res
     }
 }

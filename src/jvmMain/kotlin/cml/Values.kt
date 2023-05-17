@@ -1,5 +1,7 @@
 package cml
 
+import arrow.core.Either
+
 abstract class Value(pos: PosInfo) : AstNode(pos) {
     abstract fun repr(): String
 
@@ -74,6 +76,30 @@ class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
     // TODO: override equals
     override fun copy(): Value = InstanceVal(type.construct(), pos)
+
+    fun verifyKind(expected: String, rPos: PosInfo): Either<CMLException, InstanceVal> {
+        if(type.kind != expected) return Either.Left(CMLException.wrongKind(expected, type.kind, rPos))
+        return Either.Right(this)
+    }
+
+    inline fun <reified T: Value> attemptFieldAs(field: String, typename: String, rPos: PosInfo): Either<CMLException, T> {
+        return when(val variable = type.getField(field)) {
+            null -> Either.Left(CMLException.invalidField(repr(), field, rPos))
+            !is T -> Either.Left(CMLException.typeError(typename, variable, rPos))
+            else -> Either.Right(variable)
+        }
+    }
+
+    inline fun <reified T: Value> ifKindGetFieldAs(kind: String, field: String, typename: String, rPos: PosInfo): T {
+        if(type.kind != kind) { throw CMLException.wrongKind(kind, type.kind, rPos) }
+        return getFieldAs(field, typename, rPos)
+    }
+
+    inline fun <reified T: Value> getFieldAs(field: String, typename: String, rPos: PosInfo): T {
+        val variable = type.getField(field) ?: throw CMLException.invalidField(repr(), field, rPos)
+        if(variable !is T) throw CMLException.typeError(typename, variable, rPos)
+        return variable
+    }
 }
 
 fun typeName(v: Value): String = when(v) {

@@ -21,6 +21,7 @@ class FunDecl(
             argEnv.addVar(n, v, pos)
         }
 
+        ExecutionStack.push(callSite)
         val callEnv = ExecEnvironment.defaultEnv(argEnv)
         run returning@{
             body.forEach {
@@ -30,6 +31,7 @@ class FunDecl(
                 }
             }
         }
+        ExecutionStack.pop()
 
         return callEnv.returnValue
     }

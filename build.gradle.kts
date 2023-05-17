@@ -30,6 +30,7 @@ dependencies {
     implementation("org.antlr:antlr4-runtime:4.12.0")
     implementation("ca.gosyer:kotlin-multiplatform-appdirs:1.1.0")
     implementation(project(":cml_parser"))
+    implementation("io.arrow-kt:arrow-core:1.2.0-RC")
 }
 
 kotlin {
