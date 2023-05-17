@@ -25,10 +25,13 @@ data class CharacterViewData(
 
 @Composable
 fun CharacterView(data: CharacterViewData) = Column {
-    Row {
+    Row(Modifier.weight(0.15f)) {
         Text(data.name, Modifier.weight(0.4f))
         Row(Modifier.weight(0.6f)) {
             LazyScrollColumn(Modifier.weight(0.5f)) {
+                item {
+                    Text("Classes")
+                }
                 items(data.classes.toList()) { (cl, lvl) ->
                     Text("$cl (level $lvl)")
                 }
@@ -45,7 +48,7 @@ fun CharacterView(data: CharacterViewData) = Column {
         }
     }
 
-    Row {
+    Row(Modifier.weight(0.85f)) {
         LazyScrollColumn(Modifier.weight(0.125f)) {
             items(data.abilities.toList()) { (ab, stat) ->
                 Column {
