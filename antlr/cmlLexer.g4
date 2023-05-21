@@ -42,8 +42,10 @@ TEMPLATE:       'template';
 INT:            [1-9][0-9]*|'0';
 IDENT:          [a-zA-Z_][a-zA-Z0-9_]*;
 PLACEHOLDER:    '<'IDENT'>';
-STRING_LIT:     '"'~[\r\n"]*'"';
+STRING_LIT:     '"'~["]*'"';
 
 NEWLINE:        [\r\n]+ -> skip;
 WS:             [ \t]+ -> skip;
 COMMENT_CHARS:  '//'~[\r\n]*[\r\n] -> skip;
+
+ANY:            .;

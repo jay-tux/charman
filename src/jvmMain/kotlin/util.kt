@@ -56,6 +56,17 @@ fun <E, K1, K2, V1, V2> Map<K1, V1>.mapOrEither(fn: (Map.Entry<K1, V1>) -> Eithe
     }
 }
 
+fun <E, T1, T2> List<T1>.mapOrEither(fn: (T1) -> Either<E, T2>): Either<E, List<T2>> {
+    return run outer@{
+        this.map { elem ->
+            when(val v = fn(elem)) {
+                is Either.Left -> return@outer v.value.left()
+                is Either.Right -> v.value
+            }
+        }.right()
+    }
+}
+
 @Composable
 fun <E, V> Either<E, V>.compose(fnE: @Composable (E) -> Unit, fnV: @Composable (V) -> Unit) {
     when(this) {

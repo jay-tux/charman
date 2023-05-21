@@ -1,65 +1,211 @@
 package ui.views
 
+import CMLOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import arrow.core.Either
 import arrow.core.flatMap
-import arrow.core.left
-import arrow.core.right
-import cml.*
-import mapOrEither
-import ui.widgets.LazyScrollColumn
-import uiData.CharacterData
+import cml.CMLException
+import cml.InstanceVal
+import cml.Library
+import data.getName
+import data.getString
+import data.getVerifyInst
+import ui.widgets.*
+import uiData.Character
 import withSign
 
-data class CharacterViewData(
-    val name: String, val classes: Map<String, Int>, val race: String, val background: String,
-    val abilities: Map<String, Int>
-)
+@Composable
+fun CharacterView(data: Character) = Column(Modifier.padding(8.dp)) {
+    Row(Modifier.weight(0.10f)) { sheetTopRow(data) }
+
+    Row(Modifier.weight(0.90f)) {
+        Column(Modifier.weight(0.25f)) {
+            Row(Modifier.weight(0.75f)) {
+                sheetAbilities(data)
+                sheetProficiencies(data)
+            }
+            Column(Modifier.weight(0.25f)) {
+                sheetPassivePerception(data)
+                sheetLanguages(data)
+            }
+        }
+        Spacer(Modifier.weight(0.02f))
+
+        Column(Modifier.weight(0.28f)) {
+            sheetCentralNumbers(data)
+            sheetInventory(data)
+        }
+        Spacer(Modifier.weight(0.02f))
+
+        sheetTraitsAndActions(data)
+    }
+}
 
 @Composable
-fun CharacterView(data: CharacterViewData) = Column {
-    Row(Modifier.weight(0.15f)) {
-        Text(data.name, Modifier.weight(0.4f))
-        Row(Modifier.weight(0.6f)) {
-            LazyScrollColumn(Modifier.weight(0.5f)) {
-                item {
-                    Text("Classes")
-                }
-                items(data.classes.toList()) { (cl, lvl) ->
-                    Text("$cl (level $lvl)")
+fun RowScope.sheetTopRow(data: Character) {
+    Text(data.name, Modifier.weight(0.4f), style = MaterialTheme.typography.h3)
+    Row(Modifier.weight(0.6f).fillMaxHeight()) {
+        LazyScrollColumn(Modifier.weight(0.5f).align(Alignment.CenterVertically)) {
+            item {
+                Text("Classes", fontWeight = FontWeight.Bold)
+            }
+            items(data.classes.toList()) { (cl, lvl) ->
+                indented {
+                    Text("$cl (level ${lvl.second})")
                 }
             }
+        }
 
-            LazyScrollColumn(Modifier.weight(0.5f)) {
-                item {
-                    Text("Race: ${data.race}")
+        LazyScrollColumn(Modifier.weight(0.5f).align(Alignment.CenterVertically)) {
+            item {
+                boldThenNormal("Race:", data.race.first)
+            }
+            item {
+                boldThenNormal("Background:", data.background.first)
+            }
+        }
+    }
+}
+
+@Composable
+fun RowScope.sheetAbilities(data: Character) {
+    LazyScrollColumn(Modifier.weight(0.065f)) {
+        items(data.abilities.toList()) { (ab, stat) ->
+            AbilityScoreCard(ab, stat.third, data.abilityMod(stat.second))
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+@Composable
+fun RowScope.sheetProficiencies(data: Character) {
+    var insp by data.inspiration
+
+    Column(Modifier.weight(0.265f)) {
+        InspirationWidget(insp) { insp = it }
+        IntStringCard(data.proficiency(), "Proficiency Bonus", true)
+        Spacer(Modifier.weight(0.025f))
+        LazyScrollColumn(Modifier.weight(0.25f)) {
+            items(data.abilities.toList()) { (_, abStat) ->
+                ModScoreCard(abStat.first, data.saveMod(abStat.second), data.hasSaveProf(abStat.second))
+            }
+        }
+        Spacer(Modifier.weight(0.025f))
+        LazyScrollColumn(Modifier.weight(0.55f)) {
+            items(Library.typesByKind("Skill").map { InstanceVal(it, Character.posRender) }) {
+                ModScoreCard(
+                    it.getName(Character.posRender).flatMap { name ->
+                        it.getVerifyInst("reliesOn", "Ability", Character.posRender).flatMap { abI ->
+                            abI.getString("abbrev", Character.posRender).map { ab ->
+                                "$name ($ab)"
+                            }
+                        }
+                    }.fold({ e -> CMLOut.addError(e.localizedMessage); "Invalid Skill" }, { v -> v }),
+                    data.skillMod(it),
+                    data.hasSkillProf(it)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RowScope.sheetTraitsAndActions(data: Character) {
+    LazyScrollColumn(Modifier.weight(0.43f)) {
+        items(data.racialTraits.toList()) { (name, desc) ->
+            TraitCard(name, data.race.first, desc.first)
+            Spacer(Modifier.height(7.dp))
+        }
+
+        items(data.classTraits.toList().sortedBy { it.second.second }) { (name, desc) ->
+            TraitCard(name, desc.second, desc.first)
+            Spacer(Modifier.height(7.dp))
+        }
+    }
+}
+
+@Composable
+fun ColumnScope.sheetPassivePerception(data: Character) {
+    val perc = remember { Library.types()["Perception"]?.let { InstanceVal(it, Character.posRender) } }
+    Column(Modifier.weight(0.25f)) {
+        if(perc == null) {
+            CMLOut.addWarning("Skill Perception does not exist.")
+            Text("Could not get passive Perception", color = MaterialTheme.colors.error)
+        }
+        else {
+            IntStringCard(data.passiveSkill(perc), "Passive Wisdom (Perception)")
+        }
+    }
+}
+
+@Composable
+fun ColumnScope.sheetLanguages(data: Character) {
+    LazyScrollColumn(Modifier.weight(0.75f)) {
+        item {
+            Text("Languages", fontWeight = FontWeight.Bold)
+        }
+        items(data.languages.toList()) { (l, _) ->
+            indented {
+                Text(l)
+            }
+        }
+    }
+}
+
+@Composable
+fun ColumnScope.sheetCentralNumbers(data: Character) {
+    val hp by data.hp
+    val damage by data.damage
+    val tempHp by data.tempHp
+    val deathSaves by data.deathSaves
+    val speed by data.speed
+    val ac by data.ac
+    val init by data.initMod
+    val dice by data.hitDice
+
+    Column(Modifier.weight(0.4f)) {
+        Row(Modifier.weight(0.25f)) {
+            val mod = Modifier.weight(0.33f)
+            CenteredBox("Armor Class", "$ac", mod)
+            CenteredBox("Initiative", init.withSign(), mod)
+            CenteredBox("Walking Speed", "$speed ft", mod)
+        }
+
+        HPBox("Current Hit Points", hp - damage, hp, modifier = Modifier.weight(0.25f))
+        HPBox("Temporary Hit Points", tempHp, modifier = Modifier.weight(0.25f))
+        Row(Modifier.weight(0.25f)) {
+            Column(Modifier.weight(0.5f)) {
+                Text("Hit Dice", fontStyle = FontStyle.Italic)
+                Box(Modifier.fillMaxSize()) {
+                    Text(dice.toList().joinToString { (kind, count) -> "${count}d$kind" }, Modifier.align(Alignment.Center), style = MaterialTheme.typography.h6)
                 }
-                item {
-                    Text("Background: ${data.background}")
+            }
+            Column(Modifier.weight(0.5f)) {
+                Text("Death Saves", fontStyle = FontStyle.Italic)
+                Column {
+                    DeathSaveWidget("Successes", deathSaves.first)
+                    DeathSaveWidget("Failures", deathSaves.second)
                 }
             }
         }
     }
+}
 
-    Row(Modifier.weight(0.85f)) {
-        LazyScrollColumn(Modifier.weight(0.125f)) {
-            items(data.abilities.toList()) { (ab, stat) ->
-                Column {
-                    Text(ab)
-                    Row {
-                        Spacer(Modifier.width(7.dp))
-                        Text("$stat (${((10 - stat) / 2).withSign()})")
-                    }
-                }
-            }
-        }
+@Composable
+fun ColumnScope.sheetInventory(data: Character) {
+    Box(Modifier.weight(0.6f)) {
+        Text("Inventory")
     }
 }
 
@@ -71,64 +217,5 @@ fun CharacterViewError(message: CMLException) {
             Modifier.align(Alignment.Center),
             color = MaterialTheme.colors.error
         )
-    }
-}
-
-fun extractCharacterViewData(base: InstanceVal): Either<CMLException, CharacterViewData> {
-    val p = CharacterData.runtimeRenderPos
-    return base.verifyKind("Character", p).flatMap { verified ->
-        val res = verified.attemptFieldAs<StringVal>("name", "String", p).flatMap { name ->
-            verified.attemptFieldAs<InstanceVal>("race", "instance(Race)", p).flatMap { rPre ->
-                rPre.verifyKind("Race", p)
-            }.flatMap { rPre ->
-                rPre.attemptFieldAs<StringVal>("name", "String", p)
-            }.flatMap { race ->
-                verified.attemptFieldAs<InstanceVal>("background", "instance(Background)", p).flatMap { bPre ->
-                    bPre.verifyKind("Background", p)
-                }.flatMap { bPre ->
-                    bPre.attemptFieldAs<StringVal>("name", "String", p)
-                }.flatMap { background ->
-                    verified.attemptFieldAs<DictVal>("classes", "Dict", p).flatMap { csPre ->
-                        csPre.value.mapOrEither { (k, v) ->
-                            when(k) {
-                                is InstanceVal -> k.right()
-                                else -> CMLException.typeError("instance(Class)", "key in class dict", k, p).left()
-                            }.flatMap{ kVal ->
-                                kVal.verifyKind("Class", p)
-                            }.flatMap { kKindV ->
-                                kKindV.attemptFieldAs<StringVal>("name", "String", p).map { vl -> vl.value }
-                            }.flatMap { kVerified ->
-                                when(v) {
-                                    is IntVal -> Pair(kVerified, v.value).right()
-                                    else -> CMLException.typeError("Int", "value in class dict", v, p).left()
-                                }
-                            }
-                        }.flatMap { classes ->
-                            verified.attemptFieldAs<DictVal>("abilities", "Dict", p).flatMap { abPre ->
-                                abPre.value.mapOrEither { (k, v) ->
-                                    when(k) {
-                                        is InstanceVal -> k.right()
-                                        else -> CMLException.typeError("instance(Ability)", "key in ability dict", k, p).left()
-                                    }.flatMap { kVal ->
-                                        kVal.verifyKind("Ability", p)
-                                    }.flatMap { kKindV ->
-                                        kKindV.attemptFieldAs<StringVal>("abbrev", "String", p).map { vl -> vl.value }
-                                    }.flatMap { ability ->
-                                        when(v) {
-                                            is IntVal -> Pair(ability, v.value).right()
-                                            else -> CMLException.typeError("Int", "value in ability dict", v, p).left()
-                                        }
-                                    }
-                                }.map { abilities ->
-                                    CharacterViewData(name.value, classes, race.value, background.value, abilities)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        res
     }
 }

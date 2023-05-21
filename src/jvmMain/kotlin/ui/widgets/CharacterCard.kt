@@ -14,13 +14,13 @@ import androidx.compose.ui.unit.dp
 import arrow.core.Either
 import cml.CMLException
 import compose
-import ui.views.CharacterViewData
+import uiData.Character
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CharacterCard(
     typeName: String,
-    character: Either<CMLException, CharacterViewData>,
+    character: Either<CMLException, Character>,
     index: Int,
     onSelect: (Int) -> Unit,
     isSelected: Boolean = false,
@@ -50,7 +50,7 @@ fun CharacterCard(
                     }
                 }) { value ->
                     Text(value.name)
-                    Text("Level ${value.classes.values.sum()} ${value.race}")
+                    Text("Level ${value.classes.values.sumOf { it.second }} ${value.race.first}")
                 }
             }
         }

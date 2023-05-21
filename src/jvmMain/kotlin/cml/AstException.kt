@@ -3,6 +3,7 @@ package cml
 class AstException(msg: String) : Exception(msg) {
     companion object {
         fun unexpectedNull() = AstException("Unexpected null in AST from ANTLR.")
+        fun unexpectedNull(c: String) = AstException("Unexpected null in AST from ANTLR (while parsing `$c').")
         fun invalidOperator(op: String) = AstException("Invalid operator `$op' in AST from ANTLR.")
         fun invalidNode(t: Class<*>) = AstException("Invalid node type `${t.name}' in AST from ANTLR.")
         fun undefinedTemplate(template: String, instance: String, pos: PosInfo) =

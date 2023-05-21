@@ -1,8 +1,10 @@
 package cml
 
 import com.jaytux.cml_parser.CMLBaseVisitor
+import com.jaytux.cml_parser.CMLLexer
 import com.jaytux.cml_parser.CMLParser
 import org.antlr.v4.runtime.Token
+import org.antlr.v4.runtime.tree.ParseTree
 
 fun Token.getPos(file: String): PosInfo = PosInfo(file, this.line, this.charPositionInLine)
 
@@ -21,6 +23,15 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
                 f2(it)
             }
         }
+    }
+
+    override fun visit(tree: ParseTree?): AstNode {
+        return super.visit(tree)
+            ?: throw tree?.text?.let { AstException.unexpectedNull(it) } ?: AstException.unexpectedNull()
+    }
+
+    override fun aggregateResult(aggregate: AstNode?, nextResult: AstNode?): AstNode {
+        return (aggregate ?: nextResult)!!
     }
 
     override fun visitProgram(ctx: CMLParser.ProgramContext?): AstNode {
@@ -289,30 +300,24 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     }
 
     override fun visitIfStmt(ctx: CMLParser.IfStmtContext?): AstNode {
-        return nonNull(ctx?.cond) { c ->
-            nonNull(ctx?.bTrue) { bt ->
-                IfStmt(
-                    cond = visit(c) as Expression,
-                    bodyTrue = (visit(bt) as StmtSet).contained,
-                    bodyFalse = listOf(),
-                    pos = nonNull(ctx?.start?.getPos(file))
-                )
-            }
+        return nonNull(ctx) { c ->
+            IfStmt(
+                cond = visit(c.cond) as Expression,
+                bodyTrue = (visit(c.bTrue) as StmtSet).contained,
+                bodyFalse = listOf(),
+                pos = c.start.getPos(file)
+            )
         }
     }
 
     override fun visitIfElseStmt(ctx: CMLParser.IfElseStmtContext?): AstNode {
-        return nonNull(ctx?.cond) { c ->
-            nonNull(ctx?.bTrue) { bt ->
-                nonNull(ctx?.bFalse) { bf ->
-                    IfStmt(
-                        cond = visit(c) as Expression,
-                        bodyTrue = (visit(bt) as StmtSet).contained,
-                        bodyFalse = (visit(bf) as StmtSet).contained,
-                        pos = nonNull(ctx?.start?.getPos(file))
-                    )
-                }
-            }
+        return nonNull(ctx) { c ->
+            IfStmt(
+                cond = visit(c.cond) as Expression,
+                bodyTrue = (visit(c.bTrue) as StmtSet).contained,
+                bodyFalse = (visit(c.bFalse) as StmtSet).contained,
+                pos = c.start.getPos(file)
+            )
         }
     }
 
@@ -367,87 +372,97 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     // endregion
 
     //region Special cases (aggregators)
-    override fun visitArgsList(ctx: CMLParser.ArgsListContext?): AstNode {
+    override fun visitEmptyArgs(ctx: CMLParser.EmptyArgsContext?): AstNode {
         return nonNull(ctx) {
-            if (it.args == null) ExpressionSet(it.start.getPos(file))
-            else visit(it.args) as ExpressionSet
+            ExpressionSet(it.start.getPos(file))
         }
     }
 
     override fun visitNonEmptyArgs(ctx: CMLParser.NonEmptyArgsContext?): AstNode {
         return nonNull(ctx) {
-            (
-                    if (it.prev == null) ExpressionSet(it.start.getPos(file))
-                    else (visit(it.prev) as ExpressionSet)
-                    ).also { set ->
-                    set.values.add(visit(it.arg) as Expression)
-                }
+            val res = ExpressionSet(it.start.getPos(file))
+            res.values.addAll(it.expr().filterNotNull().map { e -> visit(e) as Expression })
+            res
         }
     }
 
-    override fun visitKvpList(ctx: CMLParser.KvpListContext?): AstNode {
+    override fun visitAssignKvp(ctx: CMLParser.AssignKvpContext?): AstNode {
         return nonNull(ctx) {
-            if (it.values == null) KvpSet(it.start.getPos(file))
-            else visit(it.values) as KvpSet
+            KVP(
+                key = visit(it.key) as Expression,
+                value = visit(it.value) as Expression,
+                pos = it.start.getPos(file)
+            )
+        }
+    }
+
+    override fun visitColonKvp(ctx: CMLParser.ColonKvpContext?): AstNode {
+        return nonNull(ctx) {
+            KVP(
+                key = visit(it.key) as Expression,
+                value = visit(it.value) as Expression,
+                pos = it.start.getPos(file)
+            )
+        }
+    }
+
+    override fun visitEmptyKvp(ctx: CMLParser.EmptyKvpContext?): AstNode {
+        return nonNull(ctx) {
+            KvpSet(it.start.getPos(file))
         }
     }
 
     override fun visitNonEmptyKvp(ctx: CMLParser.NonEmptyKvpContext?): AstNode {
         return nonNull(ctx) {
-            (
-                    if (it.prev == null) KvpSet(it.start.getPos(file))
-                    else (visit(it.prev) as KvpSet)
-                    ).also { set ->
-                    set.values.add(
-                        Pair(
-                            visit(it.key) as Expression,
-                            visit(it.value) as Expression
-                        )
-                    )
-                }
+            val res = KvpSet(it.start.getPos(file))
+            res.values.addAll(it.kvp().filterNotNull().map { kvp -> (visit(kvp) as KVP).let { pair -> Pair(pair.key, pair.value) } })
+            res
         }
     }
 
-    override fun visitArgDs(ctx: CMLParser.ArgDsContext?): AstNode {
+    override fun visitEmptyArgDs(ctx: CMLParser.EmptyArgDsContext?): AstNode {
         return nonNull(ctx) {
-            if (it.args == null) ArgsDecl(it.start.getPos(file))
-            else visit(it.args) as ArgsDecl
+            ArgsDecl(it.start.getPos(file))
         }
     }
 
-    override fun visitArgDsNonEmpty(ctx: CMLParser.ArgDsNonEmptyContext?): AstNode {
+    override fun visitNonEmptyArgDs(ctx: CMLParser.NonEmptyArgDsContext?): AstNode {
         return nonNull(ctx) {
-            (
-                    if (it.args == null) ArgsDecl(it.start.getPos(file))
-                    else (visit(it.args) as ArgsDecl)
-                    ).also { set ->
-                    set.names.add(it.arg?.text ?: throw AstException.unexpectedNull())
-                }
+            val res = ArgsDecl(it.start.getPos(file))
+            res.names.addAll(it.IDENT().filterNotNull().map { it.text })
+            res
         }
     }
 
     override fun visitDeclSet(ctx: CMLParser.DeclSetContext?): AstNode {
         return nonNull(ctx) {
-            if (it.isEmpty || it.prev == null) DeclSet(it.start.getPos(file))
-            else (visit(it.prev) as DeclSet).also { set ->
-                when (val v = visit(it.d)) {
-                    is FunDecl -> set.functions.add(v)
-                    is VarDeclStmt -> set.fields.add(v)
+            val res = DeclSet(it.start.getPos(file))
+            it.decl().filterNotNull().forEach { v ->
+                when(val tmp = visit(v)) {
+                    is FunDecl -> res.functions.add(tmp)
+                    is VarDeclStmt -> res.fields.add(tmp)
                     else -> throw AstException.invalidNode(v.javaClass)
                 }
             }
+            res
         }
     }
 
-    override fun visitNoStmt(ctx: CMLParser.NoStmtContext?): AstNode {
-        return StmtSet(nonNull(ctx?.start?.getPos(file)))
-    }
-
-    override fun visitStmts(ctx: CMLParser.StmtsContext?): AstNode {
+    override fun visitStmtSet(ctx: CMLParser.StmtSetContext?): AstNode {
         return nonNull(ctx) {
-            val prev = visit(it.prev) as StmtSet
-            prev.contained.add(visit(it.s) as Statement)
-            prev
+            val res = StmtSet(it.start.getPos(file))
+            res.contained.addAll(it.stmt().filterNotNull().map { s ->
+                val v = visit(s)
+                when(v) {
+                    is Statement -> v
+                    null -> {
+                        System.err.println("visit(s) == null at ${s.start.getPos(file)}, text: `${s.text}`, token: ${CMLLexer.VOCABULARY.getDisplayName(s.start.type)}")
+                        null
+                    }
+                    else -> null
+                }
+            }.filterNotNull())
+            res
         }
     }
     //endregion

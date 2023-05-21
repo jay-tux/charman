@@ -9,7 +9,11 @@ abstract class Value(pos: PosInfo) : AstNode(pos) {
 
     companion object
 }
-abstract class BaseValue<T>(val value: T, pos: PosInfo) : Value(pos)
+abstract class BaseValue<T>(val value: T, pos: PosInfo) : Value(pos) {
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
+}
 
 class BoolVal(value: Boolean, pos: PosInfo): BaseValue<Boolean>(value, pos) {
     override fun repr(): String = "$value"
@@ -28,7 +32,10 @@ class IntVal(value: Int, pos: PosInfo) : BaseValue<Int>(value, pos) {
 class StringVal(value: String, pos: PosInfo): BaseValue<String>(value, pos){
     override fun repr(): String = value
     override fun equals(other: Any?): Boolean {
-        return if(other is StringVal) value == other.value else false
+        if(other is StringVal) {
+            return value == other.value
+        }
+        return false
     }
     override fun copy(): Value = StringVal(value, pos)
 }
@@ -52,6 +59,7 @@ class RangeVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
         return if(other is RangeVal) (begin == other.begin && end == other.end) else false
     }
     override fun copy(): Value = RangeVal(begin, end, pos)
+    override fun hashCode(): Int = Pair(begin, end).hashCode()
 }
 class UntilVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
     override fun repr(): String = "($begin until $end)"
@@ -59,6 +67,7 @@ class UntilVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
         return if(other is UntilVal) (begin == other.begin && end == other.end) else false
     }
     override fun copy(): Value = UntilVal(begin, end, pos)
+    override fun hashCode(): Int = Pair(begin, end).hashCode()
 }
 class DiceVal(val count: Int, val kind: Int, pos: PosInfo): Value(pos) {
     override fun repr(): String = "${count}d$kind"
@@ -66,16 +75,25 @@ class DiceVal(val count: Int, val kind: Int, pos: PosInfo): Value(pos) {
         return if(other is DiceVal) (count == other.count && kind == other.kind) else false
     }
     override fun copy(): Value = DiceVal(count, kind, pos)
+    override fun hashCode(): Int = Pair(count, kind).hashCode()
 }
 class VoidVal(pos: PosInfo): Value(pos) {
     override fun repr(): String = "(void)"
     override fun equals(other: Any?): Boolean = false
     override fun copy(): Value = VoidVal(pos)
+    override fun hashCode(): Int = javaClass.hashCode()
 }
 class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
-    // TODO: override equals
+    // TODO: override equals, hashCode
     override fun copy(): Value = InstanceVal(type.construct(), pos)
+
+    override fun equals(other: Any?): Boolean {
+        if(other !is InstanceVal) return false
+        return type == other.type
+    }
+
+    override fun hashCode(): Int = type.hashCode()
 
     fun verifyKind(expected: String, rPos: PosInfo): Either<CMLException, InstanceVal> {
         if(type.kind != expected) return Either.Left(CMLException.wrongKind(expected, type.kind, rPos))
@@ -132,6 +150,11 @@ class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos
         }
     }
 
+    fun forceOverwrite(v: Value) {
+        // SHOULD ONLY BE USED INTERNALLY!
+        value = v
+    }
+
     fun isBool() = value is BoolVal
     fun isInt() = value is IntVal
     fun isString() = value is StringVal
@@ -157,6 +180,7 @@ class ExecEnvironment private constructor(
 
     private var functions = mapOf<String, FunDecl>()
     private val variables = mutableMapOf<String, Variable>()
+
     var varsAreImmutable: Boolean = false
         private set
     var isInLoop: Boolean = false
@@ -164,6 +188,13 @@ class ExecEnvironment private constructor(
     var hitBreak = false
     var hitReturn = false
     var returnValue: Value = VoidVal(PosInfo("", 0, 0))
+
+    override fun equals(other: Any?): Boolean {
+        if(other !is ExecEnvironment) return false
+        return variables == other.variables && varsAreImmutable == other.varsAreImmutable && isInLoop == other.isInLoop
+    }
+
+    override fun hashCode(): Int = Triple(variables, varsAreImmutable, isInLoop).hashCode()
 
     fun isInThisEnv(name: String) = variables.containsKey(name)
     fun isInEnv(name: String): Boolean = isInThisEnv(name) || (parent?.isInEnv(name) ?: false)

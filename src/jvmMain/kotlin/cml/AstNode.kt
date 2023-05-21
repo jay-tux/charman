@@ -9,3 +9,5 @@ data class PosInfo(
 }
 
 open class AstNode(val pos: PosInfo)
+
+class KVP(val key: Expression, val value: Expression, pos: PosInfo) : AstNode(pos)

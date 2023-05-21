@@ -1,5 +1,7 @@
 package cml
 
+import arrow.core.Tuple4
+
 class ArgsDecl(pos: PosInfo) : AstNode(pos) {
     val names = mutableListOf<String>()
 }
@@ -32,7 +34,6 @@ class FunDecl(
             }
         }
         ExecutionStack.pop()
-
         return callEnv.returnValue
     }
 
@@ -56,6 +57,13 @@ open class TopLevelDecl(
     var fields = ExecEnvironment(functions)
         private set
     private var readied = false
+
+    override fun equals(other: Any?): Boolean {
+        if(other !is TopLevelDecl) return false
+        return kind == other.kind && name == other.name && functions == other.functions && fields == other.fields
+    }
+
+    override fun hashCode(): Int = Tuple4(kind, name, functions, fields).hashCode()
 
     fun ready() {
         if(readied) return;
@@ -82,13 +90,17 @@ class TemplateDecl(
             throw AstException.templateArgCount(kind, target.name, argNames.size, target.args.size, target.pos)
 
         val inst = argNames.zip(target.args).associate { it }
-        return TopLevelDecl(
+        val res = TopLevelDecl(
             kind = kind,
             name = target.name,
             functions = functions.map { (k, v) -> Pair(k, v.instantiate(inst)) }.toMap(),
             fieldsPre = fieldsPre.map { (k, v) -> Pair(k, v.instantiate(inst)) }.toMap(),
             declPos = pos
         )
+        res.functions.forEach { (_, v) ->
+            v.parent = res
+        }
+        return res
     }
 }
 

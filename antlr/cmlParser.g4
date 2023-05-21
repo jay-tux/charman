@@ -9,26 +9,18 @@ topLevel:       DATA kind=IDENT name=IDENT B_O body=declSet B_C     #type
                                                                     #template
         ;
 
-declSet:
-       |        prev=declSet d=decl
-       ;
+declSet:        decl*;
 
 decl:           FUN name=IDENT P_O args=argDs P_C B_O body=stmtSet B_C
                                                                     #funDecl
     |           FIELD name=IDENT ASSIGN init=expr SEMI              #fieldDecl
     ;
 
-stmtSet:                                                            #noStmt
-       |         prev=stmtSet s=stmt                                #stmts
-       ;
+stmtSet:         stmt*;
 
-argDs:
-     |          args=argDsNonEmpty
+argDs:                                                             #emptyArgDs
+     |           (IDENT COMMA)* IDENT                              #nonEmptyArgDs
      ;
-
-argDsNonEmpty:  arg=IDENT
-             |  args=argDsNonEmpty COMMA arg=IDENT
-             ;
 
 stmt:
 // base statements
@@ -59,19 +51,16 @@ expr:
     |           value=INT                                           #intLit
     |           value=BOOL                                          #boolLit
     |           value=varRef                                        #varExpr
-//    |           value=IDENT                                         #varExpr
-//    |           base=expr DOT name=IDENT                            #fieldExpr
-//    |           base=expr BR_O index=expr BR_C                      #indexExpr
     |           ph=PLACEHOLDER                                      #placeholderExpr
 // Pseudo-constructors
     |           DOT type=IDENT                                      #ctorExpr
 // Arithmetic and operators
     |           P_O content=expr P_C                                #parenExpr
     |           count=expr DICE dice=expr                           #diceExpr
+    |           op=UN_OP value=expr                                 #unaryExpr
     |           left=expr op=MD_OP right=expr                       #mulDivExpr
     |           left=expr op=AS_OP right=expr                       #addSubExpr
     |           left=expr MOD_OP right=expr                         #modExpr
-    |           op=UN_OP value=expr                                 #unaryExpr
     |           left=expr op=COMPARISON_OP right=expr               #compareExpr
     |           left=expr op=LOGIC_OP right=expr                    #logicExpr
     |           left=expr op=BITWISE_OP right=expr                  #bitwiseExpr
@@ -86,20 +75,16 @@ expr:
     |           base=expr DOT func=IDENT P_O args=argsList P_C      #objCallExpr
     ;
 
-kvpList:
-       |        values=nonEmptyKvp
+kvpList:                                                            #emptyKvp
+       |        (kvp COMMA)* kvp                                    #nonEmptyKvp
        ;
 
-nonEmptyKvp:    key=expr ASSIGN value=expr
-           |    prev=nonEmptyKvp COMMA key=expr ASSIGN value=expr
-           ;
+kvp:            key=expr ASSIGN value=expr                           #assignKvp
+   |            key=expr COLON value=expr                            #colonKvp
+   ;
 
-argsList:
-        |       args=nonEmptyArgs
+argsList:                                                            #emptyArgs
+        |       (expr COMMA)* expr                                   #nonEmptyArgs
         ;
-
-nonEmptyArgs:   arg=expr
-            |   prev=nonEmptyArgs COMMA arg=expr
-            ;
 
 stringExpr:     STRING_LIT;

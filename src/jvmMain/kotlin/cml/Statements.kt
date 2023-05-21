@@ -63,6 +63,7 @@ class IfStmt(
                     it.execute(subScope)
                     if(subScope.hitReturn) {
                         ctxt.hitReturn = true
+                        ctxt.returnValue = subScope.returnValue
                         return@returning
                     }
                 }
@@ -128,7 +129,7 @@ class ForStmt(
     private fun <T> runLoop(check: ExecEnvironment, range: Iterable<T>, conversion: (T) -> Value) {
         run breaking@{
             range.forEach { elem ->
-                check.getVar(varN)?.safeOverwrite(conversion(elem), pos)
+                check.getVar(varN)?.forceOverwrite(conversion(elem))
                 val subScope = ExecEnvironment.loopEnv(check)
                 body.forEach {
                     it.execute(subScope)

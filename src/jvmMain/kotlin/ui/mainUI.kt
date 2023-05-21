@@ -13,11 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import arrow.core.flatMap
 import compose
 import ui.views.CharacterView
 import ui.views.CharacterViewError
-import ui.views.extractCharacterViewData
 import ui.widgets.*
 import uiData.CharacterData
 import uiData.UIData
@@ -78,7 +76,7 @@ fun bottomBar(message: String, enabled: BottomPart, onToggle: (BottomPart) -> Un
 @Composable
 fun body() {
     val values by CharacterData.characters
-    val mapped = values.map { pre -> pre.mapLeft { it.second }.flatMap { extractCharacterViewData(it) } }
+    val mapped by CharacterData.loadedCharacters
     var current by remember { mutableStateOf(-1) }
     Row {
         LazyScrollColumn(

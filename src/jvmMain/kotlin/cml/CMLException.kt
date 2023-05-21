@@ -9,12 +9,12 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
 
         fun overwriteImmutable(name: String, dPos: PosInfo, pos: PosInfo): CMLException =
             CMLException("Attempt to overwrite an immutable variable `$name' at $pos'\n" +
-                    "\tArguments and iteration variables are immutable\n" +
-                    "\t`$name' was declared at $dPos")
+                    "    Arguments and iteration variables are immutable\n" +
+                    "    `$name' was declared at $dPos")
 
         fun redeclareVar(name: String, dPos: PosInfo, pos: PosInfo): CMLException =
             CMLException("Attempt to redeclare variable `$name' at $dPos\n" +
-                    "\tPrevious declaration at $pos")
+                    "    Previous declaration at $pos")
 
         fun undeclaredVar(name: String, pos: PosInfo): CMLException =
             CMLException("Attempt to use undeclared variable `$name' at $pos")
@@ -23,19 +23,19 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
 
         fun typeError(expected: String, got: Value, pos: PosInfo): CMLException {
             val gotT = typeName(got)
-            return CMLException("Type error at $pos. Expected a(n) $expected, but got $gotT at $pos")
+            return CMLException("Type error: expected a value of type $expected, but got $gotT at $pos")
         }
 
         fun typeError(desc: String, expected: String, got: Value, pos: PosInfo): CMLException {
             val gotT = typeName(got)
-            return CMLException("Type error: expected $desc to be a(n) $expected, but got $gotT at $pos")
+            return CMLException("Type error: expected $desc to be a value of type $expected, but got $gotT at $pos")
         }
 
         fun invalidBreak(pos: PosInfo): CMLException = CMLException("Break statements can only be used in loops (at $pos).")
 
         fun argCount(fName: String, expected: Int, got: Int, declPos: PosInfo, pos: PosInfo): CMLException =
             CMLException("Function `$fName' expects $expected arguments, $got given at $pos\n" +
-                    "\t`$fName' declared at $declPos")
+                    "    `$fName' declared at $declPos")
 
         fun invokeNonFun(name: String, pos: PosInfo): CMLException =
             CMLException("Attempt to invoke a non-function `$name' at $pos")
@@ -75,6 +75,9 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
 
         fun internalCopyExecEnv(): CMLException =
             CMLException("Internal error: Copying a non-root execution environment is not allowed")
+
+        fun invalidAbility(ab: String, pos: PosInfo): CMLException =
+            CMLException("Attempt to calculate modifier for ability `$ab' that does not exist on this character at $pos")
     }
 }
 
@@ -89,6 +92,11 @@ object ExecutionStack {
         stack.fastForEachReversed {
             res += "    at $it\n"
         }
+        clearStack()
         return res
+    }
+
+    fun clearStack() {
+        stack.clear()
     }
 }
