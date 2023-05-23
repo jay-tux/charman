@@ -55,6 +55,10 @@ object Library {
         Pair("getArmor") { c -> getArmor(c) },
         Pair("addAction") { c -> addAction(c) },
         Pair("addSpell") { c -> addSpell(c) },
+        Pair("setFullCaster") { c -> setFullCaster(c) },
+        Pair("setHalfCaster") { c -> setHalfCaster(c) },
+        Pair("setThirdCaster") { c -> setThirdCaster(c) },
+        Pair("setSpecialCaster") { c -> setSpecialCaster(c) }
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()

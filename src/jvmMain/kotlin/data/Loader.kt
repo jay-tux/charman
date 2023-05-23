@@ -184,8 +184,9 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     valid.getDict("classes", posInit).flatMap { cls ->
                         cls.mapOrEither { (clsI, lvlI) ->
                             clsI.ifInstVerifyGetName("Class", posInit).flatMap { (classN, classI) ->
-                                lvlI.requireInt(posInit).map { lvl ->
-                                    Pair(classN, ClassDesc(classI, lvl.value, false))
+                                lvlI.requireInt(posInit).flatMap { lvl ->
+                                    if(lvl.value <= 0 || lvl.value > 20) CMLException("Class level should be at least 1 and no more than 20, ${lvl.value} given for class `$classN' at $posInit").left()
+                                    else Pair(classN, ClassDesc(classI, lvl.value, false)).right()
                                 }
                             }
                         }.map { v -> v.toMutableMap() }.flatMap { classes ->

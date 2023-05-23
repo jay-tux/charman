@@ -1,6 +1,7 @@
 package ui.views
 
 import CMLOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
@@ -36,13 +37,10 @@ fun CharacterView(data: Character) = Column(Modifier.padding(8.dp)) {
         }
         Spacer(Modifier.weight(0.02f))
 
-        Column(Modifier.weight(0.28f)) {
+        Column(Modifier.weight(0.71f)) {
             sheetCentralNumbers(data)
-            sheetInventory(data)
+            sheetTraitsAndActions(data)
         }
-        Spacer(Modifier.weight(0.02f))
-
-        sheetTraitsAndActions(data)
     }
 }
 
@@ -107,14 +105,14 @@ fun RowScope.sheetProficiencies(data: Character) {
 }
 
 enum class Tabs(val title: String) {
-    ACTIONS("Actions"), SPELLS("Spells"), TRAITS("Traits")
+    ACTIONS("Actions"), SPELLS("Spells"), TRAITS("Traits"), INVENTORY("Inventory")
 }
 
 @Composable
-fun RowScope.sheetTraitsAndActions(data: Character) {
+fun ColumnScope.sheetTraitsAndActions(data: Character) {
     var currentTab by remember { mutableStateOf(Tabs.TRAITS) }
 
-    Column(Modifier.weight(0.43f)) {
+    Column(Modifier.weight(0.75f)) {
         LazyScrollRow(Modifier.height(45.dp)) {
             items(Tabs.values().toList()) {
                 Button(
@@ -133,6 +131,7 @@ fun RowScope.sheetTraitsAndActions(data: Character) {
                 Tabs.ACTIONS -> sheetActionsPanel(data)
                 Tabs.SPELLS -> sheetSpellsPanel(data)
                 Tabs.TRAITS -> sheetTraitsPanel(data)
+                Tabs.INVENTORY -> sheetInventoryPanel(data)
             }
         }
     }
@@ -152,19 +151,87 @@ fun BoxScope.sheetActionsPanel(data: Character) {
 
 @Composable
 fun BoxScope.sheetSpellsPanel(data: Character) {
-    LazyScrollColumn(Modifier.fillMaxSize()) {
-        items(data.spells.value) { spell ->
-            Row(Modifier.clickable { /* somehow signify we need a details pane */ }) {
-                Text("${spell.level}", Modifier.weight(0.05f).align(Alignment.CenterVertically))
-                Column(Modifier.weight(0.30f)) {
-                    Text(spell.name, fontWeight = FontWeight.Bold)
-                    Text(spell.source, fontStyle = FontStyle.Italic)
-                }
-                Text(spell.castingTime, Modifier.weight(0.20f).align(Alignment.CenterVertically))
-                Text(spell.duration, Modifier.weight(0.25f).align(Alignment.CenterVertically))
-                Text(spell.components.joinToString(), Modifier.weight(0.20f).align(Alignment.CenterVertically))
+    val level by data.casterLevelX6
+    val specialCasting by data.specialCasting
+    val used by data.usedSpellSlots
+    val spells by data.spells
+
+    val currentSlots = remember {
+        val res = mutableListOf(0, 0, 0, 0, 0, 0, 0, 0, 0)
+        val actualL = level / 6
+        if(actualL > 0) {
+            val ref = Character.defaultSpellSlots[actualL - 1]
+            for(i in 0 until 9) {
+                res[i] += ref[i]
             }
-            Spacer(Modifier.height(5.dp))
+        }
+        specialCasting.forEach { (n, d) ->
+            val l = data.classes[n]?.level
+            if(l == null) { CMLOut.addWarning("Spell slots have been added for class $n, but ${data.name} is not of this class.") }
+            else if(l > 0) {
+                val ref = d.second[l - 1]
+                for(i in 0 until 9) {
+                    res[i] += ref[i]
+                }
+            }
+        }
+
+        res
+    }
+
+    if(level == 0 && specialCasting.isEmpty() && spells.isEmpty()) {
+        Box(Modifier.fillMaxSize()) {
+            Text(
+                "You do not have any traits that allow you to cast spells.",
+                Modifier.align(Alignment.Center),
+                color = MaterialTheme.colors.primaryVariant
+            )
+        }
+    }
+    else {
+        LazyScrollColumn(Modifier.fillMaxSize()) {
+            item {
+                if (level == 0 && specialCasting.isEmpty()) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(
+                            "You do not have any spell slots. Any spells you can cast are cast using other traits.",
+                            Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+            }
+
+            item {
+                Box(Modifier.fillMaxWidth().background(MaterialTheme.colors.primary.copy(alpha = 0.2f)).padding(2.dp)) {
+                    Text("Cantrips", Modifier.align(Alignment.TopStart), fontWeight = FontWeight.Bold)
+                    Text("At will", Modifier.align(Alignment.TopEnd), fontStyle = FontStyle.Italic)
+                }
+            }
+            items(spells.filter { it.level == 0 }) {
+                indented {
+                    SpellCard(it) {}
+                }
+            }
+
+            for(i in 1..9) {
+                item {
+                    Box(Modifier.fillMaxWidth().background(MaterialTheme.colors.primary.copy(alpha = 0.2f)).padding(2.dp)) {
+                        Text("Level $i Spells", Modifier.align(Alignment.TopStart), fontWeight = FontWeight.Bold)
+
+                        SpellSlots(
+                            amount = currentSlots[i - 1],
+                            used = used[i - 1],
+                            modifier = Modifier.align(Alignment.TopEnd)
+                        ) { data.useSpellSlot(i) }
+                    }
+                }
+                items(spells.filter { it.level == i }) {
+                    indented {
+                        SpellCard(it) {}
+                    }
+                }
+            }
         }
     }
 }
@@ -180,6 +247,19 @@ fun BoxScope.sheetTraitsPanel(data: Character) {
         items(data.classTraits.toList().sortedBy { it.second.second }) { (name, desc) ->
             TraitCard(name, desc.second, desc.first)
             Spacer(Modifier.height(7.dp))
+        }
+    }
+}
+
+@Composable
+fun BoxScope.sheetInventoryPanel(data: Character) {
+    val inventory by data.inventory
+    LazyScrollColumn {
+        items(inventory) { item ->
+            Row {
+                Text(item.name, Modifier.weight(0.6f))
+                Text("${item.weight} lbs.", Modifier.weight(0.4f))
+            }
         }
     }
 }
@@ -218,44 +298,32 @@ fun ColumnScope.sheetCentralNumbers(data: Character) {
     val init by data.initMod
     val dice by data.hitDice
 
-    Column(Modifier.weight(0.4f)) {
-        Row(Modifier.weight(0.25f)) {
-            val mod = Modifier.weight(0.33f)
-            CenteredBox("Armor Class", "$ac", mod)
-            CenteredBox("Initiative", init.withSign(), mod)
-            CenteredBox("Walking Speed", "$speed ft", mod)
+    Row(Modifier.weight(0.25f)) {
+        Column(Modifier.weight(0.5f)) {
+            HPBox("Current Hit Points", hp - damage, hp, modifier = Modifier.weight(0.25f))
+            HPBox("Temporary Hit Points", tempHp, modifier = Modifier.weight(0.25f))
         }
 
-        HPBox("Current Hit Points", hp - damage, hp, modifier = Modifier.weight(0.25f))
-        HPBox("Temporary Hit Points", tempHp, modifier = Modifier.weight(0.25f))
-        Row(Modifier.weight(0.25f)) {
-            Column(Modifier.weight(0.5f)) {
-                Text("Hit Dice", fontStyle = FontStyle.Italic)
-                Box(Modifier.fillMaxSize()) {
-                    Text(dice.toList().joinToString { (kind, count) -> "${count}d$kind" }, Modifier.align(Alignment.Center), style = MaterialTheme.typography.h6)
-                }
+        Column(Modifier.weight(0.5f)) {
+            Row(Modifier.weight(0.25f)) {
+                val mod = Modifier.weight(0.33f)
+                CenteredBox("Armor Class", "$ac", mod)
+                CenteredBox("Initiative", init.withSign(), mod)
+                CenteredBox("Walking Speed", "$speed ft", mod)
             }
-            Column(Modifier.weight(0.5f)) {
-                Text("Death Saves", fontStyle = FontStyle.Italic)
-                Column {
-                    DeathSaveWidget("Successes", deathSaves.first)
-                    DeathSaveWidget("Failures", deathSaves.second)
+            Row(Modifier.weight(0.25f)) {
+                Column(Modifier.weight(0.5f)) {
+                    Text("Hit Dice", fontStyle = FontStyle.Italic)
+                    Box(Modifier.fillMaxSize()) {
+                        Text(dice.toList().joinToString { (kind, count) -> "${count}d$kind" }, Modifier.align(Alignment.Center), style = MaterialTheme.typography.h6)
+                    }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun ColumnScope.sheetInventory(data: Character) {
-    val inventory by data.inventory
-    Column(Modifier.weight(0.6f)) {
-        Text("Inventory", style = MaterialTheme.typography.h6)
-        LazyScrollColumn {
-            items(inventory) { item ->
-                Row {
-                    Text(item.name, Modifier.weight(0.6f))
-                    Text("${item.weight} lbs.", Modifier.weight(0.4f))
+                Column(Modifier.weight(0.5f)) {
+                    Text("Death Saves", fontStyle = FontStyle.Italic)
+                    Column {
+                        DeathSaveWidget("Successes", deathSaves.first)
+                        DeathSaveWidget("Failures", deathSaves.second)
+                    }
                 }
             }
         }

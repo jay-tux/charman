@@ -34,11 +34,15 @@ class Character(
 ) {
     val classTraits = mutableMapOf<String, Triple<String, String, InstanceVal>>()
     val racialTraits = mutableMapOf<String, Pair<String, InstanceVal>>()
+
     val skillProficiencies = mutableListOf<InstanceVal>()
     val saveProficiencies = mutableListOf<InstanceVal>()
-
     val saveMods = mutableStateOf(mapOf<String, Pair<Int, Boolean>>())
     val skillMods = mutableStateOf(mapOf<String, Triple<Int, Boolean, String>>())
+
+    val casterLevelX6 = mutableStateOf(0)
+    val specialCasting = mutableStateOf(mapOf<String, Pair<ListVal, List<List<Int>>>>())
+    val usedSpellSlots = mutableStateOf(listOf(0, 0, 0, 0, 0, 0, 0, 0, 0))
 
     val languages = mutableMapOf<String, InstanceVal>()
     val inspiration = mutableStateOf(false)
@@ -152,10 +156,58 @@ class Character(
         return 8 + proficiency() + abilityMod(ab)
     }
 
+    private fun totalSlotsFor(level: Int): Int {
+        var res = 0
+        val actualL = casterLevelX6.value / 6
+        if(actualL > 0) {
+            val ref = defaultSpellSlots[actualL - 1]
+            res += ref[level - 1]
+        }
+        specialCasting.value.forEach { (n, d) ->
+            val l = classes[n]?.level
+            if(l == null) { CMLOut.addWarning("Spell slots have been added for class $n, but $name is not of this class.") }
+            else if(l > 0) {
+                val ref = d.second[l - 1]
+                res += ref[level - 1]
+            }
+        }
+        return res
+    }
+
+    fun useSpellSlot(level: Int) {
+        val mod = usedSpellSlots.value.toMutableList()
+        if(mod[level - 1] < totalSlotsFor(level)) mod[level - 1]++
+        usedSpellSlots.value = mod.toList()
+    }
+
     companion object {
         val posRender = PosInfo("<runtime:character:ui>", 0, 0)
         val posInit = PosInfo("<runtime:character:init>", 0, 0)
         val posRest = PosInfo("<runtime:character:restore>", 0, 0)
+
+        val defaultSpellSlots = listOf(
+            //     0  1  2  3  4  5  6  7  8  9
+            listOf(2, 0, 0, 0, 0, 0, 0, 0, 0, 0), // Level  1
+            listOf(3, 0, 0, 0, 0, 0, 0, 0, 0, 0), // Level  2
+            listOf(4, 2, 0, 0, 0, 0, 0, 0, 0, 0), // Level  3
+            listOf(4, 3, 0, 0, 0, 0, 0, 0, 0, 0), // Level  4
+            listOf(4, 3, 2, 0, 0, 0, 0, 0, 0, 0), // Level  5
+            listOf(4, 3, 3, 0, 0, 0, 0, 0, 0, 0), // Level  6
+            listOf(4, 3, 3, 1, 0, 0, 0, 0, 0, 0), // Level  7
+            listOf(4, 3, 3, 2, 0, 0, 0, 0, 0, 0), // Level  8
+            listOf(4, 3, 3, 3, 1, 0, 0, 0, 0, 0), // Level  9
+            listOf(4, 3, 3, 3, 2, 0, 0, 0, 0, 0), // Level 10
+            listOf(4, 3, 3, 3, 2, 1, 0, 0, 0, 0), // Level 11
+            listOf(4, 3, 3, 3, 2, 1, 0, 0, 0, 0), // Level 12
+            listOf(4, 3, 3, 3, 2, 1, 1, 0, 0, 0), // Level 13
+            listOf(4, 3, 3, 3, 2, 1, 1, 0, 0, 0), // Level 14
+            listOf(4, 3, 3, 3, 2, 1, 1, 1, 0, 0), // Level 15
+            listOf(4, 3, 3, 3, 2, 1, 1, 1, 0, 0), // Level 16
+            listOf(4, 3, 3, 3, 2, 1, 1, 1, 0, 1), // Level 17
+            listOf(4, 3, 3, 3, 3, 1, 1, 1, 0, 1), // Level 18
+            listOf(4, 3, 3, 3, 3, 2, 1, 1, 0, 1), // Level 19
+            listOf(4, 3, 3, 3, 3, 2, 2, 1, 0, 1), // Level 20
+        )
     }
 }
 

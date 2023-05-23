@@ -39,8 +39,8 @@ class AttackAction(
     override fun render(c: Character) {
         val dmg = remember { "${primary.dice.repr()}${c.abilityMod(stat.instance).withSign()} ${primary.damageKind.name} ${if(secondary.isNotEmpty()) "*" else ""}" }
         Row {
-            Text(name, Modifier.weight(0.20f), fontWeight = FontWeight.Bold)
-            Text(reachRange, Modifier.weight(0.20f))
+            Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold)
+            Text(reachRange, Modifier.weight(0.175f))
             Text("${c.abilityMod(stat.instance).withSign()} to hit", Modifier.weight(0.15f))
             Text(dmg, Modifier.weight(0.25f))
             Text(targetDesc, Modifier.weight(0.20f))
@@ -76,8 +76,8 @@ class SpellAttackAction(
             else "${damage[0].dice.repr()}$tmp ${damage[0].damageKind.name}$tmp2"
         }
         Row {
-            Text(name, Modifier.weight(0.20f), fontWeight = FontWeight.Bold)
-            Text(reachRange, Modifier.weight(0.20f))
+            Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold)
+            Text(reachRange, Modifier.weight(0.175f))
             Text("${c.abilityMod(stat.instance).withSign()} to hit", Modifier.weight(0.15f))
             Text(dmg, Modifier.weight(0.25f))
             Text(targetDesc, Modifier.weight(0.20f))
@@ -117,8 +117,8 @@ class SpellDCAction(
         }
 
         Row {
-            Text(name, Modifier.weight(0.20f), fontWeight = FontWeight.Bold)
-            Text(reachRange, Modifier.weight(0.20f))
+            Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold)
+            Text(reachRange, Modifier.weight(0.175f))
             Row(Modifier.weight(0.15f)) {
                 Text("DC ")
                 Text("${c.saveDc(stat.instance)} ")

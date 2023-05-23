@@ -6,6 +6,7 @@ import arrow.core.flatMap
 import arrow.core.left
 import arrow.core.right
 import cml.*
+import mapIndexedOrEither
 import mapOrEither
 import uiData.*
 
@@ -336,4 +337,43 @@ fun verifyDamageDesc(desc: List<Value>, pos: PosInfo): Either<CMLException, Dama
             Damage(dice, DamageKind(name, inst))
         }
     }
+}
+
+
+fun setFullCaster(c: Character) = { args: List<Value>, p: PosInfo -> setBaseCaster(c, args, "setFullCaster", 1, p) }
+fun setHalfCaster(c: Character) = { args: List<Value>, p: PosInfo -> setBaseCaster(c, args, "setHalfCaster", 2, p) }
+fun setThirdCaster(c: Character) = { args: List<Value>, p: PosInfo -> setBaseCaster(c, args, "setThirdCaster", 3, p) }
+
+fun setBaseCaster(c: Character, args: List<Value>, fName: String, div: Int, p: PosInfo): Value {
+    return argCnt(fName, 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireInt(pos).flatMap {
+            if(it.value <= 0) CMLException("Expected level to be >= 1, got ${it.value} at $pos").left()
+            else {
+                c.casterLevelX6.value += it.value * 6 / div
+                Unit.right()
+            }
+        }
+    }.handle(p)
+}
+
+fun setSpecialCaster(c: Character) = { args: List<Value>, p: PosInfo ->
+    argCnt("setSpecialCaster", 2, args, p).flatMap { (pos, arg) ->
+        arg[0].requireList(pos).flatMap { l ->
+            if(l.size != 20) CMLException("Spell slots for setSpecialCaster should be a 20 (rows) x 9 (columns) matrix (${l.size} rows given) at $pos").left()
+            else l.mapIndexedOrEither { idx, sub ->
+                sub.requireList(pos).flatMap { subL ->
+                    if(subL.size != 9) CMLException("Spell slots for setSpecialCaster should be a 20 (rows) x 9 (columns) matrix (${subL.size} columns given for row $idx) at $pos").left()
+                    else subL.mapOrEither { elem ->
+                        elem.requireInt(pos).map { it.value }
+                    }
+                }
+            }
+        }.flatMap { slots ->
+            arg[1].requireString(pos).map { name ->
+                val mod = c.specialCasting.value.toMutableMap()
+                mod[name] = Pair(arg[0] as ListVal, slots)
+                c.specialCasting.value = mod.toMap()
+            }
+        }
+    }.handle(p)
 }
