@@ -16,7 +16,7 @@ data class Damage(val dice: DiceVal, val damageKind: DamageKind)
 
 interface Action {
     @Composable
-    fun render(c: Character)
+    fun render(c: Character, profTags: List<String>)
 
     @Composable
     fun renderFull(c: Character)
@@ -35,12 +35,13 @@ class AttackAction(
     // TODO: proficiency?
 
     @Composable
-    override fun render(c: Character) {
+    override fun render(c: Character, profTags: List<String>) {
         val dmg = remember { "${primary.dice.repr()}${c.abilityMod(stat.instance).withSign()} ${primary.damageKind.name} ${if(secondary.isNotEmpty()) "*" else ""}" }
+        val mod = c.abilityMod(stat.instance) + (if(profTags.intersect(tags).isNotEmpty()) c.proficiency() else 0)
         Row {
             Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold)
             Text(reachRange, Modifier.weight(0.175f))
-            Text("${c.abilityMod(stat.instance).withSign()} to hit", Modifier.weight(0.15f))
+            Text("${mod.withSign()} to hit", Modifier.weight(0.15f))
             Text(dmg, Modifier.weight(0.25f))
             Text(targetDesc, Modifier.weight(0.20f))
         }
@@ -65,7 +66,7 @@ class SpellAttackAction(
     // TODO: proficiency?
 
     @Composable
-    override fun render(c: Character) {
+    override fun render(c: Character, profTags: List<String>) {
         val dmg = remember {
             val tmp = if(addModifier) c.abilityMod(stat.instance).withSign() else ""
             val tmp2 = if(damage.size > 1) " *" else ""
@@ -76,7 +77,7 @@ class SpellAttackAction(
         Row {
             Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold)
             Text(reachRange, Modifier.weight(0.175f))
-            Text("${c.abilityMod(stat.instance).withSign()} to hit", Modifier.weight(0.15f))
+            Text("${(c.abilityMod(stat.instance) + c.proficiency()).withSign()} to hit", Modifier.weight(0.15f))
             Text(dmg, Modifier.weight(0.25f))
             Text(targetDesc, Modifier.weight(0.20f))
         }
@@ -101,7 +102,7 @@ class SpellDCAction(
     // TODO: proficiency?
 
     @Composable
-    override fun render(c: Character) {
+    override fun render(c: Character, profTags: List<String>) {
         val dmg = remember {
             val tmp = if(damage.size > 1) " *" else ""
 

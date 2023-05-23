@@ -163,10 +163,11 @@ fun ColumnScope.sheetTraitsAndActions(data: Character, onDetails: (Renderer) -> 
 
 @Composable
 fun BoxScope.sheetActionsPanel(data: Character) {
+    val profs by data.itemProficiencies
     LazyScrollColumn(Modifier.fillMaxSize()) {
         items(data.actions.value) { action ->
             Box(Modifier.clickable { /* signify to call action.renderFull(data) */ }) {
-                action.render(data)
+                action.render(data, profs)
             }
             Spacer(Modifier.height(5.dp))
         }
