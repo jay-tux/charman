@@ -85,3 +85,13 @@ fun <E, V> Either<E, V>.compose(fnE: @Composable (E) -> Unit, fnV: @Composable (
         is Either.Right -> fnV(this.value)
     }
 }
+
+fun Int.cardinal(): String {
+    val ending = when(this % 10) {
+        1 -> "st"
+        2 -> "nd"
+        3 -> "rd"
+        else -> "th"
+    }
+    return "$this$ending"
+}

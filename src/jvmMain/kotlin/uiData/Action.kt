@@ -29,7 +29,6 @@ class AttackAction(
     val targetDesc: String,
     val primary: Damage,
     val secondary: List<Damage>,
-    val desc: String,
     val kind: String,
     // TODO: tags
 ): Action {
@@ -59,7 +58,6 @@ class SpellAttackAction(
     val reachRange: String,
     val targetDesc: String,
     val damage: List<Damage>,
-    val desc: String,
     val kind: String,
     val addModifier: Boolean = false
     // TODO: tags
@@ -96,7 +94,6 @@ class SpellDCAction(
     val reachRange: String,
     val targetDesc: String,
     val damage: List<Damage>,
-    val desc: String,
     val kind: String,
     val saveAbility: InstanceVal
     // TODO: tags

@@ -209,14 +209,11 @@ fun verifyAddSpellAction(c: Character, sa: InstanceVal, ab: Value, pos: PosInfo)
     if(kind != "SpellHitAction" && kind != "SpellDCAction") return CMLException.typeError("instance of `SpellHitAction' or `SpellDCAction'", sa, pos).left()
 
     return sa.getName(pos).flatMap { name ->
-        sa.getString("desc", pos).flatMap { desc ->
-            // TODO: add tags
-            sa.getList("baseAction", pos).flatMap { base ->
-                val added = base.value + ab
-                verifyBaseAction(c, name, desc, sa.type.name, added, pos).map {
-                    c.actions.value += it
-                    it
-                }
+        sa.getList("baseAction", pos).flatMap { base ->
+            val added = base.value + ab
+            verifyBaseAction(c, name, sa.type.name, added, pos).map {
+                c.actions.value += it
+                it
             }
         }
     }
@@ -226,12 +223,9 @@ fun addAction(c: Character) = { args: List<Value>, p: PosInfo ->
     argCnt("addAction", 1, args, p).flatMap { (pos, arg) ->
         arg[0].ifInstVerify("Action", pos).flatMap { action ->
             action.getName(pos).flatMap { name ->
-                action.getString("desc", pos).flatMap { desc ->
-                    // TODO: add tags
-                    action.getList("baseAction", pos).flatMap { base ->
-                        verifyBaseAction(c, name, desc, action.type.name, base.value, pos).map { checked ->
-                            c.actions.value = c.actions.value + checked
-                        }
+                action.getList("baseAction", pos).flatMap { base ->
+                    verifyBaseAction(c, name, action.type.name, base.value, pos).map { checked ->
+                        c.actions.value = c.actions.value + checked
                     }
                 }
             }
@@ -239,7 +233,7 @@ fun addAction(c: Character) = { args: List<Value>, p: PosInfo ->
     }.handle(p)
 }
 
-fun verifyBaseAction(c: Character, name: String, desc: String, tag: String, baseData: List<Value>, pos: PosInfo): Either<CMLException, Action> {
+fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Value>, pos: PosInfo): Either<CMLException, Action> {
     return when(tag) {
         "HitAction" -> {
             if(baseData.size < 6)
@@ -263,7 +257,7 @@ fun verifyBaseAction(c: Character, name: String, desc: String, tag: String, base
                                             }
                                         }
                                     }.map { secondary ->
-                                        AttackAction(name, ability, reachRange, target, primary, secondary, desc, kind)
+                                        AttackAction(name, ability, reachRange, target, primary, secondary, kind)
                                     }
                                 }
                             }
@@ -289,7 +283,7 @@ fun verifyBaseAction(c: Character, name: String, desc: String, tag: String, base
                                 baseData[5].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (a, _) ->
                                     c.abilities[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
                                 }.map { ability ->
-                                    SpellAttackAction(name, ability, range, targets, damage, desc, kind, addMod.value)
+                                    SpellAttackAction(name, ability, range, targets, damage, kind, addMod.value)
                                 }
                             }
                         }
@@ -317,7 +311,7 @@ fun verifyBaseAction(c: Character, name: String, desc: String, tag: String, base
                                 baseData[5].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (a, _) ->
                                     c.abilities[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
                                 }.map { ability ->
-                                    SpellDCAction(name, ability, range, targets, damage, desc, kind, save)
+                                    SpellDCAction(name, ability, range, targets, damage, kind, save)
                                 }
                             }
                         }

@@ -152,3 +152,11 @@ fun DeathSaveWidget(kind: String, amount: Int, max: Int = 3, modifier: Modifier 
         }
     }
 }
+
+@Composable
+fun BoldAndNot(bold: String, not: String, modifier: Modifier = Modifier) {
+    Row(modifier) {
+        Text(bold, fontWeight = FontWeight.Bold)
+        Text(not)
+    }
+}

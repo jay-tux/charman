@@ -1,10 +1,9 @@
 package ui.widgets
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.Icon
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.RadioButtonChecked
@@ -15,11 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import cardinal
 import uiData.SpellDesc
 
 @Composable
 fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Row(Modifier.clickable { onClick() }) {
+    Row(modifier.clickable { onClick() }) {
         Spacer(Modifier.weight(0.03f))
         Column(Modifier.weight(0.32f)) {
             Text(spell.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -40,5 +41,25 @@ fun SpellSlots(amount: Int, used: Int, modifier: Modifier = Modifier, onClick: (
         for(i in used until amount) {
             Icon(Icons.Default.RadioButtonUnchecked, "")
         }
+    }
+}
+
+@Composable
+fun BoxScope.spellDetails(spell: SpellDesc, modifier: Modifier) {
+    Column(modifier.fillMaxHeight().fillMaxWidth(0.33f).align(Alignment.CenterEnd).padding(10.dp)) {
+        Text(spell.name, style = MaterialTheme.typography.h5)
+        if(spell.level == 0) {
+            Text("${spell.school} cantrip", style = MaterialTheme.typography.subtitle2, fontStyle = FontStyle.Italic)
+        }
+        else {
+            Text("${spell.level.cardinal()}-level ${spell.school}", style = MaterialTheme.typography.subtitle2, fontStyle = FontStyle.Italic)
+        }
+        Spacer(Modifier.height(5.dp))
+        BoldAndNot("Casting Time: ", spell.castingTime)
+        BoldAndNot("Range:", spell.range)
+        BoldAndNot("Components: ", spell.components.joinToString(", "))
+        BoldAndNot("Duration: ", spell.duration)
+        Spacer(Modifier.height(5.dp))
+        Text(spell.desc)
     }
 }

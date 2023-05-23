@@ -12,34 +12,54 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cml.CMLException
+import ui.Renderer
 import ui.widgets.*
 import uiData.Character
 import withSign
 
 @Composable
-fun CharacterView(data: Character) = Column(Modifier.padding(8.dp)) {
-    Row(Modifier.weight(0.10f)) { sheetTopRow(data) }
+fun CharacterView(data: Character) {
+    var hasOverlay by remember { mutableStateOf(false) }
+    var overlay by remember { mutableStateOf(Renderer {}) }
 
-    Row(Modifier.weight(0.90f)) {
-        Column(Modifier.weight(0.25f)) {
-            Row(Modifier.weight(0.75f)) {
-                sheetAbilities(data)
-                sheetProficiencies(data)
-            }
-            Column(Modifier.weight(0.25f)) {
-                sheetPassivePerception(data)
-                sheetLanguages(data)
+    val onOverlay = { r: Renderer ->
+        hasOverlay = true
+        overlay = r
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.padding(8.dp)) {
+            Row(Modifier.weight(0.10f)) { sheetTopRow(data) }
+
+            Row(Modifier.weight(0.90f)) {
+                Column(Modifier.weight(0.25f)) {
+                    Row(Modifier.weight(0.75f)) {
+                        sheetAbilities(data)
+                        sheetProficiencies(data)
+                    }
+                    Column(Modifier.weight(0.25f)) {
+                        sheetPassivePerception(data)
+                        sheetLanguages(data)
+                    }
+                }
+                Spacer(Modifier.weight(0.02f))
+
+                Column(Modifier.weight(0.71f)) {
+                    sheetCentralNumbers(data)
+                    sheetTraitsAndActions(data, onOverlay)
+                }
             }
         }
-        Spacer(Modifier.weight(0.02f))
 
-        Column(Modifier.weight(0.71f)) {
-            sheetCentralNumbers(data)
-            sheetTraitsAndActions(data)
+        if(hasOverlay) {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.33f)).clickable { hasOverlay = false }) {
+                overlay.rFun(this, Modifier.background(MaterialTheme.colors.background))
+            }
         }
     }
 }
@@ -109,7 +129,7 @@ enum class Tabs(val title: String) {
 }
 
 @Composable
-fun ColumnScope.sheetTraitsAndActions(data: Character) {
+fun ColumnScope.sheetTraitsAndActions(data: Character, onDetails: (Renderer) -> Unit) {
     var currentTab by remember { mutableStateOf(Tabs.TRAITS) }
 
     Column(Modifier.weight(0.75f)) {
@@ -129,7 +149,7 @@ fun ColumnScope.sheetTraitsAndActions(data: Character) {
         Box(Modifier) {
             when(currentTab) {
                 Tabs.ACTIONS -> sheetActionsPanel(data)
-                Tabs.SPELLS -> sheetSpellsPanel(data)
+                Tabs.SPELLS -> sheetSpellsPanel(data) { r -> onDetails(r) }
                 Tabs.TRAITS -> sheetTraitsPanel(data)
                 Tabs.INVENTORY -> sheetInventoryPanel(data)
             }
@@ -150,7 +170,7 @@ fun BoxScope.sheetActionsPanel(data: Character) {
 }
 
 @Composable
-fun BoxScope.sheetSpellsPanel(data: Character) {
+fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
     val level by data.casterLevelX6
     val specialCasting by data.specialCasting
     val used by data.usedSpellSlots
@@ -210,7 +230,7 @@ fun BoxScope.sheetSpellsPanel(data: Character) {
             }
             items(spells.filter { it.level == 0 }) {
                 indented {
-                    SpellCard(it) {}
+                    SpellCard(it) { onDetails(Renderer { m -> spellDetails(it, m) }) }
                 }
             }
 
@@ -228,7 +248,7 @@ fun BoxScope.sheetSpellsPanel(data: Character) {
                 }
                 items(spells.filter { it.level == i }) {
                     indented {
-                        SpellCard(it) {}
+                        SpellCard(it) { onDetails(Renderer { m -> spellDetails(it, m) }) }
                     }
                 }
             }
