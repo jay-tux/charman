@@ -7,6 +7,8 @@ topLevel:       DATA kind=IDENT name=IDENT B_O body=declSet B_C     #type
                                                                     #instance
         |       TEMPLATE kind=IDENT BR_O args=argDs BR_C B_O body=declSet B_C
                                                                     #template
+        |       FUN name=IDENT P_O args=argDs P_C B_O body=stmtSet B_C
+                                                                    #freeFunDecl
         ;
 
 declSet:        decl*;
@@ -50,6 +52,8 @@ expr:
                 str=stringExpr                                      #stringLit
     |           value=INT                                           #intLit
     |           value=BOOL                                          #boolLit
+    |           value=FLOAT                                         #floatLit
+    |           value=DICE_LIT                                      #diceLit
     |           value=varRef                                        #varExpr
     |           ph=PLACEHOLDER                                      #placeholderExpr
 // Pseudo-constructors

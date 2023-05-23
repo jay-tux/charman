@@ -1,6 +1,7 @@
 package cml
 
 import arrow.core.Either
+import arrow.core.flatMap
 import arrow.core.left
 import arrow.core.right
 import data.*
@@ -52,6 +53,8 @@ object Library {
         Pair("getAbilityMod") { c -> getAbilityMod(c) },
         Pair("getProficiency") { c -> getProficiency(c) },
         Pair("getArmor") { c -> getArmor(c) },
+        Pair("addAction") { c -> addAction(c) },
+        Pair("addSpell") { c -> addSpell(c) },
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()
@@ -82,7 +85,7 @@ object Library {
     }
 
     fun isLibType(name: String): Boolean = types.containsKey(name)
-    fun construct(name: String, pos: PosInfo): InstanceVal? = types[name]?.let { InstanceVal(it, pos) }
+    fun construct(name: String, pos: PosInfo): InstanceVal? = types[name]?.let { InstanceVal(it.construct(), pos) }
     fun addType(name: String, type: TopLevelDecl) {
         if(types.containsKey(name)) throw LibraryException.libTypeAlreadyExists(name)
         types[name] = type
@@ -107,5 +110,9 @@ object Library {
         } catch(ex: CMLException) {
             ex.left()
         }
+    }
+
+    fun <T> flatWithCharacter(c: Character, action: () -> Either<CMLException, T>): Either<CMLException, T> {
+        return withCharacter(c, action).flatMap { res -> res }
     }
 }

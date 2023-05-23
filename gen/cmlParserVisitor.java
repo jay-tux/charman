@@ -37,6 +37,13 @@ public interface cmlParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitTemplate(cmlParser.TemplateContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code freeFunDecl}
+	 * labeled alternative in {@link cmlParser#topLevel}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFreeFunDecl(cmlParser.FreeFunDeclContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link cmlParser#declSet}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -57,31 +64,25 @@ public interface cmlParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitFieldDecl(cmlParser.FieldDeclContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code noStmt}
-	 * labeled alternative in {@link cmlParser#stmtSet}.
+	 * Visit a parse tree produced by {@link cmlParser#stmtSet}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitNoStmt(cmlParser.NoStmtContext ctx);
+	T visitStmtSet(cmlParser.StmtSetContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code stmts}
-	 * labeled alternative in {@link cmlParser#stmtSet}.
+	 * Visit a parse tree produced by the {@code emptyArgDs}
+	 * labeled alternative in {@link cmlParser#argDs}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitStmts(cmlParser.StmtsContext ctx);
+	T visitEmptyArgDs(cmlParser.EmptyArgDsContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link cmlParser#argDs}.
+	 * Visit a parse tree produced by the {@code nonEmptyArgDs}
+	 * labeled alternative in {@link cmlParser#argDs}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitArgDs(cmlParser.ArgDsContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link cmlParser#argDsNonEmpty}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitArgDsNonEmpty(cmlParser.ArgDsNonEmptyContext ctx);
+	T visitNonEmptyArgDs(cmlParser.NonEmptyArgDsContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code exprStmt}
 	 * labeled alternative in {@link cmlParser#stmt}.
@@ -153,6 +154,27 @@ public interface cmlParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitReturnValStmt(cmlParser.ReturnValStmtContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code indexExpr}
+	 * labeled alternative in {@link cmlParser#varRef}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitIndexExpr(cmlParser.IndexExprContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code varName}
+	 * labeled alternative in {@link cmlParser#varRef}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitVarName(cmlParser.VarNameContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code fieldExpr}
+	 * labeled alternative in {@link cmlParser#varRef}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFieldExpr(cmlParser.FieldExprContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code addSubExpr}
 	 * labeled alternative in {@link cmlParser#expr}.
 	 * @param ctx the parse tree
@@ -181,12 +203,12 @@ public interface cmlParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitObjCallExpr(cmlParser.ObjCallExprContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code fieldExpr}
+	 * Visit a parse tree produced by the {@code diceLit}
 	 * labeled alternative in {@link cmlParser#expr}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitFieldExpr(cmlParser.FieldExprContext ctx);
+	T visitDiceLit(cmlParser.DiceLitContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code parenExpr}
 	 * labeled alternative in {@link cmlParser#expr}.
@@ -201,13 +223,6 @@ public interface cmlParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitBitwiseExpr(cmlParser.BitwiseExprContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code indexExpr}
-	 * labeled alternative in {@link cmlParser#expr}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitIndexExpr(cmlParser.IndexExprContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code stringLit}
 	 * labeled alternative in {@link cmlParser#expr}.
@@ -236,6 +251,13 @@ public interface cmlParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitUnaryExpr(cmlParser.UnaryExprContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code floatLit}
+	 * labeled alternative in {@link cmlParser#expr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFloatLit(cmlParser.FloatLitContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code ternaryExpr}
 	 * labeled alternative in {@link cmlParser#expr}.
@@ -321,25 +343,43 @@ public interface cmlParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCompareExpr(cmlParser.CompareExprContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link cmlParser#kvpList}.
+	 * Visit a parse tree produced by the {@code emptyKvp}
+	 * labeled alternative in {@link cmlParser#kvpList}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitKvpList(cmlParser.KvpListContext ctx);
+	T visitEmptyKvp(cmlParser.EmptyKvpContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link cmlParser#nonEmptyKvp}.
+	 * Visit a parse tree produced by the {@code nonEmptyKvp}
+	 * labeled alternative in {@link cmlParser#kvpList}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitNonEmptyKvp(cmlParser.NonEmptyKvpContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link cmlParser#argsList}.
+	 * Visit a parse tree produced by the {@code assignKvp}
+	 * labeled alternative in {@link cmlParser#kvp}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitArgsList(cmlParser.ArgsListContext ctx);
+	T visitAssignKvp(cmlParser.AssignKvpContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link cmlParser#nonEmptyArgs}.
+	 * Visit a parse tree produced by the {@code colonKvp}
+	 * labeled alternative in {@link cmlParser#kvp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitColonKvp(cmlParser.ColonKvpContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code emptyArgs}
+	 * labeled alternative in {@link cmlParser#argsList}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitEmptyArgs(cmlParser.EmptyArgsContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code nonEmptyArgs}
+	 * labeled alternative in {@link cmlParser#argsList}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */

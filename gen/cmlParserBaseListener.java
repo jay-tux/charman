@@ -64,6 +64,18 @@ public class cmlParserBaseListener implements cmlParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterFreeFunDecl(cmlParser.FreeFunDeclContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitFreeFunDecl(cmlParser.FreeFunDeclContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterDeclSet(cmlParser.DeclSetContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -100,49 +112,37 @@ public class cmlParserBaseListener implements cmlParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterNoStmt(cmlParser.NoStmtContext ctx) { }
+	@Override public void enterStmtSet(cmlParser.StmtSetContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitNoStmt(cmlParser.NoStmtContext ctx) { }
+	@Override public void exitStmtSet(cmlParser.StmtSetContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterStmts(cmlParser.StmtsContext ctx) { }
+	@Override public void enterEmptyArgDs(cmlParser.EmptyArgDsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitStmts(cmlParser.StmtsContext ctx) { }
+	@Override public void exitEmptyArgDs(cmlParser.EmptyArgDsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterArgDs(cmlParser.ArgDsContext ctx) { }
+	@Override public void enterNonEmptyArgDs(cmlParser.NonEmptyArgDsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitArgDs(cmlParser.ArgDsContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterArgDsNonEmpty(cmlParser.ArgDsNonEmptyContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitArgDsNonEmpty(cmlParser.ArgDsNonEmptyContext ctx) { }
+	@Override public void exitNonEmptyArgDs(cmlParser.NonEmptyArgDsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -268,6 +268,42 @@ public class cmlParserBaseListener implements cmlParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterIndexExpr(cmlParser.IndexExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitIndexExpr(cmlParser.IndexExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterVarName(cmlParser.VarNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitVarName(cmlParser.VarNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterFieldExpr(cmlParser.FieldExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitFieldExpr(cmlParser.FieldExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterAddSubExpr(cmlParser.AddSubExprContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -316,13 +352,13 @@ public class cmlParserBaseListener implements cmlParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterFieldExpr(cmlParser.FieldExprContext ctx) { }
+	@Override public void enterDiceLit(cmlParser.DiceLitContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitFieldExpr(cmlParser.FieldExprContext ctx) { }
+	@Override public void exitDiceLit(cmlParser.DiceLitContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -347,18 +383,6 @@ public class cmlParserBaseListener implements cmlParserListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitBitwiseExpr(cmlParser.BitwiseExprContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterIndexExpr(cmlParser.IndexExprContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitIndexExpr(cmlParser.IndexExprContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -407,6 +431,18 @@ public class cmlParserBaseListener implements cmlParserListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitUnaryExpr(cmlParser.UnaryExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterFloatLit(cmlParser.FloatLitContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitFloatLit(cmlParser.FloatLitContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -556,13 +592,13 @@ public class cmlParserBaseListener implements cmlParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterKvpList(cmlParser.KvpListContext ctx) { }
+	@Override public void enterEmptyKvp(cmlParser.EmptyKvpContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitKvpList(cmlParser.KvpListContext ctx) { }
+	@Override public void exitEmptyKvp(cmlParser.EmptyKvpContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -580,13 +616,37 @@ public class cmlParserBaseListener implements cmlParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterArgsList(cmlParser.ArgsListContext ctx) { }
+	@Override public void enterAssignKvp(cmlParser.AssignKvpContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitArgsList(cmlParser.ArgsListContext ctx) { }
+	@Override public void exitAssignKvp(cmlParser.AssignKvpContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterColonKvp(cmlParser.ColonKvpContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitColonKvp(cmlParser.ColonKvpContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterEmptyArgs(cmlParser.EmptyArgsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitEmptyArgs(cmlParser.EmptyArgsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

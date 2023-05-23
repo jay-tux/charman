@@ -40,6 +40,8 @@ INSTANCE:       'instance';
 TEMPLATE:       'template';
 
 INT:            [1-9][0-9]*|'0';
+FLOAT:          INT'.'INT;
+DICE_LIT:       INT('d'|'D')INT;
 IDENT:          [a-zA-Z_][a-zA-Z0-9_]*;
 PLACEHOLDER:    '<'IDENT'>';
 STRING_LIT:     '"'~["]*'"';

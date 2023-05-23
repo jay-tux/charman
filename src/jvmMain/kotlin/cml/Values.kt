@@ -29,6 +29,13 @@ class IntVal(value: Int, pos: PosInfo) : BaseValue<Int>(value, pos) {
     }
     override fun copy(): Value = IntVal(value, pos)
 }
+class FloatVal(value: Float, pos: PosInfo) : BaseValue<Float>(value, pos) {
+    override fun repr(): String = "$value"
+    override fun equals(other: Any?): Boolean {
+        return if(other is FloatVal) value == other.value else false
+    }
+    override fun copy(): Value = FloatVal(value, pos)
+}
 class StringVal(value: String, pos: PosInfo): BaseValue<String>(value, pos){
     override fun repr(): String = value
     override fun equals(other: Any?): Boolean {
@@ -85,7 +92,6 @@ class VoidVal(pos: PosInfo): Value(pos) {
 }
 class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
-    // TODO: override equals, hashCode
     override fun copy(): Value = InstanceVal(type.construct(), pos)
 
     override fun equals(other: Any?): Boolean {
@@ -123,6 +129,7 @@ class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
 fun typeName(v: Value): String = when(v) {
     is BoolVal -> "bool"
     is IntVal -> "int"
+    is FloatVal -> "float"
     is StringVal -> "string"
     is ListVal -> "list"
     is DictVal -> "dict"
@@ -140,6 +147,11 @@ class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos
 
     init {
         if(v is VoidVal) throw CMLException.voidVarException(name, declPos)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if(other !is Variable) return false
+        return name == other.name && value == other.value && isImmutable == other.isImmutable
     }
 
     fun safeOverwrite(v: Value, pos: PosInfo) {
@@ -198,7 +210,10 @@ class ExecEnvironment private constructor(
 
     fun isInThisEnv(name: String) = variables.containsKey(name)
     fun isInEnv(name: String): Boolean = isInThisEnv(name) || (parent?.isInEnv(name) ?: false)
+    fun containing(name: String): ExecEnvironment? = if(variables.containsKey(name)) this else parent?.containing(name)
     fun getVar(name: String): Variable? = variables[name] ?: parent?.getVar(name)
+    fun vars() = variables.keys
+    fun log() = variables.map { "${it.key} = ${it.value.value.repr()}" }.joinToString(", ")
 
     fun isFunction(name: String): Boolean =
         StdLib.isStd(name) || Library.isLibFunc(name) || functions.containsKey(name)
@@ -211,16 +226,18 @@ class ExecEnvironment private constructor(
         variables[name] = Variable(name, value, varsAreImmutable, currPos)
     }
 
-    fun copy(): ExecEnvironment {
+    fun copy(useFuns: Map<String, FunDecl>): ExecEnvironment {
         if(parent != null) throw CMLException.internalCopyExecEnv()
-        val res = ExecEnvironment(functions)
+        val res = ExecEnvironment(useFuns)
         res.varsAreImmutable = varsAreImmutable
         res.isInLoop = isInLoop
         res.hitBreak = hitBreak
         res.hitReturn = hitReturn
         res.returnValue = returnValue
         res.variables.clear()
-        variables.mapValuesTo(res.variables) { (_, v) -> v.copy() }
+        variables.forEach { (varName, varVal) ->
+            res.variables[varName] = varVal.copy()
+        }
         return res
     }
 

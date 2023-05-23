@@ -23,12 +23,12 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
 
         fun typeError(expected: String, got: Value, pos: PosInfo): CMLException {
             val gotT = typeName(got)
-            return CMLException("Type error: expected a value of type $expected, but got $gotT at $pos")
+            return CMLException("Type error: expected a value of type $expected, but got $gotT (constructed at ${got.pos}) at $pos")
         }
 
         fun typeError(desc: String, expected: String, got: Value, pos: PosInfo): CMLException {
             val gotT = typeName(got)
-            return CMLException("Type error: expected $desc to be a value of type $expected, but got $gotT at $pos")
+            return CMLException("Type error: expected $desc to be a value of type $expected, but got $gotT (constructed at ${got.pos}) at $pos")
         }
 
         fun invalidBreak(pos: PosInfo): CMLException = CMLException("Break statements can only be used in loops (at $pos).")
@@ -46,8 +46,8 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
         fun evaluatePlaceholder(name: String, pos: PosInfo): CMLException =
             CMLException("Attempt to evaluate a non-instantiated placeholder `$name' at $pos")
 
-        fun nonObjectVar(field: String, pos: PosInfo): CMLException =
-            CMLException("Attempt to access field or member function `$field' on a non-object value at $pos")
+        fun nonObjectVar(field: String, v: Value, pos: PosInfo): CMLException =
+            CMLException("Attempt to access field or member function `$field' on a non-object value of type `${typeName(v)}' at $pos")
 
         fun invalidField(type: String, field: String, pos: PosInfo): CMLException =
             CMLException("Type `$type' does not have a field named `$field' at $pos")
@@ -65,7 +65,7 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
             CMLException("Key `$keyRepr' is not a valid key for this dict value at $pos")
 
         fun invalidMemberFunction(type: String, func: String, pos: PosInfo): CMLException =
-            CMLException("Type `$type' is not a member function named `$func' at $pos")
+            CMLException("Type `$type' does not have a member function named `$func' at $pos")
 
         fun assignToArrayIndex(pos: PosInfo): CMLException =
             CMLException("Assigning to values in a list is not supported at $pos")
@@ -87,12 +87,12 @@ object ExecutionStack {
     fun push(pos: PosInfo) { stack.add(pos) }
     fun pop() { stack.removeLast() }
 
-    fun formatError(msg: String): String {
+    fun formatError(msg: String, clearAfter: Boolean = true): String {
         var res = "$msg\n"
         stack.fastForEachReversed {
             res += "    at $it\n"
         }
-        clearStack()
+        if(clearAfter) clearStack()
         return res
     }
 

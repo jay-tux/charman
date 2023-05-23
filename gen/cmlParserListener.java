@@ -53,6 +53,18 @@ public interface cmlParserListener extends ParseTreeListener {
 	 */
 	void exitTemplate(cmlParser.TemplateContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code freeFunDecl}
+	 * labeled alternative in {@link cmlParser#topLevel}.
+	 * @param ctx the parse tree
+	 */
+	void enterFreeFunDecl(cmlParser.FreeFunDeclContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code freeFunDecl}
+	 * labeled alternative in {@link cmlParser#topLevel}.
+	 * @param ctx the parse tree
+	 */
+	void exitFreeFunDecl(cmlParser.FreeFunDeclContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link cmlParser#declSet}.
 	 * @param ctx the parse tree
 	 */
@@ -87,49 +99,39 @@ public interface cmlParserListener extends ParseTreeListener {
 	 */
 	void exitFieldDecl(cmlParser.FieldDeclContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code noStmt}
-	 * labeled alternative in {@link cmlParser#stmtSet}.
+	 * Enter a parse tree produced by {@link cmlParser#stmtSet}.
 	 * @param ctx the parse tree
 	 */
-	void enterNoStmt(cmlParser.NoStmtContext ctx);
+	void enterStmtSet(cmlParser.StmtSetContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code noStmt}
-	 * labeled alternative in {@link cmlParser#stmtSet}.
+	 * Exit a parse tree produced by {@link cmlParser#stmtSet}.
 	 * @param ctx the parse tree
 	 */
-	void exitNoStmt(cmlParser.NoStmtContext ctx);
+	void exitStmtSet(cmlParser.StmtSetContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code stmts}
-	 * labeled alternative in {@link cmlParser#stmtSet}.
+	 * Enter a parse tree produced by the {@code emptyArgDs}
+	 * labeled alternative in {@link cmlParser#argDs}.
 	 * @param ctx the parse tree
 	 */
-	void enterStmts(cmlParser.StmtsContext ctx);
+	void enterEmptyArgDs(cmlParser.EmptyArgDsContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code stmts}
-	 * labeled alternative in {@link cmlParser#stmtSet}.
+	 * Exit a parse tree produced by the {@code emptyArgDs}
+	 * labeled alternative in {@link cmlParser#argDs}.
 	 * @param ctx the parse tree
 	 */
-	void exitStmts(cmlParser.StmtsContext ctx);
+	void exitEmptyArgDs(cmlParser.EmptyArgDsContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link cmlParser#argDs}.
+	 * Enter a parse tree produced by the {@code nonEmptyArgDs}
+	 * labeled alternative in {@link cmlParser#argDs}.
 	 * @param ctx the parse tree
 	 */
-	void enterArgDs(cmlParser.ArgDsContext ctx);
+	void enterNonEmptyArgDs(cmlParser.NonEmptyArgDsContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link cmlParser#argDs}.
+	 * Exit a parse tree produced by the {@code nonEmptyArgDs}
+	 * labeled alternative in {@link cmlParser#argDs}.
 	 * @param ctx the parse tree
 	 */
-	void exitArgDs(cmlParser.ArgDsContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link cmlParser#argDsNonEmpty}.
-	 * @param ctx the parse tree
-	 */
-	void enterArgDsNonEmpty(cmlParser.ArgDsNonEmptyContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link cmlParser#argDsNonEmpty}.
-	 * @param ctx the parse tree
-	 */
-	void exitArgDsNonEmpty(cmlParser.ArgDsNonEmptyContext ctx);
+	void exitNonEmptyArgDs(cmlParser.NonEmptyArgDsContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code exprStmt}
 	 * labeled alternative in {@link cmlParser#stmt}.
@@ -251,6 +253,42 @@ public interface cmlParserListener extends ParseTreeListener {
 	 */
 	void exitReturnValStmt(cmlParser.ReturnValStmtContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code indexExpr}
+	 * labeled alternative in {@link cmlParser#varRef}.
+	 * @param ctx the parse tree
+	 */
+	void enterIndexExpr(cmlParser.IndexExprContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code indexExpr}
+	 * labeled alternative in {@link cmlParser#varRef}.
+	 * @param ctx the parse tree
+	 */
+	void exitIndexExpr(cmlParser.IndexExprContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code varName}
+	 * labeled alternative in {@link cmlParser#varRef}.
+	 * @param ctx the parse tree
+	 */
+	void enterVarName(cmlParser.VarNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code varName}
+	 * labeled alternative in {@link cmlParser#varRef}.
+	 * @param ctx the parse tree
+	 */
+	void exitVarName(cmlParser.VarNameContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code fieldExpr}
+	 * labeled alternative in {@link cmlParser#varRef}.
+	 * @param ctx the parse tree
+	 */
+	void enterFieldExpr(cmlParser.FieldExprContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code fieldExpr}
+	 * labeled alternative in {@link cmlParser#varRef}.
+	 * @param ctx the parse tree
+	 */
+	void exitFieldExpr(cmlParser.FieldExprContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code addSubExpr}
 	 * labeled alternative in {@link cmlParser#expr}.
 	 * @param ctx the parse tree
@@ -299,17 +337,17 @@ public interface cmlParserListener extends ParseTreeListener {
 	 */
 	void exitObjCallExpr(cmlParser.ObjCallExprContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code fieldExpr}
+	 * Enter a parse tree produced by the {@code diceLit}
 	 * labeled alternative in {@link cmlParser#expr}.
 	 * @param ctx the parse tree
 	 */
-	void enterFieldExpr(cmlParser.FieldExprContext ctx);
+	void enterDiceLit(cmlParser.DiceLitContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code fieldExpr}
+	 * Exit a parse tree produced by the {@code diceLit}
 	 * labeled alternative in {@link cmlParser#expr}.
 	 * @param ctx the parse tree
 	 */
-	void exitFieldExpr(cmlParser.FieldExprContext ctx);
+	void exitDiceLit(cmlParser.DiceLitContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code parenExpr}
 	 * labeled alternative in {@link cmlParser#expr}.
@@ -334,18 +372,6 @@ public interface cmlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitBitwiseExpr(cmlParser.BitwiseExprContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code indexExpr}
-	 * labeled alternative in {@link cmlParser#expr}.
-	 * @param ctx the parse tree
-	 */
-	void enterIndexExpr(cmlParser.IndexExprContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code indexExpr}
-	 * labeled alternative in {@link cmlParser#expr}.
-	 * @param ctx the parse tree
-	 */
-	void exitIndexExpr(cmlParser.IndexExprContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code stringLit}
 	 * labeled alternative in {@link cmlParser#expr}.
@@ -394,6 +420,18 @@ public interface cmlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitUnaryExpr(cmlParser.UnaryExprContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code floatLit}
+	 * labeled alternative in {@link cmlParser#expr}.
+	 * @param ctx the parse tree
+	 */
+	void enterFloatLit(cmlParser.FloatLitContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code floatLit}
+	 * labeled alternative in {@link cmlParser#expr}.
+	 * @param ctx the parse tree
+	 */
+	void exitFloatLit(cmlParser.FloatLitContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code ternaryExpr}
 	 * labeled alternative in {@link cmlParser#expr}.
@@ -539,42 +577,74 @@ public interface cmlParserListener extends ParseTreeListener {
 	 */
 	void exitCompareExpr(cmlParser.CompareExprContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link cmlParser#kvpList}.
+	 * Enter a parse tree produced by the {@code emptyKvp}
+	 * labeled alternative in {@link cmlParser#kvpList}.
 	 * @param ctx the parse tree
 	 */
-	void enterKvpList(cmlParser.KvpListContext ctx);
+	void enterEmptyKvp(cmlParser.EmptyKvpContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link cmlParser#kvpList}.
+	 * Exit a parse tree produced by the {@code emptyKvp}
+	 * labeled alternative in {@link cmlParser#kvpList}.
 	 * @param ctx the parse tree
 	 */
-	void exitKvpList(cmlParser.KvpListContext ctx);
+	void exitEmptyKvp(cmlParser.EmptyKvpContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link cmlParser#nonEmptyKvp}.
+	 * Enter a parse tree produced by the {@code nonEmptyKvp}
+	 * labeled alternative in {@link cmlParser#kvpList}.
 	 * @param ctx the parse tree
 	 */
 	void enterNonEmptyKvp(cmlParser.NonEmptyKvpContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link cmlParser#nonEmptyKvp}.
+	 * Exit a parse tree produced by the {@code nonEmptyKvp}
+	 * labeled alternative in {@link cmlParser#kvpList}.
 	 * @param ctx the parse tree
 	 */
 	void exitNonEmptyKvp(cmlParser.NonEmptyKvpContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link cmlParser#argsList}.
+	 * Enter a parse tree produced by the {@code assignKvp}
+	 * labeled alternative in {@link cmlParser#kvp}.
 	 * @param ctx the parse tree
 	 */
-	void enterArgsList(cmlParser.ArgsListContext ctx);
+	void enterAssignKvp(cmlParser.AssignKvpContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link cmlParser#argsList}.
+	 * Exit a parse tree produced by the {@code assignKvp}
+	 * labeled alternative in {@link cmlParser#kvp}.
 	 * @param ctx the parse tree
 	 */
-	void exitArgsList(cmlParser.ArgsListContext ctx);
+	void exitAssignKvp(cmlParser.AssignKvpContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link cmlParser#nonEmptyArgs}.
+	 * Enter a parse tree produced by the {@code colonKvp}
+	 * labeled alternative in {@link cmlParser#kvp}.
+	 * @param ctx the parse tree
+	 */
+	void enterColonKvp(cmlParser.ColonKvpContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code colonKvp}
+	 * labeled alternative in {@link cmlParser#kvp}.
+	 * @param ctx the parse tree
+	 */
+	void exitColonKvp(cmlParser.ColonKvpContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code emptyArgs}
+	 * labeled alternative in {@link cmlParser#argsList}.
+	 * @param ctx the parse tree
+	 */
+	void enterEmptyArgs(cmlParser.EmptyArgsContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code emptyArgs}
+	 * labeled alternative in {@link cmlParser#argsList}.
+	 * @param ctx the parse tree
+	 */
+	void exitEmptyArgs(cmlParser.EmptyArgsContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code nonEmptyArgs}
+	 * labeled alternative in {@link cmlParser#argsList}.
 	 * @param ctx the parse tree
 	 */
 	void enterNonEmptyArgs(cmlParser.NonEmptyArgsContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link cmlParser#nonEmptyArgs}.
+	 * Exit a parse tree produced by the {@code nonEmptyArgs}
+	 * labeled alternative in {@link cmlParser#argsList}.
 	 * @param ctx the parse tree
 	 */
 	void exitNonEmptyArgs(cmlParser.NonEmptyArgsContext ctx);

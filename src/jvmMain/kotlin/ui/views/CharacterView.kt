@@ -1,26 +1,20 @@
 package ui.views
 
 import CMLOut
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import arrow.core.flatMap
 import cml.CMLException
-import cml.InstanceVal
-import cml.Library
-import data.getName
-import data.getString
-import data.getVerifyInst
 import ui.widgets.*
 import uiData.Character
 import withSign
@@ -62,7 +56,7 @@ fun RowScope.sheetTopRow(data: Character) {
             }
             items(data.classes.toList()) { (cl, lvl) ->
                 indented {
-                    Text("$cl (level ${lvl.second})")
+                    Text("$cl (level ${lvl.level})")
                 }
             }
         }
@@ -82,7 +76,7 @@ fun RowScope.sheetTopRow(data: Character) {
 fun RowScope.sheetAbilities(data: Character) {
     LazyScrollColumn(Modifier.weight(0.065f)) {
         items(data.abilities.toList()) { (ab, stat) ->
-            AbilityScoreCard(ab, stat.third, data.abilityMod(stat.second))
+            AbilityScoreCard(ab, stat.score, data.abilityMod(stat.instance))
             Spacer(Modifier.height(10.dp))
         }
     }
@@ -91,38 +85,93 @@ fun RowScope.sheetAbilities(data: Character) {
 @Composable
 fun RowScope.sheetProficiencies(data: Character) {
     var insp by data.inspiration
+    val saveProf by data.saveMods
+    val skillProf by data.skillMods
 
     Column(Modifier.weight(0.265f)) {
         InspirationWidget(insp) { insp = it }
         IntStringCard(data.proficiency(), "Proficiency Bonus", true)
         Spacer(Modifier.weight(0.025f))
         LazyScrollColumn(Modifier.weight(0.25f)) {
-            items(data.abilities.toList()) { (_, abStat) ->
-                ModScoreCard(abStat.first, data.saveMod(abStat.second), data.hasSaveProf(abStat.second))
+            items(saveProf.toList()) { (name, stat) ->
+                ModScoreCard(name, stat.first, stat.second)
             }
         }
         Spacer(Modifier.weight(0.025f))
         LazyScrollColumn(Modifier.weight(0.55f)) {
-            items(Library.typesByKind("Skill").map { InstanceVal(it, Character.posRender) }) {
-                ModScoreCard(
-                    it.getName(Character.posRender).flatMap { name ->
-                        it.getVerifyInst("reliesOn", "Ability", Character.posRender).flatMap { abI ->
-                            abI.getString("abbrev", Character.posRender).map { ab ->
-                                "$name ($ab)"
-                            }
-                        }
-                    }.fold({ e -> CMLOut.addError(e.localizedMessage); "Invalid Skill" }, { v -> v }),
-                    data.skillMod(it),
-                    data.hasSkillProf(it)
-                )
+            items(skillProf.toList()) { (name, skill) ->
+                ModScoreCard("$name (${skill.third})", skill.first, skill.second)
+            }
+        }
+    }
+}
+
+enum class Tabs(val title: String) {
+    ACTIONS("Actions"), SPELLS("Spells"), TRAITS("Traits")
+}
+
+@Composable
+fun RowScope.sheetTraitsAndActions(data: Character) {
+    var currentTab by remember { mutableStateOf(Tabs.TRAITS) }
+
+    Column(Modifier.weight(0.43f)) {
+        LazyScrollRow(Modifier.height(45.dp)) {
+            items(Tabs.values().toList()) {
+                Button(
+                    { currentTab = it },
+                    modifier = Modifier.width(150.dp).fillMaxHeight(),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = if (currentTab == it) MaterialTheme.colors.onPrimary else MaterialTheme.colors.primary)
+                ) {
+                    Text(it.title)
+                }
+                Spacer(Modifier.width(5.dp))
+
+            }
+        }
+        Box(Modifier) {
+            when(currentTab) {
+                Tabs.ACTIONS -> sheetActionsPanel(data)
+                Tabs.SPELLS -> sheetSpellsPanel(data)
+                Tabs.TRAITS -> sheetTraitsPanel(data)
             }
         }
     }
 }
 
 @Composable
-fun RowScope.sheetTraitsAndActions(data: Character) {
-    LazyScrollColumn(Modifier.weight(0.43f)) {
+fun BoxScope.sheetActionsPanel(data: Character) {
+    LazyScrollColumn(Modifier.fillMaxSize()) {
+        items(data.actions.value) { action ->
+            Box(Modifier.clickable { /* signify to call action.renderFull(data) */ }) {
+                action.render(data)
+            }
+            Spacer(Modifier.height(5.dp))
+        }
+    }
+}
+
+@Composable
+fun BoxScope.sheetSpellsPanel(data: Character) {
+    LazyScrollColumn(Modifier.fillMaxSize()) {
+        items(data.spells.value) { spell ->
+            Row(Modifier.clickable { /* somehow signify we need a details pane */ }) {
+                Text("${spell.level}", Modifier.weight(0.05f).align(Alignment.CenterVertically))
+                Column(Modifier.weight(0.30f)) {
+                    Text(spell.name, fontWeight = FontWeight.Bold)
+                    Text(spell.source, fontStyle = FontStyle.Italic)
+                }
+                Text(spell.castingTime, Modifier.weight(0.20f).align(Alignment.CenterVertically))
+                Text(spell.duration, Modifier.weight(0.25f).align(Alignment.CenterVertically))
+                Text(spell.components.joinToString(), Modifier.weight(0.20f).align(Alignment.CenterVertically))
+            }
+            Spacer(Modifier.height(5.dp))
+        }
+    }
+}
+
+@Composable
+fun BoxScope.sheetTraitsPanel(data: Character) {
+    LazyScrollColumn(Modifier.fillMaxSize()) {
         items(data.racialTraits.toList()) { (name, desc) ->
             TraitCard(name, data.race.first, desc.first)
             Spacer(Modifier.height(7.dp))
@@ -137,15 +186,10 @@ fun RowScope.sheetTraitsAndActions(data: Character) {
 
 @Composable
 fun ColumnScope.sheetPassivePerception(data: Character) {
-    val perc = remember { Library.types()["Perception"]?.let { InstanceVal(it, Character.posRender) } }
+    val skills by data.skillMods
+    if(skills["Perception"] == null) CMLOut.addWarning("Skill Perception does not exist")
     Column(Modifier.weight(0.25f)) {
-        if(perc == null) {
-            CMLOut.addWarning("Skill Perception does not exist.")
-            Text("Could not get passive Perception", color = MaterialTheme.colors.error)
-        }
-        else {
-            IntStringCard(data.passiveSkill(perc), "Passive Wisdom (Perception)")
-        }
+        IntStringCard(10 + (skills["Perception"]?.first ?: 0), "Passive Wisdom (Perception)")
     }
 }
 
@@ -204,8 +248,17 @@ fun ColumnScope.sheetCentralNumbers(data: Character) {
 
 @Composable
 fun ColumnScope.sheetInventory(data: Character) {
-    Box(Modifier.weight(0.6f)) {
-        Text("Inventory")
+    val inventory by data.inventory
+    Column(Modifier.weight(0.6f)) {
+        Text("Inventory", style = MaterialTheme.typography.h6)
+        LazyScrollColumn {
+            items(inventory) { item ->
+                Row {
+                    Text(item.name, Modifier.weight(0.6f))
+                    Text("${item.weight} lbs.", Modifier.weight(0.4f))
+                }
+            }
+        }
     }
 }
 

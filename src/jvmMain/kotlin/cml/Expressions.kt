@@ -32,7 +32,7 @@ class LiteralExpr(private val literal: Value, pos: PosInfo): Expression(pos) {
         LiteralExpr(literal, pos)
 }
 
-class VarExpr(private val ident: String, pos: PosInfo): VarRef(pos) {
+class VarExpr(val ident: String, pos: PosInfo): VarRef(pos) {
     override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
         return ctxt.getVar(ident) ?: throw CMLException.undeclaredVar(ident, pos)
     }
@@ -43,7 +43,9 @@ class VarExpr(private val ident: String, pos: PosInfo): VarRef(pos) {
 class FieldExpr(val base: VarRef, val name: String, pos: PosInfo): VarRef(pos) {
     override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
         val baseE = base.evaluateToRef(ctxt)
-        if(baseE.value !is InstanceVal) throw CMLException.nonObjectVar(name, pos)
+        if(baseE.value !is InstanceVal) {
+            throw CMLException.nonObjectVar(name, baseE.value, pos)
+        }
         return (baseE.value as InstanceVal).type.getFieldAsVar(name)
             ?: throw CMLException.invalidField((baseE.value as InstanceVal).type.name, name, pos)
     }
@@ -319,7 +321,7 @@ class ObjFuncCallExpr(
 ): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         val objE = obj.evaluate(ctxt)
-        if(objE !is InstanceVal) throw CMLException.nonObjectVar(name, pos)
+        if(objE !is InstanceVal) throw CMLException.nonObjectVar(name, objE, pos)
 
         val argsE = args.map { it.evaluate(ctxt) }
         return objE.type.functions[name]?.call(argsE, pos) ?: throw CMLException.invalidMemberFunction(objE.type.name, name, pos)

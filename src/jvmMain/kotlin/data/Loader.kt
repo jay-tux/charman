@@ -3,6 +3,8 @@ package data
 import CMLOut
 import arrow.core.Either
 import arrow.core.flatMap
+import arrow.core.left
+import arrow.core.right
 import ca.gosyer.appdirs.AppDirs
 import cml.*
 import com.jaytux.cml_parser.CMLLexer
@@ -11,9 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import mapOrEither
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-import uiData.Character
-import uiData.CharacterData
-import uiData.UIData
+import uiData.*
 import java.io.FileInputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -71,6 +71,9 @@ object Scripts {
             }
 
             try {
+                ast.freeFunctions.forEach {
+                    Library.addFunction(it.name, it)
+                }
                 ast.declarations.forEach {
                     Library.addType(it.name, it)
                 }
@@ -182,16 +185,25 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                         cls.mapOrEither { (clsI, lvlI) ->
                             clsI.ifInstVerifyGetName("Class", posInit).flatMap { (classN, classI) ->
                                 lvlI.requireInt(posInit).map { lvl ->
-                                    Pair(classN, Pair(classI, lvl.value))
+                                    Pair(classN, ClassDesc(classI, lvl.value, false))
                                 }
                             }
                         }.map { v -> v.toMutableMap() }.flatMap { classes ->
+                            valid.getInst("primary", "Class", posInit).flatMap { cls ->
+                                cls.getName(posInit).flatMap { initN ->
+                                    classes[initN]?.let {
+                                        classes[initN] = ClassDesc(it.cls, it.level, true)
+                                        Unit.right()
+                                    } ?: CMLException("Primary class is not one of the character's classes at ${cls.pos}").left()
+                                }.map { classes }
+                            }
+                        }.flatMap { classes ->
                             valid.getDict("abilities", posInit).flatMap { abs ->
                                 abs.mapOrEither { (ab, score) ->
                                     ab.ifInstVerifyGetString("abbrev", "Ability", posInit).flatMap { (abA, abI) ->
                                         abI.getName(posInit).flatMap { abN ->
                                             score.requireInt(posInit).map { scoreV ->
-                                                Pair(abA, Triple(abN, abI, scoreV.value))
+                                                Pair(abA, AbilityDesc(abN, abI, scoreV.value))
                                             }
                                         }
                                     }
@@ -249,7 +261,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
             }
         }.flatMap { (char, choices) ->
             Library.withCharacter(char) {
-                val level = IntVal(char.classes.values.sumOf { it.second }, posRest)
+                val level = IntVal(char.classes.values.sumOf { it.level }, posRest)
                 char.race.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 val raceUpd = mutableListOf<Triple<String, String, Pair<String, InstanceVal>>>()
                 char.racialTraits.forEach { (k, v) ->
@@ -268,10 +280,10 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
 
                 val altMap = mutableMapOf<String, MutableMap<Value, Value>>()
                 char.classes.forEach { e ->
-                    e.value.first.type.functions["onRestore"]?.call(
+                    e.value.cls.type.functions["onRestore"]?.call(
                         choices.classesChoices[e.key]?.let {
                             altMap[e.key] = it
-                            listOf(DictVal(it, posRest), IntVal(e.value.second, posRest))
+                            listOf(DictVal(it, posRest), IntVal(e.value.level, posRest), BoolVal(e.value.isPrimary, posRest))
                         } ?: throw CMLException.keyError(e.key, posRest),
                         posRest
                     )
@@ -309,6 +321,37 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 }.map { char.deathSaves.value = it }
                 .map { char.onUpdate() }
                 .map { char }
+        }.flatMap { char ->
+            valid.getList("inventory", posInit).flatMap { inv ->
+                inv.value.mapOrEither { item ->
+                    item.ifInstVerifyGetName("Item", posInit).flatMap { (name, inst) ->
+                        inst.getFloat("weight", posInit).flatMap { weight ->
+                            inst.getList("actions", posInit).flatMap { actions ->
+                                Library.flatWithCharacter(char) {
+                                    actions.value.mapOrEither {
+                                        it.ifInstVerify("Action", posInit).map { a ->
+                                            addAction(char)(listOf(a), posInit)
+                                            a
+                                        }
+                                    }
+                                }
+                            }.flatMap { actions ->
+                                inst.getList("additionalTraits", posInit).flatMap { traits ->
+                                    traits.value.mapOrEither {
+                                        it.requireInstance(posInit)
+                                    }
+                                }.map { traits ->
+                                    ItemDesc(name, weight, actions, traits)
+                                }
+                            }
+                        }
+                    }
+                }
+            }.map {
+                char.inventory.value = it
+                char.onUpdate()
+                char
+            }
         }
     }
         .mapLeft {

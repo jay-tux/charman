@@ -1,7 +1,6 @@
 package cml
 
 import com.jaytux.cml_parser.CMLBaseVisitor
-import com.jaytux.cml_parser.CMLLexer
 import com.jaytux.cml_parser.CMLParser
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.ParseTree
@@ -42,6 +41,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
                     is TopLevelDecl -> res.declarations.add(v)
                     is TemplateDecl -> res.templates.add(v)
                     is InstanceDecl -> res.instances.add(v)
+                    is FunDecl -> res.freeFunctions.add(v)
                     else -> throw AstException.invalidNode(v.javaClass)
                 }
             }
@@ -96,6 +96,19 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     override fun visitBoolLit(ctx: CMLParser.BoolLitContext?): AstNode {
         return nonNull(ctx, { it.value }) {
             LiteralExpr(BoolVal(it.text == "true", it.getPos(file)), it.getPos(file))
+        }
+    }
+
+    override fun visitFloatLit(ctx: CMLParser.FloatLitContext?): AstNode {
+        return nonNull(ctx, { it.value }) {
+            LiteralExpr(FloatVal(it.text.toFloat(), it.getPos(file)), it.getPos(file))
+        }
+    }
+
+    override fun visitDiceLit(ctx: CMLParser.DiceLitContext?): AstNode {
+        return nonNull(ctx, { it.value }) {
+            val fields = it.text.split("[dD]".toRegex())
+            LiteralExpr(DiceVal(fields[0].toInt(), fields[1].toInt(), it.getPos(file)), it.getPos(file))
         }
     }
 
@@ -452,13 +465,8 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         return nonNull(ctx) {
             val res = StmtSet(it.start.getPos(file))
             res.contained.addAll(it.stmt().filterNotNull().map { s ->
-                val v = visit(s)
-                when(v) {
+                when(val v = visit(s)) {
                     is Statement -> v
-                    null -> {
-                        System.err.println("visit(s) == null at ${s.start.getPos(file)}, text: `${s.text}`, token: ${CMLLexer.VOCABULARY.getDisplayName(s.start.type)}")
-                        null
-                    }
                     else -> null
                 }
             }.filterNotNull())
@@ -468,6 +476,19 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     //endregion
 
     // region Declarations
+    override fun visitFreeFunDecl(ctx: CMLParser.FreeFunDeclContext?): AstNode {
+        return nonNull(ctx?.args) { args ->
+            nonNull(ctx?.body) { body ->
+                FunDecl(
+                    name = nonNull(ctx?.name?.text),
+                    argNames = (visit(args) as ArgsDecl).names,
+                    body = (visit(body) as StmtSet).contained,
+                    declPos = nonNull(ctx?.start?.getPos(file))
+                )
+            }
+        }
+    }
+
     override fun visitFunDecl(ctx: CMLParser.FunDeclContext?): AstNode {
         return nonNull(ctx?.args) { args ->
             nonNull(ctx?.body) { body ->

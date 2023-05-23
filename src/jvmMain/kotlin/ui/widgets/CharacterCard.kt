@@ -50,7 +50,7 @@ fun CharacterCard(
                     }
                 }) { value ->
                     Text(value.name)
-                    Text("Level ${value.classes.values.sumOf { it.second }} ${value.race.first}")
+                    Text("Level ${value.classes.values.sumOf { it.level }} ${value.race.first}")
                 }
             }
         }

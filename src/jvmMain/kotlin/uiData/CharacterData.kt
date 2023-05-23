@@ -16,17 +16,30 @@ import updateGet
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
+data class ClassDesc(val cls: InstanceVal, val level: Int, val isPrimary: Boolean)
+data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
+data class ItemDesc(val name: String, val weight: Float, val actions: List<InstanceVal>, val traits: List<InstanceVal>)
+data class SpellDesc(
+    val name: String, val school: String, val level: Int, val castingTime: String, val range: String,
+    val components: List<String>, val duration: String, val actions: List<InstanceVal>, val desc: String,
+    val source: String
+)
+
 class Character(
     var name: String,
     var race: Pair<String, InstanceVal>,
     var background: Pair<String, InstanceVal>,
-    val classes: MutableMap<String, Pair<InstanceVal, Int>>,
-    val abilities: MutableMap<String, Triple<String, InstanceVal, Int>>
+    val classes: MutableMap<String, ClassDesc>,
+    val abilities: MutableMap<String, AbilityDesc>
 ) {
     val classTraits = mutableMapOf<String, Triple<String, String, InstanceVal>>()
     val racialTraits = mutableMapOf<String, Pair<String, InstanceVal>>()
     val skillProficiencies = mutableListOf<InstanceVal>()
     val saveProficiencies = mutableListOf<InstanceVal>()
+
+    val saveMods = mutableStateOf(mapOf<String, Pair<Int, Boolean>>())
+    val skillMods = mutableStateOf(mapOf<String, Triple<Int, Boolean, String>>())
+
     val languages = mutableMapOf<String, InstanceVal>()
     val inspiration = mutableStateOf(false)
     val hp = mutableStateOf(0)
@@ -37,12 +50,15 @@ class Character(
     val ac = mutableStateOf(0)
     val initMod = mutableStateOf(0)
     val hitDice = mutableStateOf(mapOf<Int, Int>()) // (dice type, amount)
+    val inventory = mutableStateOf(listOf<ItemDesc>())
+    val spells = mutableStateOf(listOf<SpellDesc>())
+    val actions = mutableStateOf(listOf<Action>())
 
     private fun callOnAll(fn: String, args: List<Value> = listOf(), withResult: (Value) -> Unit) {
         Library.withCharacter(this) {
             race.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
             classes.forEach { (_, v) ->
-                v.first.type.functions[fn]?.call(args, posRender)?.let(withResult)
+                v.cls.type.functions[fn]?.call(args, posRender)?.let(withResult)
             }
             background.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
         }.mapLeft { CMLOut.addError(it.localizedMessage) }
@@ -79,9 +95,42 @@ class Character(
             }
         }
         hitDice.value = hitDiceM
+
+        val saveModsM = mutableMapOf<String, Pair<Int, Boolean>>()
+        abilities.forEach { (ab, v) ->
+            val mod = v.score.toMod()
+            if(saveProficiencies.contains(v.instance)) saveModsM[ab] = Pair(mod + proficiency(), true)
+            else saveModsM[ab] = Pair(mod, false)
+        }
+        saveMods.value = saveModsM
+
+        val skillModsM = mutableMapOf<String, Triple<Int, Boolean, String>>()
+        Library.typesByKind("Skill").forEach { decl ->
+            val name = decl.fields.getVar("name")
+            if(name == null) CMLOut.addWarning(CMLException.invalidField(decl.name, "name", posRender).localizedMessage)
+            else if(name.value !is StringVal) CMLOut.addWarning(CMLException.typeError("String", name.value, posRender).localizedMessage)
+            else {
+                val ability = decl.fields.getVar("reliesOn")
+                var mod = 0
+                var ab = "Invalid"
+                if(ability == null) CMLOut.addWarning(CMLException.invalidField(decl.name, "reliesOn", posRender).localizedMessage)
+                else {
+                    val tmp = abilities.entries.firstOrNull { it.value.instance == ability.value }
+                    if(tmp == null) CMLOut.addWarning(CMLException.invalidAbility(ability.name, posRender).localizedMessage)
+                    else {
+                        mod = tmp.value.score.toMod()
+                        ab = tmp.key
+                    }
+                }
+
+                if(skillProficiencies.contains(InstanceVal(decl, posRender))) skillModsM[(name.value as StringVal).value] = Triple(mod + proficiency(), true, ab)
+                else skillModsM[(name.value as StringVal).value] = Triple(mod, false, ab)
+            }
+        }
+        skillMods.value = skillModsM
     }
 
-    fun proficiency(): Int = when(classes.values.sumOf { it.second }) {
+    fun proficiency(): Int = when(classes.values.sumOf { it.level }) {
         in 1..4 -> 2
         in 5..8 -> 3
         in 9..12 -> 4
@@ -95,30 +144,13 @@ class Character(
 
     fun abilityMod(ab: InstanceVal): Int {
         return ab.getString("abbrev", posRender).flatMap {
-            abilities[it]?.third?.right() ?: return@flatMap CMLException.invalidAbility(it, posRender).left()
+            abilities[it]?.score?.right() ?: return@flatMap CMLException.invalidAbility(it, posRender).left()
         }.fold({ l -> CMLOut.addError(l.localizedMessage); 0 }, { r -> floor((r - 10) / 2.0f).roundToInt() })
     }
 
-    fun saveMod(ab: InstanceVal): Int {
-        var base = abilityMod(ab)
-        if(hasSaveProf(ab)) base += proficiency()
-        return base
+    fun saveDc(ab: InstanceVal): Int {
+        return 8 + proficiency() + abilityMod(ab)
     }
-
-    fun skillMod(ab: InstanceVal): Int {
-        return Library.withCharacter(this) {
-            when (val res = ab.type.functions["getMod"]?.call(
-                listOf(BoolVal(skillProficiencies.contains(ab), posRender)),
-                posRender
-            )) {
-                is IntVal -> res.value
-                null -> throw CMLException.invalidMemberFunction(ab.type.name, "getMod", posRender)
-                else -> throw CMLException.typeError("Int", res, posRender)
-            }
-        }.fold({ CMLOut.addError(it.localizedMessage); 0 }, { it })
-    }
-
-    fun passiveSkill(ab: InstanceVal) = 10 + skillMod(ab)
 
     companion object {
         val posRender = PosInfo("<runtime:character:ui>", 0, 0)
@@ -166,3 +198,5 @@ object CharacterData {
         return res
     }
 }
+
+fun Int.toMod() = (Math.floorDiv(this - 10, 2))

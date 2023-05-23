@@ -20,11 +20,17 @@ fun Value.requireInt(p: PosInfo): Either<CMLException, IntVal> =
 fun Value.requireString(p: PosInfo): Either<CMLException, String> =
     requires<StringVal>("String", p).map { it.value }
 
+fun Value.requireDice(p: PosInfo): Either<CMLException, DiceVal> =
+    requires<DiceVal>("Dice", p)
+
 fun Value.requireDict(p: PosInfo): Either<CMLException, MutableMap<Value, Value>> =
     requires<DictVal>("Dict", p).map { it.value }
 
 fun Value.requireList(p: PosInfo): Either<CMLException, List<Value>> =
     requires<ListVal>("List", p).map { it.value }
+
+fun Value.requireBool(p: PosInfo): Either<CMLException, BoolVal> =
+    requires<BoolVal>("Bool", p)
 
 fun Value.ifInstVerify(t: String, p: PosInfo): Either<CMLException, InstanceVal> =
     requireInstance(p).flatMap { it.verifyKind(t, p) }

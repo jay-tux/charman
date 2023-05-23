@@ -12,11 +12,11 @@ class FunDecl(
     val body: List<Statement>,
     declPos: PosInfo
 ) : AstNode(declPos) {
-    lateinit var parent: TopLevelDecl
+    var parent: TopLevelDecl? = null
     fun call(args: List<Value>, callSite: PosInfo): Value {
         if(argNames.size != args.size) throw CMLException.argCount(name, argNames.size, args.size, pos, callSite)
 
-        val baseEnv = parent.fields
+        val baseEnv = parent?.fields ?: ExecEnvironment(mapOf())
         val argEnv = ExecEnvironment.constVarEnv(baseEnv)
         argNames.zip(args).forEach { (n, v) ->
             // "declaration" of this "variable" is at top of function
@@ -38,6 +38,8 @@ class FunDecl(
     }
 
     fun argCount(): Int = argNames.size
+
+    fun copy() = FunDecl(name, argNames, body, pos)
 }
 
 open class TopLevelDecl(
@@ -60,7 +62,7 @@ open class TopLevelDecl(
 
     override fun equals(other: Any?): Boolean {
         if(other !is TopLevelDecl) return false
-        return kind == other.kind && name == other.name && functions == other.functions && fields == other.fields
+        return kind == other.kind && name == other.name && functions.keys == other.functions.keys && fields == other.fields
     }
 
     override fun hashCode(): Int = Tuple4(kind, name, functions, fields).hashCode()
@@ -68,17 +70,21 @@ open class TopLevelDecl(
     fun ready() {
         if(readied) return;
 
+        readied = true
         fieldsPre.forEach {
             fields.addVar(it.key, it.value.evaluate(fields), it.value.pos)
         }
-        readied = true
     }
 
     fun getField(field: String): Value? = getFieldAsVar(field)?.value
 
     fun getFieldAsVar(field: String): Variable? = fields.getVar(field)
 
-    fun construct() = TopLevelDecl(kind, name, functions, fields.copy(), pos)
+    fun construct(): TopLevelDecl {
+        if(!readied) ready()
+        val fns = functions.map { (fn, decl) -> Pair(fn, decl.copy()) }.associate { it }
+        return TopLevelDecl(kind, name, fns, fields.copy(fns), pos).also { it.functions.forEach{ (_, f) -> f.parent = it } }
+    }
 }
 
 class TemplateDecl(
@@ -117,4 +123,5 @@ class TLDeclSet(pos: PosInfo) : AstNode(pos) {
     val declarations = mutableListOf<TopLevelDecl>()
     val templates = mutableListOf<TemplateDecl>()
     val instances = mutableListOf<InstanceDecl>()
+    val freeFunctions = mutableListOf<FunDecl>()
 }
