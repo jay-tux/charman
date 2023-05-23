@@ -52,6 +52,7 @@ object Library {
         Pair("addLanguages") { c -> addLanguages(c) },
         Pair("addSkillProficiencies") { c -> addSkillProficiencies(c) },
         Pair("addSaveProficiencies") { c -> addSaveProficiencies(c) },
+        Pair("addItemProficiencies") { c -> addItemProficiencies(c) },
         Pair("addClassTraits") { c -> addClassTraits(c) },
         Pair("getAbilityMod") { c -> getAbilityMod(c) },
         Pair("getProficiency") { c -> getProficiency(c) },

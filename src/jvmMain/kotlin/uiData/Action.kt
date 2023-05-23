@@ -30,7 +30,7 @@ class AttackAction(
     val primary: Damage,
     val secondary: List<Damage>,
     val kind: String,
-    // TODO: tags
+    val tags: List<String>
 ): Action {
     // TODO: proficiency?
 
@@ -59,8 +59,8 @@ class SpellAttackAction(
     val targetDesc: String,
     val damage: List<Damage>,
     val kind: String,
-    val addModifier: Boolean = false
-    // TODO: tags
+    val addModifier: Boolean = false,
+    val tags: List<String>
 ): Action {
     // TODO: proficiency?
 
@@ -95,8 +95,8 @@ class SpellDCAction(
     val targetDesc: String,
     val damage: List<Damage>,
     val kind: String,
-    val saveAbility: InstanceVal
-    // TODO: tags
+    val saveAbility: InstanceVal,
+    val tags: List<String>
 ): Action {
     // TODO: proficiency?
 

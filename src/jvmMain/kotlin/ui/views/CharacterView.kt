@@ -45,7 +45,10 @@ fun CharacterView(data: Character) {
                     }
                     Column(Modifier.weight(0.25f)) {
                         sheetPassivePerception(data)
-                        sheetLanguages(data)
+                        Row(Modifier.weight(0.75f)) {
+                            sheetLanguages(data)
+                            sheetItemProfs(data)
+                        }
                     }
                 }
                 Spacer(Modifier.weight(0.02f))
@@ -297,14 +300,29 @@ fun ColumnScope.sheetPassivePerception(data: Character) {
 }
 
 @Composable
-fun ColumnScope.sheetLanguages(data: Character) {
-    LazyScrollColumn(Modifier.weight(0.75f)) {
-        item {
-            Text("Languages", fontWeight = FontWeight.Bold)
+fun RowScope.sheetLanguages(data: Character) {
+    Column(Modifier.weight(0.50f)) {
+        Text("Languages", fontWeight = FontWeight.Bold)
+        LazyScrollColumn {
+            items(data.languages.toList()) { (l, _) ->
+                indented {
+                    Text(l)
+                }
+            }
         }
-        items(data.languages.toList()) { (l, _) ->
-            indented {
-                Text(l)
+    }
+}
+
+@Composable
+fun RowScope.sheetItemProfs(data: Character) {
+    val proficiencies by data.itemProficiencies
+    Column(Modifier.weight(0.50f)) {
+        Text("Item Proficiencies", fontWeight = FontWeight.Bold)
+        LazyScrollColumn {
+            items(proficiencies.toList()) { tag ->
+                indented {
+                    Text(if(tag.endsWith("Armor") || tag.endsWith("s")) tag else "${tag}s")
+                }
             }
         }
     }

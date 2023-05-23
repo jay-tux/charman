@@ -110,6 +110,16 @@ fun addSaveProficiencies(c: Character) = { args: List<Value>, p: PosInfo ->
     }.map { }.handle(p)
 }
 
+fun addItemProficiencies(c: Character) = { args: List<Value>, p: PosInfo ->
+    argCnt("addItemProficiencies", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireList(pos).flatMap { tags ->
+            tags.mapOrEither { elem -> elem.requireString(pos) }
+        }.map { tags ->
+            c.itemProficiencies.value = c.itemProficiencies.value + tags
+        }
+    }.handle(p)
+}
+
 fun addClassTraits(c: Character) = { args: List<Value>, p: PosInfo ->
     argCnt("addClassTraits", 2, args, p).flatMap { (pos, arg) ->
         arg[0].requireString(pos).flatMap { cls ->
@@ -206,14 +216,22 @@ fun addSpell(c: Character) = { args: List<Value>, p: PosInfo ->
 
 fun verifyAddSpellAction(c: Character, sa: InstanceVal, ab: Value, pos: PosInfo): Either<CMLException, Action> {
     val kind = sa.type.name
-    if(kind != "SpellHitAction" && kind != "SpellDCAction") return CMLException.typeError("instance of `SpellHitAction' or `SpellDCAction'", sa, pos).left()
+    if (kind != "SpellHitAction" && kind != "SpellDCAction") return CMLException.typeError(
+        "instance of `SpellHitAction' or `SpellDCAction'",
+        sa,
+        pos
+    ).left()
 
     return sa.getName(pos).flatMap { name ->
-        sa.getList("baseAction", pos).flatMap { base ->
-            val added = base.value + ab
-            verifyBaseAction(c, name, sa.type.name, added, pos).map {
-                c.actions.value += it
-                it
+        sa.getList("tags", pos).flatMap { tags ->
+            tags.value.mapOrEither { tag -> tag.requireString(pos) }
+        }.flatMap { tags ->
+            sa.getList("baseAction", pos).flatMap { base ->
+                val added = base.value + ab
+                verifyBaseAction(c, name, sa.type.name, added, tags, pos).map {
+                    c.actions.value += it
+                    it
+                }
             }
         }
     }
@@ -223,9 +241,15 @@ fun addAction(c: Character) = { args: List<Value>, p: PosInfo ->
     argCnt("addAction", 1, args, p).flatMap { (pos, arg) ->
         arg[0].ifInstVerify("Action", pos).flatMap { action ->
             action.getName(pos).flatMap { name ->
-                action.getList("baseAction", pos).flatMap { base ->
-                    verifyBaseAction(c, name, action.type.name, base.value, pos).map { checked ->
-                        c.actions.value = c.actions.value + checked
+                action.getList("tags", pos).flatMap { tags ->
+                    tags.value.mapOrEither {
+                        it.requireString(pos)
+                    }
+                }.flatMap { tags ->
+                    action.getList("baseAction", pos).flatMap { base ->
+                        verifyBaseAction(c, name, action.type.name, base.value, tags, pos).map { checked ->
+                            c.actions.value = c.actions.value + checked
+                        }
                     }
                 }
             }
@@ -233,7 +257,7 @@ fun addAction(c: Character) = { args: List<Value>, p: PosInfo ->
     }.handle(p)
 }
 
-fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Value>, pos: PosInfo): Either<CMLException, Action> {
+fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Value>, tags: List<String>, pos: PosInfo): Either<CMLException, Action> {
     return when(tag) {
         "HitAction" -> {
             if(baseData.size < 6)
@@ -257,7 +281,7 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
                                             }
                                         }
                                     }.map { secondary ->
-                                        AttackAction(name, ability, reachRange, target, primary, secondary, kind)
+                                        AttackAction(name, ability, reachRange, target, primary, secondary, kind, tags)
                                     }
                                 }
                             }
@@ -283,7 +307,7 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
                                 baseData[5].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (a, _) ->
                                     c.abilities[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
                                 }.map { ability ->
-                                    SpellAttackAction(name, ability, range, targets, damage, kind, addMod.value)
+                                    SpellAttackAction(name, ability, range, targets, damage, kind, addMod.value, tags)
                                 }
                             }
                         }
@@ -311,7 +335,7 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
                                 baseData[5].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (a, _) ->
                                     c.abilities[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
                                 }.map { ability ->
-                                    SpellDCAction(name, ability, range, targets, damage, kind, save)
+                                    SpellDCAction(name, ability, range, targets, damage, kind, save, tags)
                                 }
                             }
                         }

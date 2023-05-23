@@ -37,6 +37,7 @@ class Character(
 
     val skillProficiencies = mutableListOf<InstanceVal>()
     val saveProficiencies = mutableListOf<InstanceVal>()
+    val itemProficiencies = mutableStateOf(listOf<String>())
     val saveMods = mutableStateOf(mapOf<String, Pair<Int, Boolean>>())
     val skillMods = mutableStateOf(mapOf<String, Triple<Int, Boolean, String>>())
 
