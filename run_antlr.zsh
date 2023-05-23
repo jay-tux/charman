@@ -6,3 +6,4 @@ outdir="${base_pth}/cml_parser/src/main/java/com/jaytux/cml_parser/"
 package="com.jaytux.cml_parser"
 
 antlr4 "$infile" -Dlanguage=Java -visitor -o "$outdir" -package "$package"
+rm -fr gen/

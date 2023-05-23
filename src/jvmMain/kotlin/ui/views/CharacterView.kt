@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cml.CMLException
 import ui.Renderer
@@ -277,8 +278,10 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
     LazyScrollColumn {
         items(inventory) { item ->
             Row {
-                Text(item.name, Modifier.weight(0.6f))
-                Text("${item.weight} lbs.", Modifier.weight(0.4f))
+                Text(item.name, Modifier.weight(0.33f))
+                Text("${item.weight} lbs.", Modifier.weight(0.20f))
+                Text("${item.value.first} ${item.value.second}", Modifier.weight(0.20f))
+                Text(item.traits.joinToString(", ") { it.first }, Modifier.weight(0.27f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

@@ -114,6 +114,10 @@ class InstanceDecl(
     val template: String, val name: String, val args: List<Expression>, declPos: PosInfo
 ) : AstNode(declPos)
 
+class GlobalDecl(val name: String, val data: Expression, declPos: PosInfo): AstNode(declPos) {
+    fun toVar(ctxt: ExecEnvironment) = Variable(name, data.evaluate(ctxt).copy(pos), true, pos)
+}
+
 class DeclSet(pos: PosInfo) : AstNode(pos) {
     val functions = mutableListOf<FunDecl>()
     val fields = mutableListOf<VarDeclStmt>()
@@ -124,4 +128,5 @@ class TLDeclSet(pos: PosInfo) : AstNode(pos) {
     val templates = mutableListOf<TemplateDecl>()
     val instances = mutableListOf<InstanceDecl>()
     val freeFunctions = mutableListOf<FunDecl>()
+    val globals = mutableListOf<GlobalDecl>()
 }

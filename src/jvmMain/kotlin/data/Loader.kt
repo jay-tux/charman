@@ -26,6 +26,7 @@ object Scripts {
     private val pos = PosInfo("<repl>", 0, 0)
     private val templates = mutableMapOf<String, TemplateDecl>()
     private val instances = mutableMapOf<String, InstanceDecl>()
+    private val globals = mutableListOf<GlobalDecl>()
     var loading = true
         private set
 
@@ -82,6 +83,7 @@ object Scripts {
                 return@use
             }
 
+            globals.addAll(ast.globals)
             templates.putAll(ast.templates.map { Pair(it.kind, it) })
             instances.putAll(ast.instances.map { Pair(it.name, it) })
         }
@@ -127,6 +129,9 @@ object Scripts {
 
     @OptIn(ExperimentalPathApi::class)
     fun loadCache() {
+        templates.clear()
+        Library.clear()
+
         val message = "Loading script and character cache..."
         Dispatchers.IO.run {
             UIData.send(message)
@@ -135,6 +140,13 @@ object Scripts {
             scriptCache.walk().forEach {
                 CMLOut.addInfo("  Loading script ${it.absolutePathString()}")
                 loadFile(it.absolutePathString())
+            }
+
+            try {
+                globals.forEach { g -> Library.addGlobal(g) }
+                globals.clear()
+            } catch(ex: CMLException) {
+                ex.message?.let { CMLOut.addError(it) }
             }
 
             instantiateAll()
@@ -339,10 +351,20 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                             }.flatMap { actions ->
                                 inst.getList("additionalTraits", posInit).flatMap { traits ->
                                     traits.value.mapOrEither {
-                                        it.requireInstance(posInit)
+                                        it.ifInstVerifyGetName("ItemTrait", posInit).flatMap { (iName, iT) ->
+                                            iT.getString("desc", posInit).map { iDesc -> Triple(iName, iDesc, iT) }
+                                        }
                                     }
-                                }.map { traits ->
-                                    ItemDesc(name, weight, actions, traits)
+                                }.flatMap { traits ->
+                                    inst.getVerifyInst("value", "Currency", posInit).flatMap { cost ->
+                                        cost.getString("abbrev", posInit).flatMap { abbrev ->
+                                            cost.getInt("amount", posInit).map { count ->
+                                                Triple(count, abbrev, cost)
+                                            }
+                                        }
+                                    }.map { price ->
+                                        ItemDesc(name, weight, price, actions, traits)
+                                    }
                                 }
                             }
                         }

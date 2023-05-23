@@ -16,6 +16,10 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
             CMLException("Attempt to redeclare variable `$name' at $dPos\n" +
                     "    Previous declaration at $pos")
 
+        fun redeclareGlob(name: String, dPos: PosInfo, pos: PosInfo): CMLException =
+            CMLException("Attempt to redeclare global value `$name' at $dPos\n" +
+                    "    Previous declaration at $pos")
+
         fun undeclaredVar(name: String, pos: PosInfo): CMLException =
             CMLException("Attempt to use undeclared variable `$name' at $pos")
 

@@ -55,7 +55,7 @@ class FieldExpr(val base: VarRef, val name: String, pos: PosInfo): VarRef(pos) {
     }
 }
 
-class IndexExpr(val base: VarRef, val index: Expression, pos: PosInfo) : VarRef(pos) {
+class IndexExpr(val base: Expression, val index: Expression, pos: PosInfo) : Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
         return when(val baseE = base.evaluate(ctxt)) {
             is ListVal -> {
@@ -87,14 +87,9 @@ class IndexExpr(val base: VarRef, val index: Expression, pos: PosInfo) : VarRef(
         }
     }
 
-    override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
-        throw CMLException.assignToArrayIndex(pos)
+    override fun instantiate(instantiations: Map<String, Expression>): Expression {
+        return IndexExpr(base.instantiate(instantiations), index.instantiate(instantiations), pos)
     }
-
-    override fun instantiateVR(instantiations: Map<String, Expression>): VarRef {
-        return IndexExpr(base.instantiateVR(instantiations), index.instantiate(instantiations), pos)
-    }
-
 }
 
 class ParenExpr(private val expr: Expression, pos: PosInfo): Expression(pos) {

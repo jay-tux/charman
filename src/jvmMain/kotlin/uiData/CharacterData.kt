@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
 
 data class ClassDesc(val cls: InstanceVal, val level: Int, val isPrimary: Boolean)
 data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
-data class ItemDesc(val name: String, val weight: Float, val actions: List<InstanceVal>, val traits: List<InstanceVal>)
+data class ItemDesc(val name: String, val weight: Float, val value: Triple<Int, String, InstanceVal>, val actions: List<InstanceVal>, val traits: List<Triple<String, String, InstanceVal>>)
 data class SpellDesc(
     val name: String, val school: String, val level: Int, val castingTime: String, val range: String,
     val components: List<String>, val duration: String, val actions: List<InstanceVal>, val desc: String,

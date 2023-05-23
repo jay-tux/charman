@@ -42,6 +42,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
                     is TemplateDecl -> res.templates.add(v)
                     is InstanceDecl -> res.instances.add(v)
                     is FunDecl -> res.freeFunctions.add(v)
+                    is GlobalDecl -> res.globals.add(v)
                     else -> throw AstException.invalidNode(v.javaClass)
                 }
             }
@@ -53,16 +54,6 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     override fun visitFieldExpr(ctx: CMLParser.FieldExprContext?): AstNode {
         return nonNull(ctx) {
             FieldExpr(visit(it.base) as VarRef, it.name.text, it.DOT().symbol.getPos(file))
-        }
-    }
-
-    override fun visitIndexExpr(ctx: CMLParser.IndexExprContext?): AstNode {
-        return nonNull(ctx) {
-            IndexExpr(
-                visit(it.base) as VarRef,
-                visit(it.index) as Expression,
-                it.BR_O().symbol.getPos(file)
-            )
         }
     }
 
@@ -115,6 +106,16 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     override fun visitVarExpr(ctx: CMLParser.VarExprContext?): AstNode {
         return nonNull(ctx, { it.value }) {
             visit(it)
+        }
+    }
+
+    override fun visitIndexExpr(ctx: CMLParser.IndexExprContext?): AstNode {
+        return nonNull(ctx) {
+            IndexExpr(
+                visit(it.base) as Expression,
+                visit(it.index) as Expression,
+                it.BR_O().symbol.getPos(file)
+            )
         }
     }
 
@@ -552,6 +553,12 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
             ).also {
                 it.functions.forEach { (_, v) -> v.parent = it }
             }
+        }
+    }
+
+    override fun visitGlobalDecl(ctx: CMLParser.GlobalDeclContext?): AstNode {
+        return nonNull(ctx) { c ->
+            GlobalDecl(c.name.text, visit(c.value) as Expression, c.start.getPos(file))
         }
     }
     // endregion

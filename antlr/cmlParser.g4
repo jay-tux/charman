@@ -9,6 +9,7 @@ topLevel:       DATA kind=IDENT name=IDENT B_O body=declSet B_C     #type
                                                                     #template
         |       FUN name=IDENT P_O args=argDs P_C B_O body=stmtSet B_C
                                                                     #freeFunDecl
+        |       GLOBAL name=IDENT ASSIGN value=expr SEMI            #globalDecl
         ;
 
 declSet:        decl*;
@@ -44,7 +45,7 @@ stmt:
 varRef:
                 value=IDENT                                         #varName
     |           base=varRef DOT name=IDENT                          #fieldExpr
-    |           base=varRef BR_O index=expr BR_C                    #indexExpr
+//    |           base=varRef BR_O index=expr BR_C                    #indexExpr
     ;
 
 expr:
@@ -55,6 +56,7 @@ expr:
     |           value=FLOAT                                         #floatLit
     |           value=DICE_LIT                                      #diceLit
     |           value=varRef                                        #varExpr
+    |           base=expr BR_O index=expr BR_C                      #indexExpr
     |           ph=PLACEHOLDER                                      #placeholderExpr
 // Pseudo-constructors
     |           DOT type=IDENT                                      #ctorExpr

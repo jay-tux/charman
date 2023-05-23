@@ -5,7 +5,9 @@ import arrow.core.Either
 abstract class Value(pos: PosInfo) : AstNode(pos) {
     abstract fun repr(): String
 
-    abstract fun copy(): Value
+    fun copy(): Value = copy(pos)
+
+    abstract fun copy(newPos: PosInfo): Value
 
     companion object
 }
@@ -20,21 +22,21 @@ class BoolVal(value: Boolean, pos: PosInfo): BaseValue<Boolean>(value, pos) {
     override fun equals(other: Any?): Boolean {
         return if(other is BoolVal) value == other.value else false
     }
-    override fun copy(): Value = BoolVal(value, pos)
+    override fun copy(newPos: PosInfo): Value = BoolVal(value, newPos)
 }
 class IntVal(value: Int, pos: PosInfo) : BaseValue<Int>(value, pos) {
     override fun repr(): String = "$value"
     override fun equals(other: Any?): Boolean {
         return if(other is IntVal) value == other.value else false
     }
-    override fun copy(): Value = IntVal(value, pos)
+    override fun copy(newPos: PosInfo): Value = IntVal(value, newPos)
 }
 class FloatVal(value: Float, pos: PosInfo) : BaseValue<Float>(value, pos) {
     override fun repr(): String = "$value"
     override fun equals(other: Any?): Boolean {
         return if(other is FloatVal) value == other.value else false
     }
-    override fun copy(): Value = FloatVal(value, pos)
+    override fun copy(newPos: PosInfo): Value = FloatVal(value, newPos)
 }
 class StringVal(value: String, pos: PosInfo): BaseValue<String>(value, pos){
     override fun repr(): String = value
@@ -44,28 +46,28 @@ class StringVal(value: String, pos: PosInfo): BaseValue<String>(value, pos){
         }
         return false
     }
-    override fun copy(): Value = StringVal(value, pos)
+    override fun copy(newPos: PosInfo): Value = StringVal(value, newPos)
 }
 class ListVal(value: MutableList<Value>, pos: PosInfo): BaseValue<MutableList<Value>>(value, pos) {
     override fun repr(): String = "[ ${value.joinToString(", ") { it.repr() }} ]"
     override fun equals(other: Any?): Boolean {
         return if(other is ListVal) value == other.value else false
     }
-    override fun copy(): Value = ListVal(value.map { it.copy() }.toMutableList(), pos)
+    override fun copy(newPos: PosInfo): Value = ListVal(value.map { it.copy() }.toMutableList(), newPos)
 }
 class DictVal(value: MutableMap<Value, Value>, pos: PosInfo): BaseValue<MutableMap<Value, Value>>(value, pos) {
     override fun repr(): String = "{ ${value.map { "(${it.key.repr()} = ${it.value.repr()})" }.joinToString(", ")} }"
     override fun equals(other: Any?): Boolean {
         return if(other is DictVal) value == other.value else false
     }
-    override fun copy(): Value = DictVal(value.map { (k, v) -> Pair(k.copy(), v.copy()) }.associate { it }.toMutableMap(), pos)
+    override fun copy(newPos: PosInfo): Value = DictVal(value.map { (k, v) -> Pair(k.copy(), v.copy()) }.associate { it }.toMutableMap(), newPos)
 }
 class RangeVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(${begin}..$end)"
     override fun equals(other: Any?): Boolean {
         return if(other is RangeVal) (begin == other.begin && end == other.end) else false
     }
-    override fun copy(): Value = RangeVal(begin, end, pos)
+    override fun copy(newPos: PosInfo): Value = RangeVal(begin, end, newPos)
     override fun hashCode(): Int = Pair(begin, end).hashCode()
 }
 class UntilVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
@@ -73,7 +75,7 @@ class UntilVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
     override fun equals(other: Any?): Boolean {
         return if(other is UntilVal) (begin == other.begin && end == other.end) else false
     }
-    override fun copy(): Value = UntilVal(begin, end, pos)
+    override fun copy(newPos: PosInfo): Value = UntilVal(begin, end, newPos)
     override fun hashCode(): Int = Pair(begin, end).hashCode()
 }
 class DiceVal(val count: Int, val kind: Int, pos: PosInfo): Value(pos) {
@@ -81,18 +83,18 @@ class DiceVal(val count: Int, val kind: Int, pos: PosInfo): Value(pos) {
     override fun equals(other: Any?): Boolean {
         return if(other is DiceVal) (count == other.count && kind == other.kind) else false
     }
-    override fun copy(): Value = DiceVal(count, kind, pos)
+    override fun copy(newPos: PosInfo): Value = DiceVal(count, kind, newPos)
     override fun hashCode(): Int = Pair(count, kind).hashCode()
 }
 class VoidVal(pos: PosInfo): Value(pos) {
     override fun repr(): String = "(void)"
     override fun equals(other: Any?): Boolean = false
-    override fun copy(): Value = VoidVal(pos)
+    override fun copy(newPos: PosInfo): Value = VoidVal(newPos)
     override fun hashCode(): Int = javaClass.hashCode()
 }
 class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
-    override fun copy(): Value = InstanceVal(type.construct(), pos)
+    override fun copy(newPos: PosInfo): Value = InstanceVal(type.construct(), newPos)
 
     override fun equals(other: Any?): Boolean {
         if(other !is InstanceVal) return false
@@ -211,7 +213,7 @@ class ExecEnvironment private constructor(
     fun isInThisEnv(name: String) = variables.containsKey(name)
     fun isInEnv(name: String): Boolean = isInThisEnv(name) || (parent?.isInEnv(name) ?: false)
     fun containing(name: String): ExecEnvironment? = if(variables.containsKey(name)) this else parent?.containing(name)
-    fun getVar(name: String): Variable? = variables[name] ?: parent?.getVar(name)
+    fun getVar(name: String): Variable? = variables[name] ?: parent?.getVar(name) ?: Library.getGlobal(name)
     fun vars() = variables.keys
     fun log() = variables.map { "${it.key} = ${it.value.value.repr()}" }.joinToString(", ")
 

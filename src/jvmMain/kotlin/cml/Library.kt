@@ -10,6 +10,9 @@ import uiData.Character
 object StdLib {
     private val functions = mutableMapOf<String, (List<Value>, PosInfo) -> Value>(
         Pair("appendStr") { args, _ -> appendStr(args) },
+        Pair("appendList") { args, p -> appendList(args, p) },
+        Pair("split") { args, p -> split(args, p) },
+        Pair("trim") { args, p -> trim(args, p) },
         Pair("inDict") { args, p -> inDict(args, p) },
         Pair("raise") { args, p -> raise(args, p) },
         Pair("log") { args, p -> log(args, p) },
@@ -62,11 +65,13 @@ object Library {
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()
+    private val globals = mutableMapOf<String, Variable>()
     private val contextFunctions = mutableMapOf<String, (List<Value>, PosInfo) -> Value>()
 
     fun clear() {
         functions.clear()
         types.clear()
+        globals.clear()
     }
 
     fun isLibFunc(name: String): Boolean =
@@ -81,6 +86,10 @@ object Library {
     fun addFunction(name: String, callback: FunDecl) {
         if(functions.containsKey(name) || contextPreFunctions.containsKey(name)) throw LibraryException.libFunAlreadyExists(name)
         functions[name] = callback
+    }
+    fun addGlobal(glob: GlobalDecl) {
+        if(globals.containsKey(glob.name)) throw CMLException.redeclareGlob(glob.name, globals[glob.name]!!.value.pos, glob.pos)
+        globals[glob.name] = glob.toVar(ExecEnvironment(mapOf()))
     }
 
     fun addContextualFunction(name: String, callback: (Character) -> ((List<Value>, PosInfo) -> Value)) {
@@ -98,6 +107,8 @@ object Library {
     fun types() = types
     fun typesByKind(kind: String): List<TopLevelDecl> = types.filter { it.value.kind == kind }.map { it.value }
     fun functions() = functions.keys.union(contextFunctions.keys)
+
+    fun getGlobal(name: String): Variable? = globals[name]
 
     fun readyAll() {
         types.forEach { it.value.ready() }

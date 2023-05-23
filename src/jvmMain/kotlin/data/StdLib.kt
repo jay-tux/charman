@@ -19,6 +19,32 @@ fun appendStr(args: List<Value>): Value {
     return StringVal(args.joinToString("") { it.repr() }, pos)
 }
 
+fun appendList(args: List<Value>, pos: PosInfo): Value {
+    return argCntStd("appendList", 2, args, pos).flatMap { (p, arg) ->
+        arg[0].requireList(p).map { list ->
+            ListVal((list + arg[1]).toMutableList(), p)
+        }
+    }.handle()
+}
+
+fun split(args: List<Value>, pos: PosInfo): Value {
+    return argCntStd("split", 2, args, pos).flatMap { (p, arg) ->
+        arg[0].requireString(p).flatMap { string ->
+            arg[1].requireString(p).map { spl ->
+                ListVal(string.split(spl).map { StringVal(it, p) }.toMutableList(), p)
+            }
+        }
+    }.handle()
+}
+
+fun trim(args: List<Value>, pos: PosInfo): Value {
+    return argCntStd("trim", 1, args, pos).flatMap { (p, arg) ->
+        arg[0].requireString(p).map {
+            StringVal(it, p)
+        }
+    }.handle()
+}
+
 fun inDict(args: List<Value>, pos: PosInfo): Value {
     return argCntStd("inDict", 2, args, pos).flatMap { (p, arg) ->
         arg[0].requireDict(p).map {

@@ -35,12 +35,13 @@ BREAK:          'break';
 FIELD:          'field';
 UNTIL:          'until';
 WHILE:          'while';
+GLOBAL:         'global';
 RETURN:         'return';
 INSTANCE:       'instance';
 TEMPLATE:       'template';
 
 INT:            [1-9][0-9]*|'0';
-FLOAT:          INT'.'INT;
+FLOAT:          INT'.'[0-9]+;
 DICE_LIT:       INT('d'|'D')INT;
 IDENT:          [a-zA-Z_][a-zA-Z0-9_]*;
 PLACEHOLDER:    '<'IDENT'>';
