@@ -1,14 +1,21 @@
 package uiData
 
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import cml.DiceVal
 import cml.InstanceVal
 import data.getString
+import ui.widgets.BoldAndNot
+import ui.widgets.spellDetails
 import withSign
 
 data class DamageKind(val name: String, val inst: InstanceVal)
@@ -19,7 +26,7 @@ interface Action {
     fun render(c: Character, profTags: List<String>)
 
     @Composable
-    fun renderFull(c: Character)
+    fun renderFull(c: Character, scope: BoxScope, modifier: Modifier)
 }
 
 class AttackAction(
@@ -32,8 +39,6 @@ class AttackAction(
     val kind: String,
     val tags: List<String>
 ): Action {
-    // TODO: proficiency?
-
     @Composable
     override fun render(c: Character, profTags: List<String>) {
         val dmg = remember { "${primary.dice.repr()}${c.abilityMod(stat.instance).withSign()} ${primary.damageKind.name} ${if(secondary.isNotEmpty()) "*" else ""}" }
@@ -48,8 +53,24 @@ class AttackAction(
     }
 
     @Composable
-    override fun renderFull(c: Character) {
-        TODO("Not yet implemented")
+    override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
+        scope.apply {
+            val items by c.inventory
+            val item = items.first { it.name == name.split('(')[0].trim() }
+            Column(modifier.fillMaxHeight().fillMaxWidth(0.33f).align(Alignment.CenterEnd).padding(10.dp)) {
+                Text(name, style = MaterialTheme.typography.h5)
+                // TODO: add magical or not & rarity
+                Text("Weapon", style = MaterialTheme.typography.subtitle2, fontStyle = FontStyle.Italic)
+                Spacer(Modifier.height(5.dp))
+                val prof = if(c.itemProficiencies.value.intersect(tags).isNotEmpty()) "Yes" else "No"
+                BoldAndNot("Proficient: ", prof)
+                BoldAndNot("Attack Type: ", kind)
+                BoldAndNot("Weight: ", "${item.weight} lbs.")
+                BoldAndNot("Cost: ", "${item.value.first} ${item.value.second}")
+                Spacer(Modifier.height(5.dp))
+                Text("Proficiency with a(n) ${item.name} allows you to add your proficiency bonus to the attack roll for any attack you make with it.")
+            }
+        }
     }
 }
 
@@ -63,8 +84,6 @@ class SpellAttackAction(
     val addModifier: Boolean = false,
     val tags: List<String>
 ): Action {
-    // TODO: proficiency?
-
     @Composable
     override fun render(c: Character, profTags: List<String>) {
         val dmg = remember {
@@ -84,8 +103,8 @@ class SpellAttackAction(
     }
 
     @Composable
-    override fun renderFull(c: Character) {
-        TODO("Not yet implemented")
+    override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
+        scope.spellDetails(c.spells.value.first { it.name == name }, modifier)
     }
 }
 
@@ -99,8 +118,6 @@ class SpellDCAction(
     val saveAbility: InstanceVal,
     val tags: List<String>
 ): Action {
-    // TODO: proficiency?
-
     @Composable
     override fun render(c: Character, profTags: List<String>) {
         val dmg = remember {
@@ -128,7 +145,7 @@ class SpellDCAction(
     }
 
     @Composable
-    override fun renderFull(c: Character) {
-        TODO("Not yet implemented")
+    override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
+        scope.spellDetails(c.spells.value.first { it.name == name }, modifier)
     }
 }

@@ -62,7 +62,7 @@ fun CharacterView(data: Character) {
 
         if(hasOverlay) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.33f)).clickable { hasOverlay = false }) {
-                overlay.rFun(this, Modifier.background(MaterialTheme.colors.background))
+                overlay.rFun(this, Modifier.background(MaterialTheme.colors.background).clickable(enabled = false) {})
             }
         }
     }
@@ -152,7 +152,7 @@ fun ColumnScope.sheetTraitsAndActions(data: Character, onDetails: (Renderer) -> 
         }
         Box(Modifier) {
             when(currentTab) {
-                Tabs.ACTIONS -> sheetActionsPanel(data)
+                Tabs.ACTIONS -> sheetActionsPanel(data) { r -> onDetails(r) }
                 Tabs.SPELLS -> sheetSpellsPanel(data) { r -> onDetails(r) }
                 Tabs.TRAITS -> sheetTraitsPanel(data)
                 Tabs.INVENTORY -> sheetInventoryPanel(data)
@@ -162,11 +162,11 @@ fun ColumnScope.sheetTraitsAndActions(data: Character, onDetails: (Renderer) -> 
 }
 
 @Composable
-fun BoxScope.sheetActionsPanel(data: Character) {
+fun BoxScope.sheetActionsPanel(data: Character, onDetails: (Renderer) -> Unit) {
     val profs by data.itemProficiencies
     LazyScrollColumn(Modifier.fillMaxSize()) {
         items(data.actions.value) { action ->
-            Box(Modifier.clickable { /* signify to call action.renderFull(data) */ }) {
+            Box(Modifier.clickable { onDetails(Renderer { action.renderFull(data, this, it) }) }) {
                 action.render(data, profs)
             }
             Spacer(Modifier.height(5.dp))
