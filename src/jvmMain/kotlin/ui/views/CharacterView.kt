@@ -121,7 +121,7 @@ fun RowScope.sheetProficiencies(data: Character) {
         }
         Spacer(Modifier.weight(0.025f))
         LazyScrollColumn(Modifier.weight(0.55f)) {
-            items(skillProf.toList()) { (name, skill) ->
+            items(skillProf.toList().sortedBy { it.first }) { (name, skill) ->
                 ModScoreCard("$name (${skill.third})", skill.first, skill.second)
             }
         }

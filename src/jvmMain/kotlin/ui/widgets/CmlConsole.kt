@@ -2,6 +2,7 @@ package ui.widgets
 
 import CMLOut
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,16 +12,19 @@ import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import data.Scripts
+import ui.dialogs.FileBrowserDialog
 
 @Composable
 fun CmlConsole() {
     val messages by CMLOut.stream
+    var showFBD by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().fillMaxHeight(),
     ) {
@@ -37,8 +41,17 @@ fun CmlConsole() {
                 )
             }
         }
-        IconButton({ CMLOut.refresh() }) {
-            Icon(Icons.Default.Refresh, "Refresh all scripts and data")
+        Column {
+            IconButton({ CMLOut.refresh() }) {
+                Icon(Icons.Default.Refresh, "Refresh all scripts and data")
+            }
+            IconButton({ showFBD = true }) {
+                Icon(Icons.Default.FileOpen, "Import scripts")
+            }
         }
+    }
+
+    if(showFBD) {
+        FileBrowserDialog(onClose = { showFBD = false }) { Scripts.addToCache(it) }
     }
 }

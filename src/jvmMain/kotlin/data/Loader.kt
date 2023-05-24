@@ -15,12 +15,11 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import uiData.*
 import java.io.FileInputStream
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.absolutePathString
-import kotlin.io.path.walk
+import kotlin.io.path.*
 
 object Scripts {
     private val pos = PosInfo("<repl>", 0, 0)
@@ -174,6 +173,25 @@ object Scripts {
             UIData.getTypesFromLibrary()
             UIData.clearIf(message)
             loading = false
+        }
+    }
+
+    fun addToCache(paths: List<Path>) {
+        paths.forEach {
+            val target = scriptCache.resolve(it.name)
+            if(target.exists()) {
+                CMLOut.addWarning("Script ${it.name} (absolute path ${it.absolutePathString()}) already exists in the cache.")
+            }
+            else {
+                try {
+                    it.copyTo(target)
+                    CMLOut.addInfo("Loading new script ${target.absolutePathString()}")
+                    loadFile(target.absolutePathString())
+                }
+                catch(ioe: IOException) {
+                    CMLOut.addError("Error while copying ${target.absolutePathString()} to cache: ${ioe.localizedMessage}")
+                }
+            }
         }
     }
 }
