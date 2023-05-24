@@ -14,12 +14,14 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import data.Scripts
 import ui.dialogs.FileBrowserDialog
+import uiData.CharacterData
 
 @Composable
 fun CmlConsole() {
@@ -47,6 +49,9 @@ fun CmlConsole() {
             }
             IconButton({ showFBD = true }) {
                 Icon(Icons.Default.FileOpen, "Import scripts")
+            }
+            IconButton({ CharacterData.saveAll() }) {
+                Icon(Icons.Default.Save, "Save all characters")
             }
         }
     }

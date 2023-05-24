@@ -8,17 +8,17 @@ import arrow.core.flatMap
 import arrow.core.left
 import arrow.core.right
 import cml.*
-import data.getDice
-import data.getString
-import data.loadFromInstance
-import data.requireInt
+import data.*
 import updateGet
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
 data class ClassDesc(val cls: InstanceVal, val level: Int, val isPrimary: Boolean)
 data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
-data class ItemDesc(val name: String, val weight: Float, val value: Triple<Int, String, InstanceVal>, val actions: List<InstanceVal>, val traits: List<Triple<String, String, InstanceVal>>)
+data class ItemDesc(val name: String, val weight: Float, val value: Triple<Int, String, InstanceVal>,
+                    val actions: List<InstanceVal>, val traits: List<Triple<String, String, InstanceVal>>,
+                    val instance: InstanceVal
+)
 data class SpellDesc(
     val name: String, val school: String, val level: Int, val castingTime: String, val range: String,
     val components: List<String>, val duration: String, val actions: List<InstanceVal>, val desc: String,
@@ -50,7 +50,7 @@ class Character(
     val hp = mutableStateOf(0)
     val damage = mutableStateOf(0)
     val tempHp = mutableStateOf(0)
-    val deathSaves = mutableStateOf(Pair(0, 0))
+    val deathSaves = mutableStateOf(Pair(0, 0)) // failed, succeeded
     val speed = mutableStateOf(0)
     val ac = mutableStateOf(0)
     val initMod = mutableStateOf(0)
@@ -58,6 +58,8 @@ class Character(
     val inventory = mutableStateOf(listOf<ItemDesc>())
     val spells = mutableStateOf(listOf<SpellDesc>())
     val actions = mutableStateOf(listOf<Action>())
+
+    var choices = Choices()
 
     private fun callOnAll(fn: String, args: List<Value> = listOf(), withResult: (Value) -> Unit) {
         Library.withCharacter(this) {
@@ -181,10 +183,41 @@ class Character(
         usedSpellSlots.value = mod.toList()
     }
 
+    fun serialize(): String {
+        val root = RootNode(Identifier(name))
+        race.second.type.toCtor().toField("race").addTo(root)
+        background.second.type.toCtor().toField("background").addTo(root)
+        classes.toSerializable { _, desc -> Pair(desc.cls.type.toCtor(), desc.level.toSerializable()) }.toField("classes").addTo(root)
+        classes.filter { it.value.isPrimary }.firstNotNullOf { it }.value.cls.type.toCtor().toField("primary").addTo(root)
+        abilities.toSerializable { _, desc -> Pair(desc.instance.type.toCtor(), desc.score.toSerializable()) }.toField("abilities").addTo(root)
+        choices.raceChoices.toSerializableEither().fold(
+            { CMLOut.addWarning("Serialization failed for $name's racial choices: ${it.localizedMessage}") }
+        ) { it.toField("choicesRace").addTo(root) }
+        choices.backgroundChoices.toSerializableEither().fold(
+            { CMLOut.addWarning("Serialization failed for $name's background choices: ${it.localizedMessage}") }
+        ) { it.toField("choicesBackground").addTo(root) }
+        choices.classesChoices.toSerializableEither { cName, cChoices ->
+            val k = Library.construct(cName, posSer)?.type?.toCtor()
+            if(k == null) CMLException.constructNonType(cName, posSer).left()
+            else cChoices.toSerializableEither().map { v -> Pair(k, v) }
+        }?.toField("choicesClasses")?.addTo(root)
+        hp.value.toSerializable().toField("maxHP").addTo(root)
+        damage.value.toSerializable().toField("damage").addTo(root)
+        tempHp.value.toSerializable().toField("tempHP").addTo(root)
+        speed.value.toSerializable().toField("speed").addTo(root)
+        deathSaves.value.first.toSerializable().toField("deathSavesFailed").addTo(root)
+        deathSaves.value.second.toSerializable().toField("deathSavesSucceeded").addTo(root)
+        inventory.value.map { it.instance }.toSerializableEither().fold(
+            { CMLOut.addWarning("Serialization failed for $name's inventory: ${it.localizedMessage}") }
+        ) { it.toField("inventory").addTo(root) }
+        return root.serialize()
+    }
+
     companion object {
         val posRender = PosInfo("<runtime:character:ui>", 0, 0)
         val posInit = PosInfo("<runtime:character:init>", 0, 0)
         val posRest = PosInfo("<runtime:character:restore>", 0, 0)
+        val posSer = PosInfo("<runtime:character:serialize>", 0, 0)
 
         val defaultSpellSlots = listOf(
             //     0  1  2  3  4  5  6  7  8  9
@@ -239,6 +272,12 @@ object CharacterData {
     fun loadFromLibrary() {
         _characters.value = _characters.value + Library.typesByKind("Character").map { InstanceVal(it, runtimeLoadPos).right() }
         _loadedCharacters.value = characters.value.map { pre -> pre.mapLeft { it.second }.flatMap { Character.loadFromInstance(it) } }
+    }
+
+    fun saveAll() {
+        _loadedCharacters.value.forEach {
+            it.map { c -> Scripts.saveChar(c) }
+        }
     }
 
     fun <T> handleCMLException(ex: CMLException, character: Either<CMLException, InstanceVal>, index: Int, res: T): T {

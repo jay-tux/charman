@@ -15,7 +15,9 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import uiData.*
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -194,6 +196,14 @@ object Scripts {
             }
         }
     }
+
+    fun saveChar(data: Character) {
+        FileOutputStream(characterCache.resolve("${data.name}.cml").toFile()).use { stream ->
+            val serialized = data.serialize()
+            stream.write(serialized.toByteArray(Charset.defaultCharset()))
+            stream.flush()
+        }
+    }
 }
 
 class Choices {
@@ -339,7 +349,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 }
 
                 char.background.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
-
+                char.choices = choices
                 char
             }
         }.flatMap { char ->
@@ -381,7 +391,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                                             }
                                         }
                                     }.map { price ->
-                                        ItemDesc(name, weight, price, actions, traits)
+                                        ItemDesc(name, weight, price, actions, traits, inst)
                                     }
                                 }
                             }

@@ -82,6 +82,9 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
 
         fun invalidAbility(ab: String, pos: PosInfo): CMLException =
             CMLException("Attempt to calculate modifier for ability `$ab' that does not exist on this character at $pos")
+
+        fun nonSerializable(v: Value): CMLException =
+            CMLException("Values of type `${typeName(v)}' are not serializable.")
     }
 }
 
