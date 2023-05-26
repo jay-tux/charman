@@ -1,3 +1,8 @@
+import androidx.compose.runtime.Composable
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
+
 fun String.capitalizeFirst() = this[0].uppercase() + this.substring(1).lowercase()
 
 fun String.capitalizeOnlyFirst() = this[0].uppercase() + this.substring(1)
@@ -34,4 +39,63 @@ fun String.atLeastNLines(n: Int): String {
 
 fun <T> T.orNull(): T? {
     return this
+}
+
+fun Int.withSign(): String {
+    return if(this < 0) "$this" else "+$this"
+}
+
+fun <E, K1, K2, V1, V2> Map<K1, V1>.mapOrEither(fn: (Map.Entry<K1, V1>) -> Either<E, Pair<K2, V2>>): Either<E, Map<K2, V2>> {
+    return run outer@{
+        this.map { entry ->
+            when(val v = fn(entry)) {
+                is Either.Left -> return@outer v.value.left()
+                is Either.Right -> v.value
+            }
+        }.associate { it }.right()
+    }
+}
+
+fun <E, T1, T2> List<T1>.mapOrEither(fn: (T1) -> Either<E, T2>): Either<E, List<T2>> {
+    return run outer@{
+        this.map { elem ->
+            when(val v = fn(elem)) {
+                is Either.Left -> return@outer v.value.left()
+                is Either.Right -> v.value
+            }
+        }.right()
+    }
+}
+
+fun <E, T1, T2> List<T1>.mapIndexedOrEither(fn: (Int, T1) -> Either<E, T2>): Either<E, List<T2>> {
+    return run outer@{
+        this.mapIndexed { idx, elem ->
+            when(val v = fn(idx, elem)) {
+                is Either.Left -> return@outer v.value.left()
+                is Either.Right -> v.value
+            }
+        }.right()
+    }
+}
+
+@Composable
+fun <E, V> Either<E, V>.compose(fnE: @Composable (E) -> Unit, fnV: @Composable (V) -> Unit) {
+    when(this) {
+        is Either.Left -> fnE(this.value)
+        is Either.Right -> fnV(this.value)
+    }
+}
+
+fun Int.cardinal(): String {
+    val ending = when(this % 10) {
+        1 -> "st"
+        2 -> "nd"
+        3 -> "rd"
+        else -> "th"
+    }
+    return "$this$ending"
+}
+
+fun <E, V> List<Either<E, V>>.filterRight(): List<V> {
+    return this.filterIsInstance<Either.Right<V>>().map { it.value }
 }

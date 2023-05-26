@@ -1,0 +1,3 @@
+/build
+src/**/*
+!/src/main/java/com/jaytux/cml_parser/.gitkeep

@@ -1,0 +1,404 @@
+package ui.dialogs
+
+import CMLOut
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.unit.dp
+import arrow.core.flatMap
+import cml.InstanceVal
+import cml.Library
+import cml.Value
+import data.*
+import filterRight
+import ui.dialogs.CreationPage.*
+import ui.widgets.LazyScrollColumn
+import ui.widgets.TraitCard
+import ui.widgets.YesNoButton
+import ui.widgets.indented
+import uiData.Character
+import uiData.ClassDesc
+import uiData.Mutable
+import withSign
+
+enum class CreationPage {
+    NAME, RACE, CLASS, BACKGROUND, ABILITIES
+}
+
+fun next(page: CreationPage) = when (page) {
+    NAME -> RACE
+    RACE -> CLASS
+    CLASS -> BACKGROUND
+    BACKGROUND -> ABILITIES
+    ABILITIES -> ABILITIES
+}
+
+fun prev(page: CreationPage) = when (page) {
+    NAME -> NAME
+    RACE -> NAME
+    CLASS -> RACE
+    BACKGROUND -> CLASS
+    ABILITIES -> BACKGROUND
+}
+
+@Composable
+fun CharacterCreationDialog(onClose: () -> Unit) = DefaultDialog(onClose, 600.dp, 800.dp) {
+    var result by remember { Mutable.stateFrom(Character.mold()) }
+    var currentPage by remember { mutableStateOf(NAME) }
+    var canGoNext by remember { mutableStateOf(true) }
+
+    val save = {
+        val mod = Library.construct("Constitution", Character.posInit)?.let {
+            result.value.abilityMod(it)
+        } ?: 0
+        result.value.hp.value = mod + result.value.hitDice.value.firstNotNullOf { it.value }
+
+        result.value.onUpdate()
+        Scripts.saveChar(result.value)
+        Scripts.loadCache()
+        onClose()
+    }
+
+    val update = { fn: (Character) -> Unit ->
+        result.update(fn)
+        result = result
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(0.95f)) {
+            when (currentPage) {
+                NAME -> namePage(result.value, { canGoNext = it }) { fn -> update(fn) }
+                RACE -> racePage(result.value, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
+                CLASS -> classPage(result.value, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
+                BACKGROUND -> backgroundPage(result.value, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
+                ABILITIES -> abilitiesPage(result.value, { canGoNext = it }) { fn -> update(fn) }
+            }
+        }
+        Box(Modifier.weight(0.05f)) {
+            YesNoButton(
+                no = if(prev(currentPage) == currentPage) "Cancel" else "Previous",
+                yes = if(next(currentPage) == currentPage) "Save" else "Next",
+                noEnabled = true,
+                yesEnabled = canGoNext,
+                onNo = { if(prev(currentPage) == currentPage) { onClose() } else { currentPage = prev(currentPage) } },
+                onYes = { if(next(currentPage) == currentPage) { save() } else { currentPage = next(currentPage) } }
+            )
+        }
+    }
+}
+
+@Composable
+fun header(text: String, subTitle: String? = null) {
+    Text(text, style = MaterialTheme.typography.h5)
+    if(subTitle != null) {
+        indented {
+            Text(subTitle, style = MaterialTheme.typography.subtitle2)
+        }
+    }
+    Spacer(Modifier.height(2.dp))
+    Divider(Modifier.fillMaxWidth(), color = Color.Black.copy(alpha = 0.33f), thickness = 1.dp)
+    Spacer(Modifier.height(5.dp))
+}
+
+@Composable
+fun namePage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Character) -> Unit) -> Unit) {
+    toggleNext(data.name != "")
+
+    Column {
+        header("Step 1: Character Basics")
+        OutlinedTextField(
+            value = data.name,
+            onValueChange = { n -> delta { it.name = n } },
+            label = { Text("Character name") },
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+fun racePage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+    var selected by remember { mutableStateOf(-1) }
+
+    var count by remember { mutableStateOf(0) }
+    var options by remember { mutableStateOf(listOf<Value>()) }
+    var setCallback by remember { mutableStateOf({ _: Value -> })}
+
+    toggleNext(data.race.second.type.name != Library.phonyType().name && count == 0)
+
+    val onSelect = { race: Pair<String, InstanceVal> ->
+         delta {
+             it.race = race
+             Library.withChoices(
+                 c = it,
+                 selector = { c -> c.raceChoices },
+                 render = { cnt, opts, onSet ->
+                     count = cnt; options = opts; setCallback = onSet
+                 }
+             ) {
+                 race.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
+                     ?: CMLOut.addWarning("Cannot call onSelect for ${race.first}")
+             }
+         }
+    }
+
+    val validRaces = remember {
+        Library.typesByKind("Race").map { race ->
+            val inst = InstanceVal(race.construct(), Character.posRender)
+            inst.getName(Character.posRender).map {
+                val traits = inst.getList("traits", Character.posRender).map { l ->
+                    l.value.map { t ->
+                        t.ifInstVerifyGetName("Trait", Character.posRender).flatMap { trait ->
+                            trait.second.getString("desc", Character.posRender).map { desc -> Pair(trait.first, desc) }
+                        }
+                    }.filterRight()
+                }.fold({ ex ->
+                    CMLOut.addWarning("Could not get traits for `$it'. Caused by:\n\t${ex.localizedMessage}")
+                    listOf()
+                }, { traits -> traits })
+                Triple(it, inst, traits)
+            }
+        }.filterRight()
+    }
+
+    Column {
+        header("Step 2: Character Race", "Select one of the races below\nSelecting might require additional choices.")
+        LazyScrollColumn {
+            itemsIndexed(validRaces) { index, (name, inst, traits) ->
+                val expanded = selected == index || (selected == -1 && data.race.first == name)
+                Column {
+                    Button({ selected = index }) {
+                        Box(Modifier.fillMaxWidth()) {
+                            Text(name, Modifier.align(Alignment.CenterStart), style = MaterialTheme.typography.h6)
+                            Icon(
+                                if(expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                "",
+                                Modifier.align(Alignment.CenterEnd)
+                            )
+                        }
+                    }
+
+                    if(expanded) {
+                        Text("Below are some traits this race will give you. Others might depends on additional choices.", fontStyle = FontStyle.Italic)
+                        traits.forEach { (tName, tDesc) ->
+                            TraitCard(tName, name, tDesc)
+                        }
+                        Button({ onSelect(Pair(name, inst)) }) {
+                            Spacer(Modifier.width(10.dp))
+                            Box(Modifier.fillMaxWidth()) {
+                                Text("Select this race", Modifier.align(Alignment.Center))
+                            }
+                            Spacer(Modifier.width(10.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if(count != 0) {
+        choiceDispatcher(
+            count, options, { count = 0 }, setCallback
+        )
+    }
+}
+
+@Composable
+fun classPage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+    var selected by remember { mutableStateOf(-1) }
+
+    var count by remember { mutableStateOf(0) }
+    var options by remember { mutableStateOf(listOf<Value>()) }
+    var setCallback by remember { mutableStateOf({ _: Value -> })}
+
+    toggleNext(data.classes.isNotEmpty() && count == 0)
+
+    val onSelect = { classV: Pair<String, InstanceVal> ->
+        delta {
+            it.classes[classV.first] = ClassDesc(classV.second, 1, true)
+            Library.withChoices(
+                c = it,
+                selector = { c ->
+                    c.classesChoices[classV.first] = mutableMapOf()
+                    c.classesChoices[classV.first]
+                },
+                render = { cnt, opts, onSet ->
+                    count = cnt; options = opts; setCallback = onSet
+                }
+            ) {
+                classV.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
+                    ?: CMLOut.addWarning("Cannot call onSelect for ${classV.first}")
+            }
+        }
+    }
+
+    val validClasses = remember {
+        Library.typesByKind("Class").map { race ->
+            val inst = InstanceVal(race.construct(), Character.posRender)
+            inst.getName(Character.posRender).map {
+                Pair(it, inst)
+            }
+        }.filterRight()
+    }
+
+    Column {
+        header("Step 3: Character Starting Class", "Select one of the classes below\nSelecting might require additional choices.")
+        LazyScrollColumn {
+            itemsIndexed(validClasses) { index, (name, inst) ->
+                val expanded = selected == index || (selected == -1 && data.race.first == name)
+                Column {
+                    Button({ selected = index }) {
+                        Box(Modifier.fillMaxWidth()) {
+                            Text(name, Modifier.align(Alignment.CenterStart), style = MaterialTheme.typography.h6)
+                            Icon(
+                                if(expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                "",
+                                Modifier.align(Alignment.CenterEnd)
+                            )
+                        }
+                    }
+
+                    if(expanded) {
+                        Button({ onSelect(Pair(name, inst)) }) {
+                            Spacer(Modifier.width(10.dp))
+                            Box(Modifier.fillMaxWidth()) {
+                                Text("Select this class", Modifier.align(Alignment.Center))
+                            }
+                            Spacer(Modifier.width(10.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if(count != 0) {
+        choiceDispatcher(
+            count, options, { count = 0 }, setCallback
+        )
+    }
+}
+
+@Composable
+fun backgroundPage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+    var selected by remember { mutableStateOf(-1) }
+
+    var count by remember { mutableStateOf(0) }
+    var options by remember { mutableStateOf(listOf<Value>()) }
+    var setCallback by remember { mutableStateOf({ _: Value -> })}
+
+    toggleNext(data.background.second.type.name != Library.phonyType().name && count == 0)
+
+    val onSelect = { back: Pair<String, InstanceVal> ->
+        delta {
+            it.background = back
+            Library.withChoices(
+                c = it,
+                selector = { c -> c.backgroundChoices },
+                render = { cnt, opts, onSet ->
+                    count = cnt; options = opts; setCallback = onSet
+                }
+            ) {
+                back.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
+                    ?: CMLOut.addWarning("Cannot call onSelect for ${back.first}")
+            }
+        }
+    }
+
+    val validBackgrounds = remember {
+        Library.typesByKind("Background").map { race ->
+            val inst = InstanceVal(race.construct(), Character.posRender)
+            inst.getName(Character.posRender).map {
+                Pair(it, inst)
+            }
+        }.filterRight()
+    }
+
+    Column {
+        header("Step 3: Character Background", "Select one of the backgrounds below\nSelecting might require additional choices.")
+        LazyScrollColumn {
+            itemsIndexed(validBackgrounds) { index, (name, inst) ->
+                val expanded = selected == index || (selected == -1 && data.race.first == name)
+                Column {
+                    Button({ selected = index }) {
+                        Box(Modifier.fillMaxWidth()) {
+                            Text(name, Modifier.align(Alignment.CenterStart), style = MaterialTheme.typography.h6)
+                            Icon(
+                                if(expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                "",
+                                Modifier.align(Alignment.CenterEnd)
+                            )
+                        }
+                    }
+
+                    if(expanded) {
+                        Button({ onSelect(Pair(name, inst)) }) {
+                            Spacer(Modifier.width(10.dp))
+                            Box(Modifier.fillMaxWidth()) {
+                                Text("Select this background", Modifier.align(Alignment.Center))
+                            }
+                            Spacer(Modifier.width(10.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if(count != 0) {
+        choiceDispatcher(
+            count, options, { count = 0 }, setCallback
+        )
+    }
+}
+
+@Composable
+fun abilitiesPage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Character) -> Unit) -> Unit) {
+    var mods by remember {
+        mutableStateOf(data.abilities.map { (a, _) -> Pair(a, 0) }.toMap())
+    }
+    val originals by remember { mutableStateOf(data.abilities.toMap()) }
+
+    toggleNext(mods.all { it.value in 3..18 }) // possible rolls
+
+    Column {
+        header("Step 4: Ability Scores")
+        LazyScrollColumn {
+            items(originals.toList()) { (abbrev, desc) ->
+                Row {
+                    Text("${desc.name}: ", Modifier.weight(0.4f).align(Alignment.CenterVertically))
+                    OutlinedTextField(
+                        if(mods[abbrev] == 0) "" else "${mods[abbrev]}",
+                        { mods += Pair(abbrev, it.toIntOrNull() ?: 0) },
+                        Modifier.weight(0.25f).align(Alignment.CenterVertically).onFocusChanged {
+                            if(!it.hasFocus) {
+                                data.abilities[abbrev] = desc.copy(score = (mods[abbrev] ?: 0) + desc.score)
+                            }
+                        },
+                        maxLines = 1
+                    )
+                    Text(
+                        if(desc.score == 0) "" else desc.score.withSign(),
+                        Modifier.weight(0.1f).align(Alignment.CenterVertically)
+                    )
+                    OutlinedTextField(
+                        "${mods[abbrev]?.let { it + desc.score }}",
+                        {},
+                        Modifier.weight(0.25f).align(Alignment.CenterVertically),
+                        enabled = false,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
