@@ -2,15 +2,14 @@ package ui.widgets
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -123,14 +122,60 @@ fun CenteredBox(title: String, value: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun HPBox(kind: String, value: Int, max: Int? = null, modifier: Modifier = Modifier) {
+fun HPBox(kind: String, value: Int, max: Int? = null, modifier: Modifier = Modifier, damageLabel: String = "Damage", healLabel: String = "Heal", onUpdate: (Int) -> Unit) {
+    var showDamageUI by remember { mutableStateOf(false) }
+    var delta by remember { mutableStateOf(0) }
+
     Box(modifier) {
-        Column {
-            Text(kind, fontStyle = FontStyle.Italic)
-            Box(Modifier.fillMaxSize()) {
-                Row(Modifier.align(Alignment.Center)) {
-                    Text("$value", style = MaterialTheme.typography.h5)
-                    max?.let { Text("/$it", Modifier.align(Alignment.Bottom)) }
+        if(showDamageUI) {
+            Row {
+                Box(Modifier.weight(0.33f)) {
+                    Column(Modifier.align(Alignment.Center)) {
+                        Text(damageLabel, color = MaterialTheme.colors.error)
+                        OutlinedTextField(
+                            if (delta < 0) "${-delta}" else "",
+                            { delta = -(it.toIntOrNull() ?: 0) }
+                        )
+                    }
+                }
+                Box(Modifier.weight(0.33f)) {
+                    Column(Modifier.align(Alignment.Center)) {
+                        Row {
+                            Spacer(Modifier.weight(0.1f))
+                            Button({ showDamageUI = false; onUpdate(delta); delta = 0 }, Modifier.weight(0.8f)) {
+                                Text(
+                                    "Confirm"
+                                )
+                            }
+                            Spacer(Modifier.weight(0.1f))
+                        }
+
+                        Row {
+                            Spacer(Modifier.weight(0.1f))
+                            Button({ delta = 0; showDamageUI = false }, Modifier.weight(0.75f)) { Text("Cancel") }
+                            Spacer(Modifier.weight(0.1f))
+                        }
+                    }
+                }
+                Box(Modifier.weight(0.33f)) {
+                    Column(Modifier.align(Alignment.Center)) {
+                        Text(healLabel, color = Color.Green)
+                        OutlinedTextField(
+                            if (delta > 0) "$delta" else "",
+                            { delta = it.toIntOrNull() ?: 0 }
+                        )
+                    }
+                }
+            }
+        }
+        else {
+            Column(Modifier.clickable { showDamageUI = true }) {
+                Text(kind, fontStyle = FontStyle.Italic)
+                Box(Modifier.fillMaxSize()) {
+                    Row(Modifier.align(Alignment.Center)) {
+                        Text("$value", style = MaterialTheme.typography.h5)
+                        max?.let { Text("/$it", Modifier.align(Alignment.Bottom)) }
+                    }
                 }
             }
         }

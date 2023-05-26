@@ -347,8 +347,10 @@ fun ColumnScope.sheetCentralNumbers(data: Character) {
 
     Row(Modifier.weight(0.25f)) {
         Column(Modifier.weight(0.5f)) {
-            HPBox("Current Hit Points", hp - damage, hp, modifier = Modifier.weight(0.25f))
-            HPBox("Temporary Hit Points", tempHp, modifier = Modifier.weight(0.25f))
+            HPBox("Current Hit Points", hp - damage, hp, modifier = Modifier.weight(0.25f)) { data.modHP(it) }
+            HPBox("Temporary Hit Points", tempHp, healLabel = "Add Temp HP", modifier = Modifier.weight(0.25f)) {
+                if(it < 0) data.modHP(it) else data.addTempHP(it)
+            }
         }
 
         Column(Modifier.weight(0.5f)) {

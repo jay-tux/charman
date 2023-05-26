@@ -215,6 +215,23 @@ class Character(
         return root.serialize()
     }
 
+    fun modHP(amount: Int) {
+        if(amount < 0) {
+            val remaining = tempHp.value + amount
+            tempHp.value += amount
+            if(tempHp.value < 0) tempHp.value = 0
+            if(remaining < 0) damage.value -= remaining
+        }
+        else {
+            damage.value -= amount
+        }
+        if(damage.value < 0) damage.value = 0
+    }
+
+    fun addTempHP(amount: Int) {
+        if(amount > tempHp.value) tempHp.value = amount
+    }
+
     companion object {
         val posRender = PosInfo("<runtime:character:ui>", 0, 0)
         val posInit = PosInfo("<runtime:character:init>", 0, 0)
