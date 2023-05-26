@@ -138,8 +138,8 @@ fun HPBox(kind: String, value: Int, max: Int? = null, modifier: Modifier = Modif
 }
 
 @Composable
-fun DeathSaveWidget(kind: String, amount: Int, max: Int = 3, modifier: Modifier = Modifier, kindWeight: Float = 0.5f) {
-    Row(Modifier) {
+fun DeathSaveWidget(kind: String, amount: Int, max: Int = 3, modifier: Modifier = Modifier, kindWeight: Float = 0.5f, onClick: () -> Unit) {
+    Row(modifier.clickable { onClick() }) {
         Text(kind, Modifier.weight(kindWeight))
 
         Row(Modifier.weight(1.0f - kindWeight)) {

@@ -38,7 +38,7 @@ bin/
 ### Mac OS ###
 .DS_Store
 
-charman.sqlite
-
+# Why in the nine hells does this directory exist?
+gen/**
 
 !.gitkeep

@@ -368,8 +368,8 @@ fun ColumnScope.sheetCentralNumbers(data: Character) {
                 Column(Modifier.weight(0.5f)) {
                     Text("Death Saves", fontStyle = FontStyle.Italic)
                     Column {
-                        DeathSaveWidget("Successes", deathSaves.first)
-                        DeathSaveWidget("Failures", deathSaves.second)
+                        DeathSaveWidget("Successes", deathSaves.first) { data.deathSaves.value = data.deathSaves.value.let { it.copy(first = (it.first + 1) % 4) } }
+                        DeathSaveWidget("Failures", deathSaves.second) { data.deathSaves.value = data.deathSaves.value.let { it.copy(second = (it.second + 1) % 4) } }
                     }
                 }
             }
