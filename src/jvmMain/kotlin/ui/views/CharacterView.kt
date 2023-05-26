@@ -273,6 +273,11 @@ fun BoxScope.sheetTraitsPanel(data: Character) {
             TraitCard(name, desc.second, desc.first)
             Spacer(Modifier.height(7.dp))
         }
+
+        items(data.backgroundTraits.toList()) { (name, desc) ->
+            TraitCard(name, data.background.first, desc.first)
+            Spacer(Modifier.height(7.dp))
+        }
     }
 }
 

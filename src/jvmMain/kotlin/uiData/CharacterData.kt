@@ -9,6 +9,7 @@ import arrow.core.left
 import arrow.core.right
 import cml.*
 import data.*
+import filterRight
 import updateGet
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -33,6 +34,7 @@ class Character(
     val abilities: MutableMap<String, AbilityDesc>
 ) {
     val classTraits = mutableMapOf<String, Triple<String, String, InstanceVal>>()
+    val backgroundTraits = mutableMapOf<String, Pair<String, InstanceVal>>()
     val racialTraits = mutableMapOf<String, Pair<String, InstanceVal>>()
 
     val skillProficiencies = mutableListOf<InstanceVal>()
@@ -242,6 +244,25 @@ class Character(
             listOf(4, 3, 3, 3, 3, 2, 1, 1, 0, 1), // Level 19
             listOf(4, 3, 3, 3, 3, 2, 2, 1, 0, 1), // Level 20
         )
+
+        fun mold() = Character(
+            name = "",
+            race = Pair("Phony Race", Library.phonyInstance()),
+            background = Pair("Phony Background", Library.phonyInstance()),
+            classes = mutableMapOf(),
+            abilities = loadAbilities().toMutableMap()
+        )
+
+        // data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
+        fun loadAbilities() =
+            Library.typesByKind("Ability").map { ability ->
+                val inst = InstanceVal(ability, posInit)
+                inst.getString("abbrev", posInit).flatMap { abbrev ->
+                    inst.getName(posInit)
+                        .map { name -> AbilityDesc(name, inst, 0) }
+                        .map { desc -> Pair(abbrev, desc) }
+                }
+            }.filterRight().associate { it }
     }
 }
 
@@ -267,6 +288,10 @@ object CharacterData {
             index,
             Pair(_characters.value[index].fold({ it.first }, { it.type.name }), message).left()
         )
+    }
+
+    fun newCharacter(c: Character) {
+        _loadedCharacters.value += c.right()
     }
 
     fun loadFromLibrary() {

@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import compose
+import ui.dialogs.CharacterCreationDialog
 import ui.views.CharacterView
 import ui.views.CharacterViewError
 import ui.widgets.*
@@ -78,20 +79,30 @@ fun body() {
     val values by CharacterData.characters
     val mapped by CharacterData.loadedCharacters
     var current by remember { mutableStateOf(-1) }
+    var showCreate by remember { mutableStateOf(false) }
+
+    if(current >= mapped.size) current = -1
+
     Row {
-        LazyScrollColumn(
-            Modifier.weight(0.2f).fillMaxHeight().background(MaterialTheme.colors.primary)
-                .padding(top = 7.dp, start = 7.dp, bottom = 7.dp)
-        ) {
-            itemsIndexed(items = mapped) { index, value ->
-                CharacterCard(
-                    values[index].fold({ it.first },{ it.type.name }),
-                    value,
-                    index,
-                    { current = if (current == it) -1 else it },
-                    current == index,
-                    Modifier.fillMaxWidth()
-                )
+        Column(Modifier.weight(0.2f).fillMaxHeight().background(MaterialTheme.colors.primary)) {
+            LazyScrollColumn(
+                Modifier.padding(top = 7.dp, start = 7.dp, bottom = 7.dp).weight(0.95f)
+            ) {
+                itemsIndexed(items = mapped) { index, value ->
+                    CharacterCard(
+                        values[index].fold({ it.first }, { it.type.name }),
+                        value,
+                        index,
+                        { current = if (current == it) -1 else it },
+                        current == index,
+                        Modifier.fillMaxWidth()
+                    )
+                }
+            }
+            Box(Modifier.weight(0.05f).padding(7.dp)) {
+               Button({ showCreate = true }, Modifier.align(Alignment.Center).fillMaxWidth()) {
+                   Text("Create character")
+               }
             }
         }
 
@@ -107,5 +118,9 @@ fun body() {
                 mapped[current].compose({ CharacterViewError(it) }, { CharacterView(it) })
             }
         }
+    }
+
+    if(showCreate) {
+        CharacterCreationDialog { showCreate = false }
     }
 }

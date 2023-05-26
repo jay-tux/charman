@@ -95,3 +95,7 @@ fun Int.cardinal(): String {
     }
     return "$this$ending"
 }
+
+fun <E, V> List<Either<E, V>>.filterRight(): List<V> {
+    return this.filterIsInstance<Either.Right<V>>().map { it.value }
+}

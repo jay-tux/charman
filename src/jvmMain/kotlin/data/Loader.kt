@@ -139,8 +139,10 @@ object Scripts {
 
             checkCacheDirs()
             scriptCache.walk().forEach {
-                CMLOut.addInfo("  Loading script ${it.absolutePathString()}")
-                loadFile(it.absolutePathString())
+                if(it.extension == "cml") {
+                    CMLOut.addInfo("  Loading script ${it.absolutePathString()}")
+                    loadFile(it.absolutePathString())
+                }
             }
 
             try {
@@ -159,8 +161,10 @@ object Scripts {
             }
 
             characterCache.walk().forEach {
-                CMLOut.addInfo("  Loading character ${it.absolutePathString()}")
-                loadFile(it.absolutePathString())
+                if(it.extension == "cml") {
+                    CMLOut.addInfo("  Loading character ${it.absolutePathString()}")
+                    loadFile(it.absolutePathString())
+                }
             }
 
             instantiateAll()
@@ -368,12 +372,10 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     item.ifInstVerifyGetName("Item", posInit).flatMap { (name, inst) ->
                         inst.getFloat("weight", posInit).flatMap { weight ->
                             inst.getList("actions", posInit).flatMap { actions ->
-                                Library.flatWithCharacter(char) {
-                                    actions.value.mapOrEither {
-                                        it.ifInstVerify("Action", posInit).map { a ->
-                                            addAction(char)(listOf(a), posInit)
-                                            a
-                                        }
+                                actions.value.mapOrEither {
+                                    it.ifInstVerify("Action", posInit).map { a ->
+                                        CharacterScope(char).addAction(listOf(a), posInit)
+                                        a
                                     }
                                 }
                             }.flatMap { actions ->

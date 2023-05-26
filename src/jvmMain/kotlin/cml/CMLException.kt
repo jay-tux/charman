@@ -92,7 +92,7 @@ object ExecutionStack {
     private val stack = mutableListOf<PosInfo>()
 
     fun push(pos: PosInfo) { stack.add(pos) }
-    fun pop() { stack.removeLast() }
+    fun pop() { if(stack.isNotEmpty()) stack.removeLast() }
 
     fun formatError(msg: String, clearAfter: Boolean = true): String {
         var res = "$msg\n"
@@ -105,5 +105,12 @@ object ExecutionStack {
 
     fun clearStack() {
         stack.clear()
+    }
+
+    fun <T> call(pos: PosInfo, fn: () -> T): T {
+        push(pos)
+        val res = fn()
+        pop()
+        return res
     }
 }

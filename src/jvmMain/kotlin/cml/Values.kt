@@ -1,5 +1,6 @@
 package cml
 
+import CMLOut
 import arrow.core.Either
 
 abstract class Value(pos: PosInfo) : AstNode(pos) {
@@ -128,6 +129,15 @@ class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     }
 }
 
+class DelayedVal(val scope: ChoiceScope, val name: String, pos: PosInfo): Value(pos) {
+    override fun repr(): String {
+        CMLOut.addWarning("Attempting to take repr of a delayed value (choice value)")
+        return "(delayed choice value `$name')"
+    }
+
+    override fun copy(newPos: PosInfo): Value = DelayedVal(scope, name, newPos)
+}
+
 fun typeName(v: Value): String = when(v) {
     is BoolVal -> "bool"
     is IntVal -> "int"
@@ -220,8 +230,15 @@ class ExecEnvironment private constructor(
     fun isFunction(name: String): Boolean =
         StdLib.isStd(name) || Library.isLibFunc(name) || functions.containsKey(name)
 
-    fun invoke(name: String, args: List<Value>, callSite: PosInfo): Value? =
-        StdLib.invoke(name, args, callSite) ?: Library.invoke(name, args, callSite) ?: functions[name]?.call(args, callSite)
+    fun invoke(name: String, args: List<Value>, callSite: PosInfo): Value? {
+        val f = functions[name]
+        if(f == null) {
+            if(Library.isLibFunc(name)) return Library.invoke(name, args, callSite)
+            if(StdLib.isStd(name)) return StdLib.invoke(name, args, callSite)
+            return null
+        }
+        return functions[name]?.call(args, callSite)
+    }
 
     fun addVar(name: String, value: Value, currPos: PosInfo) {
         if(variables.containsKey(name)) throw CMLException.redeclareVar(name, variables[name]!!.declPos, currPos)
