@@ -12,6 +12,9 @@ fun InstanceVal.getString(name: String, p: PosInfo): Either<CMLException, String
 
 fun InstanceVal.getName(p: PosInfo): Either<CMLException, String> = getString("name", p)
 
+fun InstanceVal.getBool(name: String, p: PosInfo): Either<CMLException, Boolean> =
+    attemptFieldAs<BoolVal>(name, "Bool", p).map { it.value }
+
 fun InstanceVal.getInt(name: String, p: PosInfo): Either<CMLException, Int> =
     attemptFieldAs<IntVal>(name, "Int", p).map { it.value }
 

@@ -207,12 +207,30 @@ class Character(
         damage.value.toSerializable().toField("damage").addTo(root)
         tempHp.value.toSerializable().toField("tempHP").addTo(root)
         speed.value.toSerializable().toField("speed").addTo(root)
+        inspiration.value.toSerializable().toField("inspiration").addTo(root)
         deathSaves.value.first.toSerializable().toField("deathSavesFailed").addTo(root)
         deathSaves.value.second.toSerializable().toField("deathSavesSucceeded").addTo(root)
         inventory.value.map { it.instance }.toSerializableEither().fold(
             { CMLOut.addWarning("Serialization failed for $name's inventory: ${it.localizedMessage}") }
         ) { it.toField("inventory").addTo(root) }
         return root.serialize()
+    }
+
+    fun modHP(amount: Int) {
+        if(amount < 0) {
+            val remaining = tempHp.value + amount
+            tempHp.value += amount
+            if(tempHp.value < 0) tempHp.value = 0
+            if(remaining < 0) damage.value -= remaining
+        }
+        else {
+            damage.value -= amount
+        }
+        if(damage.value < 0) damage.value = 0
+    }
+
+    fun addTempHP(amount: Int) {
+        if(amount > tempHp.value) tempHp.value = amount
     }
 
     companion object {
