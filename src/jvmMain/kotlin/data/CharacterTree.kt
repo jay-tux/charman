@@ -62,6 +62,7 @@ abstract class SerializeExpression: CharacterNode {
 
 fun Value.toSerializable(): Either<CMLException, SerializeExpression> {
     return when(this) {
+        is BoolVal -> value.toSerializable().right()
         is IntVal -> value.toSerializable().right()
         is StringVal -> value.toSerializable().right()
         is ListVal -> value.toSerializableEither()
@@ -71,6 +72,11 @@ fun Value.toSerializable(): Either<CMLException, SerializeExpression> {
         else -> CMLException.nonSerializable(this).left()
     }
 }
+
+class BoolValSer(private val value: Boolean): SerializeExpression() {
+    override fun serialize(): String = "$value"
+}
+fun Boolean.toSerializable() = BoolValSer(this)
 
 class IntValSer(private val value: Int): SerializeExpression() {
     override fun serialize(): String = "$value"

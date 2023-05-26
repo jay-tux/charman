@@ -361,6 +361,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 .flatMap{ valid.getInt("damage", posInit) }.map { char.damage.value = it }
                 .flatMap{ valid.getInt("tempHP", posInit) }.map { char.tempHp.value = it }
                 .flatMap{ valid.getInt("speed", posInit) }.map { char.speed.value = it }
+                .flatMap{ valid.getBool("inspiration", posInit) }.map { char.inspiration.value = it }
                 .flatMap{ valid.getInt("deathSavesFailed", posInit) }.flatMap { failed ->
                     valid.getInt("deathSavesSucceeded", posInit).map { Pair(failed, it) }
                 }.map { char.deathSaves.value = it }

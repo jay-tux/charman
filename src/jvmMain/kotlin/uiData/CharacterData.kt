@@ -207,6 +207,7 @@ class Character(
         damage.value.toSerializable().toField("damage").addTo(root)
         tempHp.value.toSerializable().toField("tempHP").addTo(root)
         speed.value.toSerializable().toField("speed").addTo(root)
+        inspiration.value.toSerializable().toField("inspiration").addTo(root)
         deathSaves.value.first.toSerializable().toField("deathSavesFailed").addTo(root)
         deathSaves.value.second.toSerializable().toField("deathSavesSucceeded").addTo(root)
         inventory.value.map { it.instance }.toSerializableEither().fold(

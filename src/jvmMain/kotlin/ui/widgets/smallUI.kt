@@ -93,11 +93,11 @@ fun ModScoreCard(name: String, mod: Int, hasProf: Boolean = false) {
 
 @Composable
 fun ColumnScope.InspirationWidget(isInspired: Boolean = false, onToggle: (Boolean) -> Unit) {
-    Row(Modifier.weight(0.07f)) {
+    Row(Modifier.weight(0.07f).fillMaxWidth().clickable { onToggle(!isInspired) }) {
         Icon(
             if(isInspired) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
             "",
-            Modifier.weight(0.1f).clickable { onToggle(!isInspired) }
+            Modifier.weight(0.1f)
         )
         Text("Inspiration", Modifier.weight(0.9f), fontWeight = FontWeight.Bold)
     }
