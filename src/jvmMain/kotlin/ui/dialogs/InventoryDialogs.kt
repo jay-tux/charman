@@ -1,12 +1,11 @@
 package ui.dialogs
 
 import CMLOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.Button
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -76,7 +75,10 @@ fun ItemDialog(onClose: () -> Unit, onAdd: (ItemDesc, Int) -> Unit) = DefaultDia
         LazyScrollColumn(Modifier.weight(0.76f)) {
             itemsIndexed(current) { idx, item ->
                 Box(Modifier.fillMaxWidth()) {
-                    Text(item.name, Modifier.clickable { selected = idx })
+                    Text(
+                        item.name,
+                        Modifier.background(if(selected == idx) MaterialTheme.colors.primarySurface.copy(alpha = 0.33f) else MaterialTheme.colors.background ).fillMaxWidth().clickable { selected = idx }
+                    )
                 }
             }
         }
