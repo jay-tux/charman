@@ -65,7 +65,7 @@ fun CharacterCreationDialog(onClose: () -> Unit) = DefaultDialog(onClose, 600.dp
 
         result.value.onUpdate()
         Scripts.saveChar(result.value)
-        Scripts.loadCache()
+        CMLOut.refresh()
         onClose()
     }
 
