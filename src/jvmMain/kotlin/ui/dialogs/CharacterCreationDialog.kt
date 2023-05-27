@@ -56,6 +56,7 @@ fun CharacterCreationDialog(onClose: () -> Unit) = DefaultDialog(onClose, 600.dp
     var result by remember { Mutable.stateFrom(Character.mold()) }
     var currentPage by remember { mutableStateOf(NAME) }
     var canGoNext by remember { mutableStateOf(true) }
+    var choiceNo = remember { mutableStateOf(0) }
 
     val save = {
         val mod = Library.construct("Constitution", Character.posInit)?.let {
@@ -78,9 +79,9 @@ fun CharacterCreationDialog(onClose: () -> Unit) = DefaultDialog(onClose, 600.dp
         Box(Modifier.weight(0.95f)) {
             when (currentPage) {
                 NAME -> namePage(result.value, { canGoNext = it }) { fn -> update(fn) }
-                RACE -> racePage(result.value, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
-                CLASS -> classPage(result.value, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
-                BACKGROUND -> backgroundPage(result.value, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
+                RACE -> racePage(result.value, choiceNo, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
+                CLASS -> classPage(result.value, choiceNo, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
+                BACKGROUND -> backgroundPage(result.value, choiceNo, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
                 ABILITIES -> abilitiesPage(result.value, { canGoNext = it }) { fn -> update(fn) }
             }
         }
@@ -126,7 +127,7 @@ fun namePage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Character)
 }
 
 @Composable
-fun racePage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
     var selected by remember { mutableStateOf(-1) }
 
     var count by remember { mutableStateOf(0) }
@@ -142,7 +143,7 @@ fun racePage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit,
                  c = it,
                  selector = { c -> c.raceChoices },
                  render = { cnt, opts, onSet ->
-                     count = cnt; options = opts; setCallback = onSet
+                     choiceNo.value++; count = cnt; options = opts; setCallback = onSet
                  }
              ) {
                  race.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
@@ -207,13 +208,13 @@ fun racePage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit,
 
     if(count != 0) {
         choiceDispatcher(
-            count, options, { count = 0 }, setCallback
+            count, choiceNo.value, options, { count = 0 }, setCallback
         )
     }
 }
 
 @Composable
-fun classPage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
     var selected by remember { mutableStateOf(-1) }
 
     var count by remember { mutableStateOf(0) }
@@ -238,7 +239,7 @@ fun classPage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit
                     c.classesChoices[classV.first]
                 },
                 render = { cnt, opts, onSet ->
-                    count = cnt; options = opts; setCallback = onSet
+                    choiceNo.value++; count = cnt; options = opts; setCallback = onSet
                 }
             ) {
                 classV.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
@@ -289,13 +290,13 @@ fun classPage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit
 
     if(count != 0) {
         choiceDispatcher(
-            count, options, { count = 0 }, setCallback
+            count, choiceNo.value, options, { count = 0 }, setCallback
         )
     }
 }
 
 @Composable
-fun backgroundPage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+fun backgroundPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
     var selected by remember { mutableStateOf(-1) }
 
     var count by remember { mutableStateOf(0) }
@@ -311,7 +312,7 @@ fun backgroundPage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () ->
                 c = it,
                 selector = { c -> c.backgroundChoices },
                 render = { cnt, opts, onSet ->
-                    count = cnt; options = opts; setCallback = onSet
+                    choiceNo.value++; count = cnt; options = opts; setCallback = onSet
                 }
             ) {
                 back.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
@@ -362,7 +363,7 @@ fun backgroundPage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () ->
 
     if(count != 0) {
         choiceDispatcher(
-            count, options, { count = 0 }, setCallback
+            count, choiceNo.value, options, { count = 0 }, setCallback
         )
     }
 }

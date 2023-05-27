@@ -24,17 +24,30 @@ import uiData.Character
 @Composable
 fun SingleChoiceDialog(
     options: List<Value>,
+    choiceNo: Int,
     onExit: () -> Unit,
     onChoice: (Value) -> Unit,
 ) = DefaultDialog({ /* disable closing without choosing */ }, 400.dp, 500.dp) {
     var selected by remember { mutableStateOf(-1) }
-    // doesn't work with state for some reason?
-    val choices = options.map { v ->
+    var choiceNoInternal by remember { mutableStateOf(-1) }
+    var choices = options.map { v ->
         when (v) {
             is InstanceVal -> v.getName(Character.posRender).fold({ "" }, { it })
             else -> v.repr()
         }
     }.filter { it.isNotEmpty() }
+
+    if(choiceNoInternal != choiceNo) {
+        selected = -1
+        choiceNoInternal = choiceNo
+
+        choices = options.map { v ->
+            when (v) {
+                is InstanceVal -> v.getName(Character.posRender).fold({ "" }, { it })
+                else -> v.repr()
+            }
+        }.filter { it.isNotEmpty() }
+    }
 
     Column {
         Text("Select one of the options below:", Modifier.weight(0.1f))
@@ -65,25 +78,38 @@ fun SingleChoiceDialog(
 @Composable
 fun MultiChoiceDialog(
     count: Int,
+    choiceNo: Int,
     options: List<Value>,
     onExit: () -> Unit,
     onChoice: (Value) -> Unit,
 ) = DefaultDialog({ /* disable closing without choosing */ }, 400.dp, 500.dp) {
     var selected by remember { mutableStateOf(listOf<Int>()) }
-
-    val append = { v: Int ->
-        val upd = selected.toMutableList()
-        upd.add(v)
-        while(upd.size > count) upd.removeAt(0) // pop front
-        selected = upd
-    }
-
-    val choices = options.map { v ->
-        when(v) {
+    var choiceNoInternal by remember { mutableStateOf(-1) }
+    var choices = options.map { v ->
+        when (v) {
             is InstanceVal -> v.getName(Character.posRender).fold({ "" }, { it })
             else -> v.repr()
         }
     }.filter { it.isNotEmpty() }
+
+    if(choiceNoInternal != choiceNo) {
+        selected = listOf()
+        choiceNoInternal = choiceNo
+
+        choices = options.map { v ->
+            when (v) {
+                is InstanceVal -> v.getName(Character.posRender).fold({ "" }, { it })
+                else -> v.repr()
+            }
+        }.filter { it.isNotEmpty() }
+    }
+
+    val append = { v: Int ->
+        val upd = selected.toMutableList()
+        if(!selected.contains(v)) upd.add(v)
+        while(upd.size > count) upd.removeAt(0) // pop front
+        selected = upd
+    }
 
     val confirm = {
         val res = options.filterIndexed { index, _ -> selected.contains(index) }
@@ -119,8 +145,8 @@ fun MultiChoiceDialog(
 
 @Composable
 fun choiceDispatcher(
-    count: Int, options: List<Value>, onExit: () -> Unit, onChoice: (Value) -> Unit
+    count: Int, choiceNo: Int, options: List<Value>, onExit: () -> Unit, onChoice: (Value) -> Unit
 ) {
-    if(count == 1) SingleChoiceDialog(options, onExit, onChoice)
-    else MultiChoiceDialog(count, options, onExit, onChoice)
+    if(count == 1) SingleChoiceDialog(options, choiceNo, onExit, onChoice)
+    else MultiChoiceDialog(count, choiceNo, options, onExit, onChoice)
 }
