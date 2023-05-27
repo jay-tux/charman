@@ -33,7 +33,7 @@ fun boldThenItalic(bold: String, italic: String) = Row {
 }
 
 @Composable
-fun indented(content: @Composable RowScope.() -> Unit) = Row {
+fun indented(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) = Row(modifier) {
     Spacer(Modifier.width(10.dp))
     content()
 }

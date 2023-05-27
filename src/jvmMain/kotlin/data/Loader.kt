@@ -370,35 +370,14 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
         }.flatMap { char ->
             valid.getDict("inventory", posInit).flatMap { inv ->
                 inv.mapOrEither { (item, count) ->
-                    item.ifInstVerifyGetName("Item", posInit).flatMap { (name, inst) ->
-                        inst.getFloat("weight", posInit).flatMap { weight ->
-                            inst.getList("actions", posInit).flatMap { actions ->
-                                actions.value.mapOrEither {
-                                    it.ifInstVerify("Action", posInit).map { a ->
-                                        CharacterScope(char).addAction(listOf(a), posInit)
-                                        a
-                                    }
-                                }
-                            }.flatMap { actions ->
-                                inst.getList("additionalTraits", posInit).flatMap { traits ->
-                                    traits.value.mapOrEither {
-                                        it.ifInstVerifyGetName("ItemTrait", posInit).flatMap { (iName, iT) ->
-                                            iT.getString("desc", posInit).map { iDesc -> Triple(iName, iDesc, iT) }
-                                        }
-                                    }
-                                }.flatMap { traits ->
-                                    inst.getVerifyInst("value", "Currency", posInit).flatMap { cost ->
-                                        cost.getString("abbrev", posInit).flatMap { abbrev ->
-                                            cost.getInt("amount", posInit).map { count ->
-                                                Triple(count, abbrev, cost)
-                                            }
-                                        }
-                                    }.map { price ->
-                                        ItemDesc(name, weight, price, actions, traits, inst)
-                                    }.flatMap { itemD ->
-                                        count.requireInt(posInit).map { Pair(itemD, it.value) }
-                                    }
-                                }
+                    loadItem(item).flatMap { (itemD, actions) ->
+                        actions.mapOrEither {
+                            CMLException.catching {
+                                CharacterScope(char).addAction(listOf(it), posInit)
+                            }
+                        }.flatMap { _ ->
+                            count.requireInt(posInit).map {
+                                Pair(itemD, it.value)
                             }
                         }
                     }
@@ -434,4 +413,40 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
             it.message?.let { msg -> CMLOut.addError(msg) }
             it
         }
+}
+
+fun Character.Companion.loadItem(item: Value): Either<CMLException, Pair<ItemDesc, List<InstanceVal>>> {
+    val actionsL = mutableListOf<InstanceVal>()
+    return item.ifInstVerifyGetName("Item", posInit).flatMap { (name, inst) ->
+        inst.getFloat("weight", posInit).flatMap { weight ->
+            inst.getList("actions", posInit).flatMap { actions ->
+                actions.value.mapOrEither {
+                    it.ifInstVerify("Action", posInit).map { a ->
+                        actionsL.add(a)
+                        a
+                    }
+                }
+            }.flatMap { actions ->
+                inst.getList("additionalTraits", posInit).flatMap { traits ->
+                    traits.value.mapOrEither {
+                        it.ifInstVerifyGetName("ItemTrait", posInit).flatMap { (iName, iT) ->
+                            iT.getString("desc", posInit).map { iDesc -> Triple(iName, iDesc, iT) }
+                        }
+                    }
+                }.flatMap { traits ->
+                    inst.getVerifyInst("value", "Currency", posInit).flatMap { cost ->
+                        cost.getString("abbrev", posInit).flatMap { abbrev ->
+                            cost.getInt("amount", posInit).map { count ->
+                                Triple(count, abbrev, cost)
+                            }
+                        }
+                    }.map { price ->
+                        ItemDesc(name, weight, price, actions, traits, inst)
+                    }
+                }
+            }
+        }
+    }.map { res ->
+        Pair(res, actionsL)
+    }
 }

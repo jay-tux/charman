@@ -5,10 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,7 +19,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cml.CMLException
 import ui.Renderer
+import ui.dialogs.CurrencyDialog
 import ui.dialogs.DefaultDialog
+import ui.dialogs.ItemDialog
 import ui.widgets.*
 import uiData.Character
 import withSign
@@ -289,6 +291,7 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
 
     var editingMoney by remember { mutableStateOf(false) }
     var delta by remember { mutableStateOf(0) }
+    var addingItem by remember { mutableStateOf(false) }
 
     val stopEdit = {
         editingMoney = false
@@ -308,22 +311,32 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
         }
         LazyScrollColumn(Modifier.weight(0.85f)) {
             item {
-                Text("Items", fontStyle = FontStyle.Italic)
+                Row {
+                    Text("Items", Modifier.weight(0.9f), fontStyle = FontStyle.Italic)
+                    Surface(Modifier.weight(0.1f).clickable { addingItem = true }) {
+                        Icon(Icons.Default.Add, "", Modifier.background(MaterialTheme.colors.surface))
+                    }
+                }
             }
             items(inventory.toList()) { (item, count) ->
-                indented {
-                    Text(
-                        if(count == 1) item.name else "${item.name} x$count",
-                        Modifier.weight(0.33f)
-                    )
-                    Text("${item.weight} lbs.", Modifier.weight(0.20f))
-                    Text("${item.value.first} ${item.value.second}", Modifier.weight(0.20f))
-                    Text(
-                        item.traits.joinToString(", ") { it.first },
-                        Modifier.weight(0.27f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                Row {
+                    indented(Modifier.weight(0.9f)) {
+                        Text(
+                            if (count == 1) item.name else "${item.name} x$count",
+                            Modifier.weight(0.33f)
+                        )
+                        Text("${item.weight} lbs.", Modifier.weight(0.20f))
+                        Text("${item.value.first} ${item.value.second}", Modifier.weight(0.20f))
+                        Text(
+                            item.traits.joinToString(", ") { it.first },
+                            Modifier.weight(0.27f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Surface(Modifier.weight(0.1f).clickable { data.removeItem(item) }) {
+                        Icon(Icons.Default.Remove, "", Modifier.background(MaterialTheme.colors.surface))
+                    }
                 }
             }
         }
@@ -333,9 +346,9 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
         DefaultDialog(
             { stopEdit() }, 1000.dp, 250.dp
         ) {
-            CurrencyEditWidget(
+            CurrencyDialog(
                 currencies = money.keys.toList(),
-                onCancel = { stopEdit() },
+                onClose = { stopEdit() },
                 canPayExactly = { unit, amount -> data.hasCurrency(unit, amount) },
                 canPay = { unit, amount -> data.canPay(unit, amount) },
                 onExact = { unit, amount -> data.payExact(unit, amount); stopEdit() },
@@ -343,6 +356,13 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
                 onGain = { unit, amount -> data.earn(unit, amount); stopEdit() }
             )
         }
+    }
+
+    if(addingItem) {
+        ItemDialog(
+            onClose = { addingItem = false },
+            onAdd = { item, count -> data.addItem(item, count) }
+        )
     }
 }
 

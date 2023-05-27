@@ -300,6 +300,22 @@ class Character(
         money.value = mut
     }
 
+    fun addItem(desc: ItemDesc, amount: Int) {
+        val mut = inventory.value.toMutableMap()
+        if(mut.containsKey(desc)) mut[desc] = mut[desc]!! + amount
+        else mut[desc] = amount
+        inventory.value = mut
+    }
+
+    fun removeItem(desc: ItemDesc) {
+        val mut = inventory.value.toMutableMap()
+        if(mut.containsKey(desc)) {
+            if(mut[desc]!! == 1) mut.remove(desc)
+            else mut[desc] = mut[desc]!! - 1
+            inventory.value = mut
+        }
+    }
+
     companion object {
         val posRender = PosInfo("<runtime:character:ui>", 0, 0)
         val posInit = PosInfo("<runtime:character:init>", 0, 0)
