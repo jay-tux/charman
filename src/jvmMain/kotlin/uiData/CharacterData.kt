@@ -62,7 +62,7 @@ class Character(
     val ac = mutableStateOf(0)
     val initMod = mutableStateOf(0)
     val hitDice = mutableStateOf(mapOf<Int, Int>()) // (dice type, amount)
-    val inventory = mutableStateOf(listOf<ItemDesc>())
+    val inventory = mutableStateOf(mapOf<ItemDesc, Int>())
     val money = mutableStateOf(Library.typesByKind("Currency").map { decl ->
         val inst = InstanceVal(decl, posInit)
         inst.getName(posInit).flatMap { name ->
@@ -225,9 +225,9 @@ class Character(
         inspiration.value.toSerializable().toField("inspiration").addTo(root)
         deathSaves.value.first.toSerializable().toField("deathSavesFailed").addTo(root)
         deathSaves.value.second.toSerializable().toField("deathSavesSucceeded").addTo(root)
-        inventory.value.map { it.instance }.toSerializableEither().fold(
-            { CMLOut.addWarning("Serialization failed for $name's inventory: ${it.localizedMessage}") }
-        ) { it.toField("inventory").addTo(root) }
+        inventory.value.toSerializable { itemDesc, count ->
+            Pair(itemDesc.instance.type.toCtor(), count.toSerializable())
+        }.toField("inventory").addTo(root)
         money.value.toSerializable { _, desc ->
             Pair(desc.instance.type.toCtor(), desc.amount.toSerializable())
         }.toField("currency").addTo(root)

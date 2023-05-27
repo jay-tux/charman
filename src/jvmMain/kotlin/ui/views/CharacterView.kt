@@ -310,9 +310,12 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
             item {
                 Text("Items", fontStyle = FontStyle.Italic)
             }
-            items(inventory) { item ->
+            items(inventory.toList()) { (item, count) ->
                 indented {
-                    Text(item.name, Modifier.weight(0.33f))
+                    Text(
+                        if(count == 1) item.name else "${item.name} x$count",
+                        Modifier.weight(0.33f)
+                    )
                     Text("${item.weight} lbs.", Modifier.weight(0.20f))
                     Text("${item.value.first} ${item.value.second}", Modifier.weight(0.20f))
                     Text(

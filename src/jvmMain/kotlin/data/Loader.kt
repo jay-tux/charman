@@ -368,8 +368,8 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 .map { char.onUpdate() }
                 .map { char }
         }.flatMap { char ->
-            valid.getList("inventory", posInit).flatMap { inv ->
-                inv.value.mapOrEither { item ->
+            valid.getDict("inventory", posInit).flatMap { inv ->
+                inv.mapOrEither { (item, count) ->
                     item.ifInstVerifyGetName("Item", posInit).flatMap { (name, inst) ->
                         inst.getFloat("weight", posInit).flatMap { weight ->
                             inst.getList("actions", posInit).flatMap { actions ->
@@ -395,6 +395,8 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                                         }
                                     }.map { price ->
                                         ItemDesc(name, weight, price, actions, traits, inst)
+                                    }.flatMap { itemD ->
+                                        count.requireInt(posInit).map { Pair(itemD, it.value) }
                                     }
                                 }
                             }
