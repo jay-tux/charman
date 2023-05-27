@@ -56,7 +56,7 @@ class AttackAction(
     override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
         scope.apply {
             val items by c.inventory
-            val item = items.first { it.name == name.split('(')[0].trim() }
+            val item = items.toList().first { it.first.name == name.split('(')[0].trim() }.first
             Column(modifier.fillMaxHeight().fillMaxWidth(0.33f).align(Alignment.CenterEnd).padding(10.dp)) {
                 Text(name, style = MaterialTheme.typography.h5)
                 // TODO: add magical or not & rarity

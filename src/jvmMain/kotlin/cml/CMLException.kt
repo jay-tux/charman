@@ -1,9 +1,20 @@
 package cml
 
 import androidx.compose.ui.util.fastForEachReversed
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
 
 class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
     companion object {
+        fun <T> catching(action: () -> T): Either<CMLException, T> {
+            return try {
+                action().right()
+            } catch(ex: CMLException) {
+                ex.left()
+            }
+        }
+
         fun voidVarException(name: String, pos: PosInfo): CMLException =
             CMLException("Attempt to declare variable `$name' as (void) at $pos")
 

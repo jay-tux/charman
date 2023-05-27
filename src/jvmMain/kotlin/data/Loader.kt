@@ -368,35 +368,16 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 .map { char.onUpdate() }
                 .map { char }
         }.flatMap { char ->
-            valid.getList("inventory", posInit).flatMap { inv ->
-                inv.value.mapOrEither { item ->
-                    item.ifInstVerifyGetName("Item", posInit).flatMap { (name, inst) ->
-                        inst.getFloat("weight", posInit).flatMap { weight ->
-                            inst.getList("actions", posInit).flatMap { actions ->
-                                actions.value.mapOrEither {
-                                    it.ifInstVerify("Action", posInit).map { a ->
-                                        CharacterScope(char).addAction(listOf(a), posInit)
-                                        a
-                                    }
-                                }
-                            }.flatMap { actions ->
-                                inst.getList("additionalTraits", posInit).flatMap { traits ->
-                                    traits.value.mapOrEither {
-                                        it.ifInstVerifyGetName("ItemTrait", posInit).flatMap { (iName, iT) ->
-                                            iT.getString("desc", posInit).map { iDesc -> Triple(iName, iDesc, iT) }
-                                        }
-                                    }
-                                }.flatMap { traits ->
-                                    inst.getVerifyInst("value", "Currency", posInit).flatMap { cost ->
-                                        cost.getString("abbrev", posInit).flatMap { abbrev ->
-                                            cost.getInt("amount", posInit).map { count ->
-                                                Triple(count, abbrev, cost)
-                                            }
-                                        }
-                                    }.map { price ->
-                                        ItemDesc(name, weight, price, actions, traits, inst)
-                                    }
-                                }
+            valid.getDict("inventory", posInit).flatMap { inv ->
+                inv.mapOrEither { (item, count) ->
+                    loadItem(item).flatMap { (itemD, actions) ->
+                        actions.mapOrEither {
+                            CMLException.catching {
+                                CharacterScope(char).addAction(listOf(it), posInit)
+                            }
+                        }.flatMap { _ ->
+                            count.requireInt(posInit).map {
+                                Pair(itemD, it.value)
                             }
                         }
                     }
@@ -406,10 +387,66 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 char.onUpdate()
                 char
             }
+        }.flatMap { char ->
+            valid.getDict("currency", posInit).flatMap { currency ->
+                val current = char.money.value.toMutableMap()
+
+                currency.mapOrEither { (curr, amount) ->
+                    curr.ifInstVerifyGetName("Currency", posInit).flatMap { (name, currInst) ->
+                        currInst.getString("abbrev", posInit).flatMap { abbrev ->
+                            currInst.getInt("conversionRatio", posInit).flatMap { ratio ->
+                                amount.requireInt(posInit).map { amountV ->
+                                    Pair(abbrev, MoneyDesc(amountV.value, name, ratio, currInst))
+                                }
+                            }
+                        }
+                    }
+                }.map {
+                    it.forEach { (k, v) -> current[k] = v }
+                    char.money.value = current
+                    char
+                }
+            }
         }
     }
         .mapLeft {
             it.message?.let { msg -> CMLOut.addError(msg) }
             it
         }
+}
+
+fun Character.Companion.loadItem(item: Value): Either<CMLException, Pair<ItemDesc, List<InstanceVal>>> {
+    val actionsL = mutableListOf<InstanceVal>()
+    return item.ifInstVerifyGetName("Item", posInit).flatMap { (name, inst) ->
+        inst.getFloat("weight", posInit).flatMap { weight ->
+            inst.getList("actions", posInit).flatMap { actions ->
+                actions.value.mapOrEither {
+                    it.ifInstVerify("Action", posInit).map { a ->
+                        actionsL.add(a)
+                        a
+                    }
+                }
+            }.flatMap { actions ->
+                inst.getList("additionalTraits", posInit).flatMap { traits ->
+                    traits.value.mapOrEither {
+                        it.ifInstVerifyGetName("ItemTrait", posInit).flatMap { (iName, iT) ->
+                            iT.getString("desc", posInit).map { iDesc -> Triple(iName, iDesc, iT) }
+                        }
+                    }
+                }.flatMap { traits ->
+                    inst.getVerifyInst("value", "Currency", posInit).flatMap { cost ->
+                        cost.getString("abbrev", posInit).flatMap { abbrev ->
+                            cost.getInt("amount", posInit).map { count ->
+                                Triple(count, abbrev, cost)
+                            }
+                        }
+                    }.map { price ->
+                        ItemDesc(name, weight, price, actions, traits, inst)
+                    }
+                }
+            }
+        }
+    }.map { res ->
+        Pair(res, actionsL)
+    }
 }
