@@ -303,18 +303,45 @@ class Character(
     fun addItem(desc: ItemDesc, amount: Int) {
         val mut = inventory.value.toMutableMap()
         if(mut.containsKey(desc)) mut[desc] = mut[desc]!! + amount
-        else mut[desc] = amount
+        else {
+            mut[desc] = amount
+            CharacterScope(this).let { scope ->
+                CMLException.catching {
+                    desc.actions.forEach { action -> scope.addAction(listOf(action), posRest) }
+                }.mapLeft { CMLOut.addError(it.localizedMessage) }
+            }
+        }
         inventory.value = mut
     }
 
     fun removeItem(desc: ItemDesc) {
+        var filterActions = false
         val mut = inventory.value.toMutableMap()
         if(mut.containsKey(desc)) {
-            if(mut[desc]!! == 1) mut.remove(desc)
+            if(mut[desc]!! == 1) {
+                mut.remove(desc)
+                filterActions = true
+            }
             else mut[desc] = mut[desc]!! - 1
             inventory.value = mut
         }
+
+        if(filterActions) {
+            actions.value = actions.value.filter {
+                when(it) {
+                    is AttackAction -> itemsFor(it).isNotEmpty()
+                    is SpellAttackAction -> spellsFor(it).any { s -> s.source != desc.name }
+                    is SpellDCAction -> spellsFor(it).any { s -> s.source != desc.name }
+                    else -> true
+                }
+            }
+        }
     }
+
+    fun itemsFor(a: AttackAction) =
+        inventory.value.filterKeys { it.name == a.name.split('(')[0].trim() }.map { it.key }
+    fun spellsFor(s: SpellAttackAction) = spells.value.filter { it.name == s.name }
+    fun spellsFor(s: SpellDCAction) = spells.value.filter { it.name == s.name }
 
     companion object {
         val posRender = PosInfo("<runtime:character:ui>", 0, 0)
