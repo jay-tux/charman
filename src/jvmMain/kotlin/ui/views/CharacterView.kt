@@ -284,13 +284,35 @@ fun BoxScope.sheetTraitsPanel(data: Character) {
 @Composable
 fun BoxScope.sheetInventoryPanel(data: Character) {
     val inventory by data.inventory
-    LazyScrollColumn {
-        items(inventory) { item ->
+    val money by data.money
+    println(money)
+    Column {
+        Column(Modifier.weight(0.15f)) {
+            Text("Money", fontStyle = FontStyle.Italic)
             Row {
-                Text(item.name, Modifier.weight(0.33f))
-                Text("${item.weight} lbs.", Modifier.weight(0.20f))
-                Text("${item.value.first} ${item.value.second}", Modifier.weight(0.20f))
-                Text(item.traits.joinToString(", ") { it.first }, Modifier.weight(0.27f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                money.toList().sortedBy { it.second.conversion }.forEach { (abbrev, desc) ->
+                    Box(Modifier.weight(1.0f)) { // distribute equally
+                        CurrencyWidget(abbrev, desc, { it -> }, { it -> }, {})
+                    }
+                }
+            }
+        }
+        LazyScrollColumn(Modifier.weight(0.85f)) {
+            item {
+                Text("Items", fontStyle = FontStyle.Italic)
+            }
+            items(inventory) { item ->
+                indented {
+                    Text(item.name, Modifier.weight(0.33f))
+                    Text("${item.weight} lbs.", Modifier.weight(0.20f))
+                    Text("${item.value.first} ${item.value.second}", Modifier.weight(0.20f))
+                    Text(
+                        item.traits.joinToString(", ") { it.first },
+                        Modifier.weight(0.27f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }

@@ -26,6 +26,10 @@ data class SpellDesc(
     val source: String
 )
 
+data class MoneyDesc(
+    val amount: Int, val fullName: String, val conversion: Float, val instance: InstanceVal
+)
+
 class Character(
     var name: String,
     var race: Pair<String, InstanceVal>,
@@ -58,6 +62,16 @@ class Character(
     val initMod = mutableStateOf(0)
     val hitDice = mutableStateOf(mapOf<Int, Int>()) // (dice type, amount)
     val inventory = mutableStateOf(listOf<ItemDesc>())
+    val money = mutableStateOf(Library.typesByKind("Currency").map { decl ->
+        val inst = InstanceVal(decl, posInit)
+        inst.getName(posInit).flatMap { name ->
+            inst.getString("abbrev", posInit).flatMap { abbrev ->
+                inst.getFloat("conversionRatio", posInit).map { ratio ->
+                    Pair(abbrev, MoneyDesc(0, name, ratio, inst))
+                }
+            }
+        }
+    }.filterRight().toMap())
     val spells = mutableStateOf(listOf<SpellDesc>())
     val actions = mutableStateOf(listOf<Action>())
 
@@ -213,6 +227,9 @@ class Character(
         inventory.value.map { it.instance }.toSerializableEither().fold(
             { CMLOut.addWarning("Serialization failed for $name's inventory: ${it.localizedMessage}") }
         ) { it.toField("inventory").addTo(root) }
+        money.value.toSerializable { _, desc ->
+            Pair(desc.instance.type.toCtor(), desc.amount.toSerializable())
+        }.toField("currency").addTo(root)
         return root.serialize()
     }
 

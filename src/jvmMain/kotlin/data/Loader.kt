@@ -406,6 +406,25 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 char.onUpdate()
                 char
             }
+        }.flatMap { char ->
+            valid.getDict("currency", posInit).flatMap { currency ->
+                val current = char.money.value.toMutableMap()
+
+                currency.mapOrEither { (curr, amount) ->
+                    curr.ifInstVerifyGetName("Currency", posInit).flatMap { (name, currInst) ->
+                        currInst.getString("abbrev", posInit).flatMap { abbrev ->
+                            currInst.getFloat("conversionRatio", posInit).flatMap { ratio ->
+                                amount.requireInt(posInit).map { amountV ->
+                                    Pair(abbrev, MoneyDesc(amountV.value, name, ratio, currInst))
+                                }
+                            }
+                        }
+                    }
+                }.map {
+                    it.forEach { (k, v) -> current[k] = v }
+                    char
+                }
+            }
         }
     }
         .mapLeft {

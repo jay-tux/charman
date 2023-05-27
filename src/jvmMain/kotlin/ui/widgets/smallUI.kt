@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import uiData.MoneyDesc
 import withSign
 
 @Composable
@@ -203,5 +204,13 @@ fun BoldAndNot(bold: String, not: String, modifier: Modifier = Modifier) {
     Row(modifier) {
         Text(bold, fontWeight = FontWeight.Bold)
         Text(not)
+    }
+}
+
+@Composable
+fun CurrencyWidget(abbrev: String, money: MoneyDesc, onAdd: (Int) -> Unit, onRemove: (Int) -> Unit, onConvert: () -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        Text(money.fullName, Modifier.align(Alignment.TopCenter), fontStyle = FontStyle.Italic)
+        Text("${money.amount}", Modifier.align(Alignment.Center), style = MaterialTheme.typography.h6)
     }
 }
