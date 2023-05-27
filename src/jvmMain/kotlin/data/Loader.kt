@@ -353,7 +353,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 }
 
                 char.background.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
-                char.choices = choices
+                char.choices.value = choices
                 char
             }
         }.flatMap { char ->

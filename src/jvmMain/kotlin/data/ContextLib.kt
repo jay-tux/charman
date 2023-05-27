@@ -103,7 +103,7 @@ fun CharacterScope.addSkillProficiencies(args: List<Value>, p: PosInfo): Value {
             skills.mapOrEither {
                 elem -> elem.ifInstVerify("Skill", pos)
             }.map {
-                char.skillProficiencies.addAll(it)
+                char.skillProficiencies.value += it
             }
         }
     }.map { }.handle(p)
@@ -115,7 +115,7 @@ fun CharacterScope.addSaveProficiencies(args: List<Value>, p: PosInfo): Value {
             saves.mapOrEither {
                 elem -> elem.ifInstVerify("Ability", pos)
             }.map {
-                char.saveProficiencies.addAll(it)
+                char.saveProficiencies.value += it
             }
         }
     }.map { }.handle(p)
@@ -410,7 +410,7 @@ fun CharacterScope.setSpecialCaster(args: List<Value>, p: PosInfo): Value {
 
 // region Choice Scope
 fun ChoiceScope.chooseDataByKind(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseDataByKind", 2, args, p).flatMap { (pos, arg) ->
+    return argCnt("chooseDataByKind", 2, args, p).flatMap { (pos, _) ->
         args[0].requireString(pos).flatMap { name ->
             args[1].requireString(pos).flatMap { kind ->
                 val options = Library.typesByKind(kind).map { type ->
@@ -429,7 +429,7 @@ fun ChoiceScope.chooseDataByKind(args: List<Value>, p: PosInfo): Value {
 }
 
 fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseNByKind", 3, args, p).flatMap { (pos, arg) ->
+    return argCnt("chooseNByKind", 3, args, p).flatMap { (pos, _) ->
         args[0].requireString(pos).flatMap { name ->
             args[1].requireInt(pos).flatMap { count ->
                 args[2].requireString(pos).flatMap { kind ->
@@ -453,7 +453,7 @@ fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
 }
 
 fun ChoiceScope.chooseFrom(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseFrom", 2, args, p).flatMap { (pos, arg) ->
+    return argCnt("chooseFrom", 2, args, p).flatMap { (pos, _) ->
         args[0].requireString(pos).flatMap { name ->
             args[1].requireList(pos).flatMap { options ->
                 if(options.isEmpty()) {

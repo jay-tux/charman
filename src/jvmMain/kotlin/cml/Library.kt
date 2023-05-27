@@ -174,7 +174,7 @@ object Library {
                     render(count, options) { lock.update(it) }
                 },
                 onChoiceMade = { choice, option ->
-                    val map = selector(c.choices)
+                    val map = selector(c.choices.value)
                     if (map != null) {
                         map[StringVal(choice, Character.posInit)] = option
                     } else {

@@ -235,7 +235,7 @@ fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean
                 { k -> k.kind }
             )
             it.hitDice.value += Pair(hitDie, 1)
-            it.choices.classesChoices[classV.first] = mutableMapOf()
+            it.choices.value.classesChoices[classV.first] = mutableMapOf()
 
             Library.withChoices(
                 c = it,

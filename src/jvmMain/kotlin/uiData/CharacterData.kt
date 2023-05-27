@@ -48,8 +48,8 @@ class Character(
     val backgroundTraits = mutableStateOf(mapOf<String, Pair<String, InstanceVal>>())
     val racialTraits = mutableStateOf(mapOf<String, Pair<String, InstanceVal>>())
 
-    val skillProficiencies = mutableListOf<InstanceVal>()
-    val saveProficiencies = mutableListOf<InstanceVal>()
+    val skillProficiencies = mutableStateOf(listOf<InstanceVal>())
+    val saveProficiencies = mutableStateOf(listOf<InstanceVal>())
     val itemProficiencies = mutableStateOf(listOf<String>())
     val saveMods = mutableStateOf(mapOf<String, Pair<Int, Boolean>>())
     val skillMods = mutableStateOf(mapOf<String, Triple<Int, Boolean, String>>())
@@ -82,7 +82,7 @@ class Character(
     val spells = mutableStateOf(listOf<SpellDesc>())
     val actions = mutableStateOf(listOf<Action>())
 
-    var choices = Choices()
+    val choices = mutableStateOf(Choices())
 
     private fun callOnAll(fn: String, args: List<Value> = listOf(), withResult: (Value) -> Unit) {
         Library.withCharacter(this) {
@@ -129,7 +129,7 @@ class Character(
         val saveModsM = mutableMapOf<String, Pair<Int, Boolean>>()
         abilities.value.forEach { (ab, v) ->
             val mod = v.score.toMod()
-            if(saveProficiencies.contains(v.instance)) saveModsM[ab] = Pair(mod + proficiency(), true)
+            if(saveProficiencies.value.contains(v.instance)) saveModsM[ab] = Pair(mod + proficiency(), true)
             else saveModsM[ab] = Pair(mod, false)
         }
         saveMods.value = saveModsM
@@ -153,7 +153,7 @@ class Character(
                     }
                 }
 
-                if(skillProficiencies.contains(InstanceVal(decl, posRender))) skillModsM[(name.value as StringVal).value] = Triple(mod + proficiency(), true, ab)
+                if(skillProficiencies.value.contains(InstanceVal(decl, posRender))) skillModsM[(name.value as StringVal).value] = Triple(mod + proficiency(), true, ab)
                 else skillModsM[(name.value as StringVal).value] = Triple(mod, false, ab)
             }
         }
@@ -168,9 +168,9 @@ class Character(
         else -> 6
     }
 
-    fun hasSaveProf(prof: InstanceVal): Boolean = saveProficiencies.contains(prof)
+    fun hasSaveProf(prof: InstanceVal): Boolean = saveProficiencies.value.contains(prof)
 
-    fun hasSkillProf(prof: InstanceVal): Boolean = skillProficiencies.contains(prof)
+    fun hasSkillProf(prof: InstanceVal): Boolean = skillProficiencies.value.contains(prof)
 
     fun abilityMod(ab: InstanceVal): Int {
         return ab.getString("abbrev", posRender).flatMap {
@@ -213,13 +213,13 @@ class Character(
         classes.value.toSerializable { _, desc -> Pair(desc.cls.type.toCtor(), desc.level.toSerializable()) }.toField("classes").addTo(root)
         classes.value.filter { it.value.isPrimary }.firstNotNullOf { it }.value.cls.type.toCtor().toField("primary").addTo(root)
         abilities.value.toSerializable { _, desc -> Pair(desc.instance.type.toCtor(), desc.score.toSerializable()) }.toField("abilities").addTo(root)
-        choices.raceChoices.toSerializableEither().fold(
+        choices.value.raceChoices.toSerializableEither().fold(
             { CMLOut.addWarning("Serialization failed for $name's racial choices: ${it.localizedMessage}") }
         ) { it.toField("choicesRace").addTo(root) }
-        choices.backgroundChoices.toSerializableEither().fold(
+        choices.value.backgroundChoices.toSerializableEither().fold(
             { CMLOut.addWarning("Serialization failed for $name's background choices: ${it.localizedMessage}") }
         ) { it.toField("choicesBackground").addTo(root) }
-        choices.classesChoices.toSerializableEither { cName, cChoices ->
+        choices.value.classesChoices.toSerializableEither { cName, cChoices ->
             val k = Library.construct(cName, posSer)?.type?.toCtor()
             if(k == null) CMLException.constructNonType(cName, posSer).left()
             else cChoices.toSerializableEither().map { v -> Pair(k, v) }
