@@ -49,8 +49,8 @@ fun CharacterCard(
                         Text(error.message ?: "Error has no message", color = Color.Red, overflow = TextOverflow.Ellipsis, maxLines = 1)
                     }
                 }) { value ->
-                    Text(value.name)
-                    Text("Level ${value.classes.values.sumOf { it.level }} ${value.race.first}")
+                    Text(value.name.value)
+                    Text("Level ${value.classes.value.values.sumOf { it.level }} ${value.race.value.first}")
                 }
             }
         }

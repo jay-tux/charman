@@ -306,8 +306,8 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
             }
         }.flatMap { (char, choices) ->
             Library.withCharacter(char) {
-                val level = IntVal(char.classes.values.sumOf { it.level }, posRest)
-                char.race.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
+                val level = IntVal(char.classes.value.values.sumOf { it.level }, posRest)
+                char.race.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 val raceUpd = mutableListOf<Triple<String, String, Pair<String, InstanceVal>>>()
                 char.racialTraits.forEach { (k, v) ->
                     v.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)?.let {
@@ -324,7 +324,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 }
 
                 val altMap = mutableMapOf<String, MutableMap<Value, Value>>()
-                char.classes.forEach { e ->
+                char.classes.value.forEach { e ->
                     e.value.cls.type.functions["onRestore"]?.call(
                         choices.classesChoices[e.key]?.let {
                             altMap[e.key] = it
@@ -352,7 +352,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     }
                 }
 
-                char.background.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
+                char.background.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
                 char.choices = choices
                 char
             }

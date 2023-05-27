@@ -27,8 +27,8 @@ fun CharacterScope.abilityIncrease(args: List<Value>, p: PosInfo): Value {
     return argCnt("abilityIncrease", 2, args, p).flatMap { (pos, arg) ->
         arg[0].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (abbr, _) ->
             arg[1].requireInt(pos).map {
-                val prev = char.abilities[abbr] ?: throw CMLException("Ability $abbr does not exist for this character at $pos")
-                char.abilities[abbr] = AbilityDesc(prev.name, prev.instance, prev.score + it.value)
+                val prev = char.abilities.value[abbr] ?: throw CMLException("Ability $abbr does not exist for this character at $pos")
+                char.abilities.value[abbr] = AbilityDesc(prev.name, prev.instance, prev.score + it.value)
             }
         }
     }.handle(p)
@@ -277,7 +277,7 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
                 baseData[0].requireString(pos).flatMap { kind ->
                     baseData[1].ifInstVerify("Ability", pos).flatMap { ability ->
                         ability.getString("abbrev", pos).flatMap {
-                            c.abilities[it]?.right() ?: CMLException.invalidAbility(it, pos).left()
+                            c.abilities.value[it]?.right() ?: CMLException.invalidAbility(it, pos).left()
                         }
                     }.flatMap { ability ->
                         baseData[2].requireString(pos).flatMap { reachRange ->
@@ -316,7 +316,7 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
                         }.flatMap { damage ->
                             baseData[4].requireBool(pos).flatMap { addMod ->
                                 baseData[5].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (a, _) ->
-                                    c.abilities[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
+                                    c.abilities.value[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
                                 }.map { ability ->
                                     SpellAttackAction(name, ability, range, targets, damage, kind, addMod.value, tags)
                                 }
@@ -344,7 +344,7 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
                                 }
                             }.flatMap { damage ->
                                 baseData[5].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (a, _) ->
-                                    c.abilities[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
+                                    c.abilities.value[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
                                 }.map { ability ->
                                     SpellDCAction(name, ability, range, targets, damage, kind, save, tags)
                                 }

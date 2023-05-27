@@ -32,12 +32,18 @@ data class MoneyDesc(
 )
 
 class Character(
-    var name: String,
-    var race: Pair<String, InstanceVal>,
-    var background: Pair<String, InstanceVal>,
-    val classes: MutableMap<String, ClassDesc>,
-    val abilities: MutableMap<String, AbilityDesc>
+    name: String,
+    race: Pair<String, InstanceVal>,
+    background: Pair<String, InstanceVal>,
+    classes: MutableMap<String, ClassDesc>,
+    abilities: MutableMap<String, AbilityDesc>
 ) {
+    val name = mutableStateOf(name)
+    val race = mutableStateOf(race)
+    val background = mutableStateOf(background)
+    val classes = mutableStateOf(classes)
+    val abilities = mutableStateOf(abilities)
+
     val classTraits = mutableMapOf<String, Triple<String, String, InstanceVal>>()
     val backgroundTraits = mutableMapOf<String, Pair<String, InstanceVal>>()
     val racialTraits = mutableMapOf<String, Pair<String, InstanceVal>>()
@@ -80,11 +86,11 @@ class Character(
 
     private fun callOnAll(fn: String, args: List<Value> = listOf(), withResult: (Value) -> Unit) {
         Library.withCharacter(this) {
-            race.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
-            classes.forEach { (_, v) ->
+            race.value.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
+            classes.value.forEach { (_, v) ->
                 v.cls.type.functions[fn]?.call(args, posRender)?.let(withResult)
             }
-            background.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
+            background.value.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
         }.mapLeft { CMLOut.addError(it.localizedMessage) }
     }
 
@@ -113,7 +119,7 @@ class Character(
         initMod.value = initM
 
         val hitDiceM = mutableMapOf<Int, Int>()
-        classes.forEach { k, (inst, level) ->
+        classes.value.forEach { k, (inst, level) ->
             inst.getDice("hitDie", posRender).fold({ CMLOut.addWarning("Class $k does not have the required `hitDie' field.") }) {
                 hitDiceM[it.kind] = (hitDiceM[it.kind] ?: 0) + level
             }
@@ -121,7 +127,7 @@ class Character(
         hitDice.value = hitDiceM
 
         val saveModsM = mutableMapOf<String, Pair<Int, Boolean>>()
-        abilities.forEach { (ab, v) ->
+        abilities.value.forEach { (ab, v) ->
             val mod = v.score.toMod()
             if(saveProficiencies.contains(v.instance)) saveModsM[ab] = Pair(mod + proficiency(), true)
             else saveModsM[ab] = Pair(mod, false)
@@ -139,7 +145,7 @@ class Character(
                 var ab = "Invalid"
                 if(ability == null) CMLOut.addWarning(CMLException.invalidField(decl.name, "reliesOn", posRender).localizedMessage)
                 else {
-                    val tmp = abilities.entries.firstOrNull { it.value.instance == ability.value }
+                    val tmp = abilities.value.entries.firstOrNull { it.value.instance == ability.value }
                     if(tmp == null) CMLOut.addWarning(CMLException.invalidAbility(ability.name, posRender).localizedMessage)
                     else {
                         mod = tmp.value.score.toMod()
@@ -154,7 +160,7 @@ class Character(
         skillMods.value = skillModsM
     }
 
-    fun proficiency(): Int = when(classes.values.sumOf { it.level }) {
+    fun proficiency(): Int = when(classes.value.values.sumOf { it.level }) {
         in 1..4 -> 2
         in 5..8 -> 3
         in 9..12 -> 4
@@ -168,7 +174,7 @@ class Character(
 
     fun abilityMod(ab: InstanceVal): Int {
         return ab.getString("abbrev", posRender).flatMap {
-            abilities[it]?.score?.right() ?: return@flatMap CMLException.invalidAbility(it, posRender).left()
+            abilities.value[it]?.score?.right() ?: return@flatMap CMLException.invalidAbility(it, posRender).left()
         }.fold({ l -> CMLOut.addError(l.localizedMessage); 0 }, { r -> floor((r - 10) / 2.0f).roundToInt() })
     }
 
@@ -184,7 +190,7 @@ class Character(
             res += ref[level - 1]
         }
         specialCasting.value.forEach { (n, d) ->
-            val l = classes[n]?.level
+            val l = classes.value[n]?.level
             if(l == null) { CMLOut.addWarning("Spell slots have been added for class $n, but $name is not of this class.") }
             else if(l > 0) {
                 val ref = d.second[l - 1]
@@ -201,12 +207,12 @@ class Character(
     }
 
     fun serialize(): String {
-        val root = RootNode(Identifier(name))
-        race.second.type.toCtor().toField("race").addTo(root)
-        background.second.type.toCtor().toField("background").addTo(root)
-        classes.toSerializable { _, desc -> Pair(desc.cls.type.toCtor(), desc.level.toSerializable()) }.toField("classes").addTo(root)
-        classes.filter { it.value.isPrimary }.firstNotNullOf { it }.value.cls.type.toCtor().toField("primary").addTo(root)
-        abilities.toSerializable { _, desc -> Pair(desc.instance.type.toCtor(), desc.score.toSerializable()) }.toField("abilities").addTo(root)
+        val root = RootNode(Identifier(name.value))
+        race.value.second.type.toCtor().toField("race").addTo(root)
+        background.value.second.type.toCtor().toField("background").addTo(root)
+        classes.value.toSerializable { _, desc -> Pair(desc.cls.type.toCtor(), desc.level.toSerializable()) }.toField("classes").addTo(root)
+        classes.value.filter { it.value.isPrimary }.firstNotNullOf { it }.value.cls.type.toCtor().toField("primary").addTo(root)
+        abilities.value.toSerializable { _, desc -> Pair(desc.instance.type.toCtor(), desc.score.toSerializable()) }.toField("abilities").addTo(root)
         choices.raceChoices.toSerializableEither().fold(
             { CMLOut.addWarning("Serialization failed for $name's racial choices: ${it.localizedMessage}") }
         ) { it.toField("choicesRace").addTo(root) }

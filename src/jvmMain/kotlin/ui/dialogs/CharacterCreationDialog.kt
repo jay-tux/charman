@@ -113,13 +113,14 @@ fun header(text: String, subTitle: String? = null) {
 
 @Composable
 fun namePage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Character) -> Unit) -> Unit) {
-    toggleNext(data.name != "")
+    var name by data.name
+    toggleNext(name != "")
 
     Column {
         header("Step 1: Character Basics")
         OutlinedTextField(
-            value = data.name,
-            onValueChange = { n -> delta { it.name = n } },
+            value = name,
+            onValueChange = { n -> name = n },
             label = { Text("Character name") },
             maxLines = 1
         )
@@ -128,17 +129,19 @@ fun namePage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Character)
 
 @Composable
 fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+    var raceV by data.race
+
     var selected by remember { mutableStateOf(-1) }
 
     var count by remember { mutableStateOf(0) }
     var options by remember { mutableStateOf(listOf<Value>()) }
     var setCallback by remember { mutableStateOf({ _: Value -> })}
 
-    toggleNext(data.race.second.type.name != Library.phonyType().name && count == 0)
+    toggleNext(raceV.second.type.name != Library.phonyType().name && count == 0)
 
     val onSelect = { race: Pair<String, InstanceVal> ->
          delta {
-             it.race = race
+             raceV = race
              Library.withChoices(
                  c = it,
                  selector = { c -> c.raceChoices },
@@ -175,7 +178,7 @@ fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean)
         header("Step 2: Character Race", "Select one of the races below\nSelecting might require additional choices.")
         LazyScrollColumn {
             itemsIndexed(validRaces) { index, (name, inst, traits) ->
-                val expanded = selected == index || (selected == -1 && data.race.first == name)
+                val expanded = selected == index || (selected == -1 && raceV.first == name)
                 Column {
                     Button({ selected = index }) {
                         Box(Modifier.fillMaxWidth()) {
@@ -216,16 +219,17 @@ fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean)
 @Composable
 fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
     var selected by remember { mutableStateOf(-1) }
+    var classes by data.classes
 
     var count by remember { mutableStateOf(0) }
     var options by remember { mutableStateOf(listOf<Value>()) }
     var setCallback by remember { mutableStateOf({ _: Value -> })}
 
-    toggleNext(data.classes.isNotEmpty() && count == 0)
+    toggleNext(classes.isNotEmpty() && count == 0)
 
     val onSelect = { classV: Pair<String, InstanceVal> ->
         delta {
-            it.classes[classV.first] = ClassDesc(classV.second, 1, true)
+            classes[classV.first] = ClassDesc(classV.second, 1, true)
             val hitDie = classV.second.getDice("hitDie", Character.posInit).fold(
                 { CMLOut.addError("Hit Die not defined for class `${classV.first}."); 0 },
                 { k -> k.kind }
@@ -261,7 +265,7 @@ fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean
         header("Step 3: Character Starting Class", "Select one of the classes below\nSelecting might require additional choices.")
         LazyScrollColumn {
             itemsIndexed(validClasses) { index, (name, inst) ->
-                val expanded = selected == index || (selected == -1 && data.race.first == name)
+                val expanded = selected == index
                 Column {
                     Button({ selected = index }) {
                         Box(Modifier.fillMaxWidth()) {
@@ -298,16 +302,17 @@ fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean
 @Composable
 fun backgroundPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
     var selected by remember { mutableStateOf(-1) }
+    var background by data.background
 
     var count by remember { mutableStateOf(0) }
     var options by remember { mutableStateOf(listOf<Value>()) }
     var setCallback by remember { mutableStateOf({ _: Value -> })}
 
-    toggleNext(data.background.second.type.name != Library.phonyType().name && count == 0)
+    toggleNext(background.second.type.name != Library.phonyType().name && count == 0)
 
     val onSelect = { back: Pair<String, InstanceVal> ->
         delta {
-            it.background = back
+            background = back
             Library.withChoices(
                 c = it,
                 selector = { c -> c.backgroundChoices },
@@ -334,7 +339,7 @@ fun backgroundPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Bo
         header("Step 3: Character Background", "Select one of the backgrounds below\nSelecting might require additional choices.")
         LazyScrollColumn {
             itemsIndexed(validBackgrounds) { index, (name, inst) ->
-                val expanded = selected == index || (selected == -1 && data.race.first == name)
+                val expanded = selected == index || (selected == -1 && background.first == name)
                 Column {
                     Button({ selected = index }) {
                         Box(Modifier.fillMaxWidth()) {
@@ -371,9 +376,9 @@ fun backgroundPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Bo
 @Composable
 fun abilitiesPage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Character) -> Unit) -> Unit) {
     var mods by remember {
-        mutableStateOf(data.abilities.map { (a, _) -> Pair(a, 0) }.toMap())
+        mutableStateOf(data.abilities.value.map { (a, _) -> Pair(a, 0) }.toMap())
     }
-    val originals by remember { mutableStateOf(data.abilities.toMap()) }
+    val originals by remember { mutableStateOf(data.abilities.value.toMap()) }
 
     toggleNext(mods.all { it.value in 3..18 }) // possible rolls
 
@@ -388,7 +393,7 @@ fun abilitiesPage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Chara
                         { mods += Pair(abbrev, it.toIntOrNull() ?: 0) },
                         Modifier.weight(0.25f).align(Alignment.CenterVertically).onFocusChanged {
                             if(!it.hasFocus) {
-                                data.abilities[abbrev] = desc.copy(score = (mods[abbrev] ?: 0) + desc.score)
+                                data.abilities.value[abbrev] = desc.copy(score = (mods[abbrev] ?: 0) + desc.score)
                             }
                         },
                         maxLines = 1

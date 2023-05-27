@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,11 +19,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cml.CMLException
+import cml.IntVal
+import cml.Library
+import cml.Value
 import ui.Renderer
 import ui.dialogs.CurrencyDialog
 import ui.dialogs.ItemDialog
+import ui.dialogs.choiceDispatcher
 import ui.widgets.*
 import uiData.Character
+import uiData.ClassDesc
 import withSign
 
 @Composable
@@ -72,34 +78,68 @@ fun CharacterView(data: Character) {
 
 @Composable
 fun RowScope.sheetTopRow(data: Character) {
-    Text(data.name, Modifier.weight(0.4f), style = MaterialTheme.typography.h3)
+    val name by data.name
+    val classes by data.classes
+    val race by data.race
+    val background by data.background
+    var count by remember { mutableStateOf(0) }
+    var options by remember { mutableStateOf(listOf<Value>()) }
+    var setCallback by remember { mutableStateOf({ _: Value -> }) }
+    val choiceNo = remember { mutableStateOf(0) }
+
+    val levelUp = { name: String, cl: ClassDesc ->
+        Library.withChoices(
+            c = data,
+            selector = { it.classesChoices[name] },
+            render = { cnt, opts, onSet ->
+                choiceNo.value++; count = cnt; options = opts; setCallback = onSet
+            }
+        ) {
+            cl.cls.type.functions["onLevelUp"]?.call(
+                listOf(IntVal(cl.level + 1, Character.posInit)),
+                Character.posInit
+            ) ?: CMLOut.addWarning("Cannot call onLevelUp for $name")
+            // update state
+        }
+    }
+
+    Text(name, Modifier.weight(0.4f), style = MaterialTheme.typography.h3)
     Row(Modifier.weight(0.6f).fillMaxHeight()) {
         LazyScrollColumn(Modifier.weight(0.5f).align(Alignment.CenterVertically)) {
             item {
                 Text("Classes", fontWeight = FontWeight.Bold)
             }
-            items(data.classes.toList()) { (cl, lvl) ->
-                indented {
-                    Text("$cl (level ${lvl.level})")
+            items(classes.toList()) { (cl, lvl) ->
+                indented(Modifier.clickable { levelUp(cl, lvl) }) {
+                    Text("$cl (level ${lvl.level}")
+                    Icon(Icons.Default.ArrowDropUp, "")
+                    Text(")")
                 }
             }
         }
 
         LazyScrollColumn(Modifier.weight(0.5f).align(Alignment.CenterVertically)) {
             item {
-                boldThenNormal("Race:", data.race.first)
+                boldThenNormal("Race:", race.first)
             }
             item {
-                boldThenNormal("Background:", data.background.first)
+                boldThenNormal("Background:", background.first)
             }
         }
+    }
+
+    if(count != 0) {
+        choiceDispatcher(
+            count, choiceNo.value, options, { count = 0 }, setCallback
+        )
     }
 }
 
 @Composable
 fun RowScope.sheetAbilities(data: Character) {
+    val abilities by data.abilities
     LazyScrollColumn(Modifier.weight(0.065f)) {
-        items(data.abilities.toList()) { (ab, stat) ->
+        items(abilities.toList()) { (ab, stat) ->
             AbilityScoreCard(ab, stat.score, data.abilityMod(stat.instance))
             Spacer(Modifier.height(10.dp))
         }
@@ -182,6 +222,7 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
     val specialCasting by data.specialCasting
     val used by data.usedSpellSlots
     val spells by data.spells
+    val classes by data.classes
 
     val currentSlots = remember {
         val res = mutableListOf(0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -193,7 +234,7 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
             }
         }
         specialCasting.forEach { (n, d) ->
-            val l = data.classes[n]?.level
+            val l = classes[n]?.level
             if(l == null) { CMLOut.addWarning("Spell slots have been added for class $n, but ${data.name} is not of this class.") }
             else if(l > 0) {
                 val ref = d.second[l - 1]
@@ -265,9 +306,12 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
 
 @Composable
 fun BoxScope.sheetTraitsPanel(data: Character) {
+    val race by data.race
+    val background by data.background
+
     LazyScrollColumn(Modifier.fillMaxSize()) {
         items(data.racialTraits.toList()) { (name, desc) ->
-            TraitCard(name, data.race.first, desc.first)
+            TraitCard(name, race.first, desc.first)
             Spacer(Modifier.height(7.dp))
         }
 
@@ -277,7 +321,7 @@ fun BoxScope.sheetTraitsPanel(data: Character) {
         }
 
         items(data.backgroundTraits.toList()) { (name, desc) ->
-            TraitCard(name, data.background.first, desc.first)
+            TraitCard(name, background.first, desc.first)
             Spacer(Modifier.height(7.dp))
         }
     }
