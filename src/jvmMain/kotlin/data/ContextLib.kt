@@ -6,6 +6,7 @@ import arrow.core.flatMap
 import arrow.core.left
 import arrow.core.right
 import cml.*
+import filterRight
 import mapIndexedOrEither
 import mapOrEither
 import uiData.*
@@ -24,6 +25,7 @@ fun argCnt(name: String, cnt: Int, args: List<Value>, cp: PosInfo): Either<CMLEx
     return Pair(p, args).right()
 }
 
+// region Character Scope
 fun CharacterScope.abilityIncrease(args: List<Value>, p: PosInfo): Value {
     return argCnt("abilityIncrease", 2, args, p).flatMap { (pos, arg) ->
         arg[0].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (abbr, _) ->
@@ -83,80 +85,6 @@ fun CharacterScope.addBackgroundTraits(args: List<Value>, p: PosInfo): Value {
             }
         }
     }.handle(p)
-}
-
-fun ChoiceScope.chooseDataByKind(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseDataByKind", 2, args, p).flatMap { (pos, arg) ->
-        args[0].requireString(pos).flatMap { name ->
-            args[1].requireString(pos).flatMap { kind ->
-                val options = Library.typesByKind(kind).map { type ->
-                    InstanceVal(type, pos)
-                }
-
-                if(options.isEmpty()) {
-                    CMLException("No types with kind `$kind' defined. Error thrown at $pos").left()
-                }
-                else {
-                    requireChoice(name, 1, options).right()
-                }
-            }
-        }
-    }.handle()
-}
-
-fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseNByKind", 3, args, p).flatMap { (pos, arg) ->
-        args[0].requireString(pos).flatMap { name ->
-            args[1].requireInt(pos).flatMap { count ->
-                args[2].requireString(pos).flatMap { kind ->
-                    val options = Library.typesByKind(kind).map { type ->
-                        InstanceVal(type, pos)
-                    }
-
-                    if(options.isEmpty()) {
-                        CMLException("No types with kind `$kind' defined. Error thrown at $pos").left()
-                    }
-                    else if(options.size < count.value) {
-                        CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
-                    }
-                    else {
-                        requireChoice(name, count.value, options).right()
-                    }
-                }
-            }
-        }
-    }.handle()
-}
-
-fun ChoiceScope.chooseFrom(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseFrom", 2, args, p).flatMap { (pos, arg) ->
-        args[0].requireString(pos).flatMap { name ->
-            args[1].requireList(pos).flatMap { options ->
-                if(options.isEmpty()) {
-                    CMLException("Cannot choose from an empty list. Error thrown at $pos").left()
-                }
-                else {
-                    requireChoice(name, 1, options).right()
-                }
-            }
-        }
-    }.handle()
-}
-
-fun ChoiceScope.chooseNFrom(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseNFrom", 3, args, p).flatMap { (pos, arg) ->
-        args[0].requireString(pos).flatMap { name ->
-            args[1].requireInt(pos).flatMap { count ->
-                args[2].requireList(pos).flatMap { options ->
-                    if (options.size < count.value) {
-                        CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
-                    } else {
-                        requireChoice(name, count.value, options).right()
-                    }
-                }
-            }
-        }
-    }.handle()
 }
 
 fun CharacterScope.addLanguages(args: List<Value>, p: PosInfo): Value {
@@ -481,3 +409,108 @@ fun CharacterScope.setSpecialCaster(args: List<Value>, p: PosInfo): Value {
         }
     }.handle(p)
 }
+// endregion
+
+// region Choice Scope
+fun ChoiceScope.chooseDataByKind(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseDataByKind", 2, args, p).flatMap { (pos, arg) ->
+        args[0].requireString(pos).flatMap { name ->
+            args[1].requireString(pos).flatMap { kind ->
+                val options = Library.typesByKind(kind).map { type ->
+                    InstanceVal(type, pos)
+                }
+
+                if(options.isEmpty()) {
+                    CMLException("No types with kind `$kind' defined. Error thrown at $pos").left()
+                }
+                else {
+                    requireChoice(name, 1, options).right()
+                }
+            }
+        }
+    }.handle()
+}
+
+fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseNByKind", 3, args, p).flatMap { (pos, arg) ->
+        args[0].requireString(pos).flatMap { name ->
+            args[1].requireInt(pos).flatMap { count ->
+                args[2].requireString(pos).flatMap { kind ->
+                    val options = Library.typesByKind(kind).map { type ->
+                        InstanceVal(type, pos)
+                    }
+
+                    if(options.isEmpty()) {
+                        CMLException("No types with kind `$kind' defined. Error thrown at $pos").left()
+                    }
+                    else if(options.size < count.value) {
+                        CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
+                    }
+                    else {
+                        requireChoice(name, count.value, options).right()
+                    }
+                }
+            }
+        }
+    }.handle()
+}
+
+fun ChoiceScope.chooseFrom(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseFrom", 2, args, p).flatMap { (pos, arg) ->
+        args[0].requireString(pos).flatMap { name ->
+            args[1].requireList(pos).flatMap { options ->
+                if(options.isEmpty()) {
+                    CMLException("Cannot choose from an empty list. Error thrown at $pos").left()
+                }
+                else {
+                    requireChoice(name, 1, options).right()
+                }
+            }
+        }
+    }.handle()
+}
+
+fun ChoiceScope.chooseNFrom(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseNFrom", 3, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { name ->
+            arg[1].requireInt(pos).flatMap { count ->
+                arg[2].requireList(pos).flatMap { options ->
+                    if (options.size < count.value) {
+                        CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
+                    } else {
+                        requireChoice(name, count.value, options).right()
+                    }
+                }
+            }
+        }
+    }.handle()
+}
+
+fun filterSpellsByLevel(pred: (Int) -> Boolean): List<InstanceVal> {
+    return Library.typesByKind("Spell").map {
+        val inst = InstanceVal(it, ChoiceScope.choicePos)
+        inst.getInt("level", ChoiceScope.choicePos).map{ l -> Pair(inst, l) }
+    }.filterRight().filter { pred(it.second) }.map { it.first }
+}
+
+fun ChoiceScope.chooseNCantrips(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseNCantrips", 4, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { name ->
+            arg[1].requireInt(pos).flatMap { count ->
+                arg[2].ifInstVerify("Class", pos).flatMap { cls ->
+                    arg[3].requireList(pos).flatMap { spellList ->
+                        val baseList = spellList.toMutableList()
+                        baseList.addAll(filterSpellsByLevel { it == 0 })
+                        if(baseList.size < count.value) {
+                            CMLException("Cannot choose ${count.value} option(s) from a list of size ${baseList.size}. Error thrown at $pos").left()
+                        }
+                        else {
+                            requireChoice(name, count.value, baseList).right()
+                        }
+                    }
+                }
+            }
+        }
+    }.handle()
+}
+// endregion

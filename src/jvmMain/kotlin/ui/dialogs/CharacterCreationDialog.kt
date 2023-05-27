@@ -61,7 +61,7 @@ fun CharacterCreationDialog(onClose: () -> Unit) = DefaultDialog(onClose, 600.dp
         val mod = Library.construct("Constitution", Character.posInit)?.let {
             result.value.abilityMod(it)
         } ?: 0
-        result.value.hp.value = mod + result.value.hitDice.value.firstNotNullOf { it.value }
+        result.value.hp.value = mod + result.value.hitDice.value.firstNotNullOf { it.key }
 
         result.value.onUpdate()
         Scripts.saveChar(result.value)
@@ -225,10 +225,16 @@ fun classPage(data: Character, toggleNext: (Boolean) -> Unit, goNext: () -> Unit
     val onSelect = { classV: Pair<String, InstanceVal> ->
         delta {
             it.classes[classV.first] = ClassDesc(classV.second, 1, true)
+            val hitDie = classV.second.getDice("hitDie", Character.posInit).fold(
+                { CMLOut.addError("Hit Die not defined for class `${classV.first}."); 0 },
+                { k -> k.kind }
+            )
+            it.hitDice.value += Pair(hitDie, 1)
+            it.choices.classesChoices[classV.first] = mutableMapOf()
+
             Library.withChoices(
                 c = it,
                 selector = { c ->
-                    c.classesChoices[classV.first] = mutableMapOf()
                     c.classesChoices[classV.first]
                 },
                 render = { cnt, opts, onSet ->
