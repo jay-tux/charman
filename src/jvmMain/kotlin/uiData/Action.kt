@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,15 +53,15 @@ class AttackAction(
 
     @Composable
     override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
+        val action = this
         scope.apply {
-            val items by c.inventory
-            val item = items.toList().first { it.first.name == name.split('(')[0].trim() }.first
+            val item = c.itemsFor(action)[0]
             Column(modifier.fillMaxHeight().fillMaxWidth(0.33f).align(Alignment.CenterEnd).padding(10.dp)) {
                 Text(name, style = MaterialTheme.typography.h5)
                 // TODO: add magical or not & rarity
                 Text("Weapon", style = MaterialTheme.typography.subtitle2, fontStyle = FontStyle.Italic)
                 Spacer(Modifier.height(5.dp))
-                val prof = if(c.itemProficiencies.value.intersect(tags).isNotEmpty()) "Yes" else "No"
+                val prof = if(c.itemProficiencies.value.intersect(tags.toSet()).isNotEmpty()) "Yes" else "No"
                 BoldAndNot("Proficient: ", prof)
                 BoldAndNot("Attack Type: ", kind)
                 BoldAndNot("Weight: ", "${item.weight} lbs.")
@@ -104,7 +103,7 @@ class SpellAttackAction(
 
     @Composable
     override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
-        scope.spellDetails(c.spells.value.first { it.name == name }, modifier)
+        scope.spellDetails(c.spellsFor(this)[0], modifier)
     }
 }
 
@@ -146,6 +145,6 @@ class SpellDCAction(
 
     @Composable
     override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
-        scope.spellDetails(c.spells.value.first { it.name == name }, modifier)
+        scope.spellDetails(c.spellsFor(this)[0], modifier)
     }
 }

@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import cml.CMLException
 import ui.Renderer
 import ui.dialogs.CurrencyDialog
-import ui.dialogs.DefaultDialog
 import ui.dialogs.ItemDialog
 import ui.widgets.*
 import uiData.Character
@@ -343,19 +342,15 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
     }
 
     if(editingMoney) {
-        DefaultDialog(
-            { stopEdit() }, 1000.dp, 250.dp
-        ) {
-            CurrencyDialog(
-                currencies = money.keys.toList(),
-                onClose = { stopEdit() },
-                canPayExactly = { unit, amount -> data.hasCurrency(unit, amount) },
-                canPay = { unit, amount -> data.canPay(unit, amount) },
-                onExact = { unit, amount -> data.payExact(unit, amount); stopEdit() },
-                onPay = { unit, amount -> data.pay(unit, amount); stopEdit() },
-                onGain = { unit, amount -> data.earn(unit, amount); stopEdit() }
-            )
-        }
+        CurrencyDialog(
+            currencies = money.keys.toList(),
+            onClose = { stopEdit() },
+            canPayExactly = { unit, amount -> data.hasCurrency(unit, amount) },
+            canPay = { unit, amount -> data.canPay(unit, amount) },
+            onExact = { unit, amount -> data.payExact(unit, amount); stopEdit() },
+            onPay = { unit, amount -> data.pay(unit, amount); stopEdit() },
+            onGain = { unit, amount -> data.earn(unit, amount); stopEdit() }
+        )
     }
 
     if(addingItem) {
