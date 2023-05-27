@@ -309,7 +309,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 val level = IntVal(char.classes.value.values.sumOf { it.level }, posRest)
                 char.race.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 val raceUpd = mutableListOf<Triple<String, String, Pair<String, InstanceVal>>>()
-                char.racialTraits.forEach { (k, v) ->
+                char.racialTraits.value.forEach { (k, v) ->
                     v.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)?.let {
                         v.second.getString("name", posRest).flatMap { name ->
                             v.second.getString("desc", posRest).map { desc ->
@@ -319,8 +319,8 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     }
                 }
                 raceUpd.forEach { (kOld, k, upd) ->
-                    char.racialTraits.remove(kOld)
-                    char.racialTraits[k] = upd
+                    char.racialTraits.value -= kOld
+                    char.racialTraits.value += Pair(k, upd)
                 }
 
                 val altMap = mutableMapOf<String, MutableMap<Value, Value>>()
@@ -336,7 +336,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
 
                 // ugly iteration hack to avoid java.util.ConcurrentModificationException
                 altMap.forEach { (cls, ch) ->
-                    char.classTraits.filter { it.value.second == cls }.forEach { (k, v) ->
+                    char.classTraits.value.filter { it.value.second == cls }.forEach { (k, v) ->
                         val classUpd = mutableListOf<Triple<String, String, Triple<String, String, InstanceVal>>>()
                         v.third.type.functions["onRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)?.let {
                             v.third.getString("name", posRest).flatMap { name ->
@@ -346,8 +346,8 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                             }.fold({ CMLOut.addError(it.localizedMessage) }, {})
                         }
                         classUpd.forEach { (kOld, k, upd) ->
-                            char.classTraits.remove(kOld)
-                            char.classTraits[k] = upd
+                            char.classTraits.value -= kOld
+                            char.classTraits.value += Pair(k, upd)
                         }
                     }
                 }

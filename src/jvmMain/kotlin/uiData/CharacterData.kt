@@ -44,9 +44,9 @@ class Character(
     val classes = mutableStateOf(classes)
     val abilities = mutableStateOf(abilities)
 
-    val classTraits = mutableMapOf<String, Triple<String, String, InstanceVal>>()
-    val backgroundTraits = mutableMapOf<String, Pair<String, InstanceVal>>()
-    val racialTraits = mutableMapOf<String, Pair<String, InstanceVal>>()
+    val classTraits = mutableStateOf(mapOf<String, Triple<String, String, InstanceVal>>())
+    val backgroundTraits = mutableStateOf(mapOf<String, Pair<String, InstanceVal>>())
+    val racialTraits = mutableStateOf(mapOf<String, Pair<String, InstanceVal>>())
 
     val skillProficiencies = mutableListOf<InstanceVal>()
     val saveProficiencies = mutableListOf<InstanceVal>()

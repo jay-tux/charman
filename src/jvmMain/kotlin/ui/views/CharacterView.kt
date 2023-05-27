@@ -87,10 +87,10 @@ fun RowScope.sheetTopRow(data: Character) {
     var setCallback by remember { mutableStateOf({ _: Value -> }) }
     val choiceNo = remember { mutableStateOf(0) }
 
-    val levelUp = { name: String, cl: ClassDesc ->
+    val levelUp = { cName: String, cl: ClassDesc ->
         Library.withChoices(
             c = data,
-            selector = { it.classesChoices[name] },
+            selector = { it.classesChoices[cName] },
             render = { cnt, opts, onSet ->
                 choiceNo.value++; count = cnt; options = opts; setCallback = onSet
             }
@@ -98,7 +98,7 @@ fun RowScope.sheetTopRow(data: Character) {
             cl.cls.type.functions["onLevelUp"]?.call(
                 listOf(IntVal(cl.level + 1, Character.posInit)),
                 Character.posInit
-            ) ?: CMLOut.addWarning("Cannot call onLevelUp for $name")
+            ) ?: CMLOut.addWarning("Cannot call onLevelUp for $cName")
             // update state
         }
     }
@@ -308,19 +308,22 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
 fun BoxScope.sheetTraitsPanel(data: Character) {
     val race by data.race
     val background by data.background
+    val racialTraits by data.racialTraits
+    val classTraits by data.classTraits
+    val backgroundTraits by data.backgroundTraits
 
     LazyScrollColumn(Modifier.fillMaxSize()) {
-        items(data.racialTraits.toList()) { (name, desc) ->
+        items(racialTraits.toList()) { (name, desc) ->
             TraitCard(name, race.first, desc.first)
             Spacer(Modifier.height(7.dp))
         }
 
-        items(data.classTraits.toList().sortedBy { it.second.second }) { (name, desc) ->
+        items(classTraits.toList().sortedBy { it.second.second }) { (name, desc) ->
             TraitCard(name, desc.second, desc.first)
             Spacer(Modifier.height(7.dp))
         }
 
-        items(data.backgroundTraits.toList()) { (name, desc) ->
+        items(backgroundTraits.toList()) { (name, desc) ->
             TraitCard(name, background.first, desc.first)
             Spacer(Modifier.height(7.dp))
         }

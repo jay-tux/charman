@@ -53,10 +53,10 @@ fun CharacterScope.addRacialTraits(args: List<Value>, p: PosInfo): Value {
                 }
             }.map {
                 it.forEach{ (k, v) ->
-                    if(char.racialTraits.containsKey(k)) {
+                    if(char.racialTraits.value.containsKey(k)) {
                         CMLOut.addWarning("Overwriting racial trait $k for character ${char.name}")
                     }
-                    char.racialTraits[k] = v
+                    char.racialTraits.value += Pair(k, v)
                 }
             }
         }
@@ -74,10 +74,10 @@ fun CharacterScope.addBackgroundTraits(args: List<Value>, p: PosInfo): Value {
                 }
             }.map {
                 it.forEach{ (k, v) ->
-                    if(char.backgroundTraits.containsKey(k)) {
+                    if(char.backgroundTraits.value.containsKey(k)) {
                         CMLOut.addWarning("Overwriting background trait $k for character ${char.name}")
                     }
-                    char.backgroundTraits[k] = v
+                    char.backgroundTraits.value += Pair(k, v)
                 }
             }
         }
@@ -143,10 +143,10 @@ fun CharacterScope.addClassTraits(args: List<Value>, p: PosInfo): Value {
                     }
                 }.map {
                     it.forEach { (k, v) ->
-                        if (char.classTraits.containsKey(k)) {
+                        if (char.classTraits.value.containsKey(k)) {
                             CMLOut.addWarning("Overwriting class trait $k for character ${char.name}")
                         }
-                        char.classTraits[k] = v
+                        char.classTraits.value += Pair(k, v)
                     }
                 }
             }
