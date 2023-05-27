@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cml.CMLException
 import ui.Renderer
+import ui.dialogs.DefaultDialog
 import ui.widgets.*
 import uiData.Character
 import withSign
@@ -285,14 +286,22 @@ fun BoxScope.sheetTraitsPanel(data: Character) {
 fun BoxScope.sheetInventoryPanel(data: Character) {
     val inventory by data.inventory
     val money by data.money
-    println(money)
+
+    var editingMoney by remember { mutableStateOf(false) }
+    var delta by remember { mutableStateOf(0) }
+
+    val stopEdit = {
+        editingMoney = false
+        delta = 0
+    }
+
     Column {
         Column(Modifier.weight(0.15f)) {
             Text("Money", fontStyle = FontStyle.Italic)
-            Row {
+            Row(Modifier.fillMaxWidth().clickable { editingMoney = true }) {
                 money.toList().sortedBy { it.second.conversion }.forEach { (abbrev, desc) ->
                     Box(Modifier.weight(1.0f)) { // distribute equally
-                        CurrencyWidget(abbrev, desc, { it -> }, { it -> }, {})
+                        CurrencyWidget(abbrev, desc)
                     }
                 }
             }
@@ -314,6 +323,22 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
                     )
                 }
             }
+        }
+    }
+
+    if(editingMoney) {
+        DefaultDialog(
+            { stopEdit() }, 1000.dp, 250.dp
+        ) {
+            CurrencyEditWidget(
+                currencies = money.keys.toList(),
+                onCancel = { stopEdit() },
+                canPayExactly = { unit, amount -> data.hasCurrency(unit, amount) },
+                canPay = { unit, amount -> data.canPay(unit, amount) },
+                onExact = { unit, amount -> data.payExact(unit, amount); stopEdit() },
+                onPay = { unit, amount -> data.pay(unit, amount); stopEdit() },
+                onGain = { unit, amount -> data.earn(unit, amount); stopEdit() }
+            )
         }
     }
 }

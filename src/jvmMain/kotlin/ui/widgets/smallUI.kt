@@ -4,11 +4,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -16,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import uiData.MoneyDesc
 import withSign
+import kotlin.math.abs
 
 @Composable
 fun boldThenNormal(bold: String, normal: String) = Row {
@@ -208,9 +211,75 @@ fun BoldAndNot(bold: String, not: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun CurrencyWidget(abbrev: String, money: MoneyDesc, onAdd: (Int) -> Unit, onRemove: (Int) -> Unit, onConvert: () -> Unit) {
-    Box(Modifier.fillMaxSize()) {
-        Text(money.fullName, Modifier.align(Alignment.TopCenter), fontStyle = FontStyle.Italic)
-        Text("${money.amount}", Modifier.align(Alignment.Center), style = MaterialTheme.typography.h6)
+fun CurrencyWidget(abbrev: String, money: MoneyDesc) {
+        Box(Modifier.fillMaxSize()) {
+            Row(Modifier.align(Alignment.Center)) {
+                Text("${money.amount}", style = MaterialTheme.typography.h5)
+                Text(" $abbrev", Modifier.align(Alignment.Bottom), fontStyle = FontStyle.Italic)
+            }
+        }
+}
+
+@Composable
+fun CurrencyEditWidget(
+    currencies: List<String>, onCancel: () -> Unit, canPayExactly: (String, Int) -> Boolean,
+    canPay: (String, Int) -> Boolean, onExact: (String, Int) -> Unit, onPay: (String, Int) -> Unit,
+    onGain: (String, Int) -> Unit
+) {
+    var selectedUnit by remember { mutableStateOf("GP") }
+    var delta by remember { mutableStateOf(0) }
+    var opened by remember { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(0.70f)) {
+            Row(Modifier.weight(0.45f)) {
+                OutlinedTextField(
+                    if (delta == 0) "" else "$delta",
+                    { delta = abs(it.toIntOrNull() ?: 0) },
+                    Modifier.weight(0.88f).fillMaxHeight(),
+                    label = { Text("Amount of money to pay or earn") }
+                )
+                Spacer(Modifier.weight(0.02f))
+                Box(Modifier.weight(0.1f)) {
+                    Button({ opened = !opened }, Modifier.fillMaxHeight()) {
+                        Text(selectedUnit, Modifier.weight(0.9f))
+                        Icon(Icons.Default.MoreVert, "", Modifier.weight(0.1f))
+                    }
+
+                    DropdownMenu(opened, { opened = false }) {
+                        currencies.forEach {
+                            DropdownMenuItem({ selectedUnit = it; opened = false }) {
+                                Text(it)
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.weight(0.05f))
+            Row(Modifier.weight(0.45f)) {
+                Button({ onExact(selectedUnit, delta) }, Modifier.weight(0.3f).fillMaxHeight(), enabled = canPayExactly(selectedUnit, delta)) {
+                    Column {
+                        Text("Pay $delta $selectedUnit")
+                        Text("without converting anything", Modifier.scale(0.66f))
+                    }
+                }
+                Spacer(Modifier.weight(0.05f))
+                Button({ onPay(selectedUnit, delta) }, Modifier.weight(0.3f).fillMaxHeight(), enabled = canPay(selectedUnit, delta)) {
+                    Column {
+                        Text("Pay $delta $selectedUnit")
+                        Text("with converting if necessary", Modifier.scale(0.66f))
+                    }
+                }
+                Spacer(Modifier.weight(0.05f))
+                Button({ onGain(selectedUnit, delta) }, Modifier.weight(0.3f).fillMaxHeight()) {
+                    Text("Earn $delta $selectedUnit")
+                }
+            }
+            Spacer(Modifier.weight(0.05f))
+    }
+
+        Button({ onCancel() }, Modifier.weight(0.3f).fillMaxWidth()) {
+            Text("Cancel")
+        }
     }
 }

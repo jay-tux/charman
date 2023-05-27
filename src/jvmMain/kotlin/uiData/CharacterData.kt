@@ -3,6 +3,7 @@ package uiData
 import CMLOut
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.util.fastForEachReversed
 import arrow.core.Either
 import arrow.core.flatMap
 import arrow.core.left
@@ -27,7 +28,7 @@ data class SpellDesc(
 )
 
 data class MoneyDesc(
-    val amount: Int, val fullName: String, val conversion: Float, val instance: InstanceVal
+    val amount: Int, val fullName: String, val conversion: Int, val instance: InstanceVal
 )
 
 class Character(
@@ -66,7 +67,7 @@ class Character(
         val inst = InstanceVal(decl, posInit)
         inst.getName(posInit).flatMap { name ->
             inst.getString("abbrev", posInit).flatMap { abbrev ->
-                inst.getFloat("conversionRatio", posInit).map { ratio ->
+                inst.getInt("conversionRatio", posInit).map { ratio ->
                     Pair(abbrev, MoneyDesc(0, name, ratio, inst))
                 }
             }
@@ -248,6 +249,55 @@ class Character(
 
     fun addTempHP(amount: Int) {
         if(amount > tempHp.value) tempHp.value = amount
+    }
+
+    fun hasCurrency(abbrev: String, amount: Int): Boolean =
+        (money.value[abbrev]?.amount ?: 0) >= amount
+
+    private fun cardinalValue(): Int {
+        var total = 0
+        money.value.forEach { total += it.value.conversion * it.value.amount }
+        return total
+    }
+
+    fun canPay(abbrev: String, amount: Int): Boolean
+        = cardinalValue() >= (money.value[abbrev]?.conversion?.let { it * amount } ?: Int.MAX_VALUE)
+
+    fun payExact(abbrev: String, amount: Int) {
+        val prev = money.value[abbrev]!!
+        val mut = money.value.toMutableMap()
+        mut[abbrev] = prev.copy(amount = prev.amount - amount)
+        money.value = mut
+    }
+
+    fun pay(abbrev: String, amt: Int) {
+        var amount = amt
+        val prev = money.value[abbrev]!!
+        val mut = money.value.toMutableMap()
+        if(prev.amount >= amount) mut[abbrev] = prev.copy(amount = prev.amount - amount)
+        else {
+            mut[abbrev] = prev.copy(amount = 0)
+            amount -= prev.amount
+
+            val sorted = mut.toList().sortedBy { it.second.conversion }
+            var total = cardinalValue()
+            val amConv = amount * prev.conversion
+            total -= amConv
+
+            sorted.fastForEachReversed { (a, desc) ->
+                val keep = total / desc.conversion
+                total %= desc.conversion
+                mut[a] = desc.copy(amount = keep)
+            }
+        }
+        money.value = mut
+    }
+
+    fun earn(abbrev: String, amount: Int) {
+        val prev = money.value[abbrev]!!
+        val mut = money.value.toMutableMap()
+        mut[abbrev] = prev.copy(amount = prev.amount + amount)
+        money.value = mut
     }
 
     companion object {
