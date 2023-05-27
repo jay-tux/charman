@@ -70,7 +70,8 @@ object Library {
         Pair("chooseNByKind") { args, pos -> chooseNByKind(args, pos) },
         Pair("chooseFrom") { args, pos -> chooseFrom(args, pos) },
         Pair("chooseNFrom") { args, pos -> chooseNFrom(args, pos) },
-        Pair("chooseNCantrips") { args, pos -> chooseNCantrips(args, pos) }
+        Pair("chooseNCantrips") { args, pos -> chooseNCantrips(args, pos) },
+        Pair("chooseNSpellsUpTo") { args, pos -> chooseNSpellsUpTo(args, pos) },
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()
@@ -179,10 +180,8 @@ object Library {
                     } else {
                         CMLOut.addError("Couldn't store choice `$choice' = `${option.repr()}' because selected choice cache is null.")
                     }
-                    CMLOut.addInfo("Added choice $choice (option: ${option.repr()}; all choices: ${selector(c.choices)?.map { it.key.repr() }}")
                 }
             ) ?: throw CMLException("Choice-scope was reset before call could happen")
-            CMLOut.addInfo("Choice making finished with choices: ${selector(c.choices)?.map { it.key.repr() }}")
             currentChoiceScope = null
         }
     }

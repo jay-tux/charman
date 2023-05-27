@@ -1,10 +1,7 @@
 package data
 
 import CMLOut
-import arrow.core.Either
-import arrow.core.flatMap
-import arrow.core.left
-import arrow.core.right
+import arrow.core.*
 import cml.*
 import filterRight
 import mapIndexedOrEither
@@ -486,11 +483,17 @@ fun ChoiceScope.chooseNFrom(args: List<Value>, p: PosInfo): Value {
     }.handle()
 }
 
-fun filterSpellsByLevel(pred: (Int) -> Boolean): List<InstanceVal> {
-    return Library.typesByKind("Spell").map {
-        val inst = InstanceVal(it, ChoiceScope.choicePos)
-        inst.getInt("level", ChoiceScope.choicePos).map{ l -> Pair(inst, l) }
-    }.filterRight().filter { pred(it.second) }.map { it.first }
+fun filterSpellsByLevel(baseList: List<InstanceVal>, classN: String, pred: (Int) -> Boolean): List<InstanceVal> {
+    return baseList.map{ Pair(it, true) }.union(Library.typesByKind("Spell").map { Pair(InstanceVal(it, ChoiceScope.choicePos), false) }).map {
+        it.first.getInt("level", ChoiceScope.choicePos).map { l ->
+            val spellLists = it.first.getList("onSpellLists", ChoiceScope.choicePos).fold({ listOf<String>() }) { list ->
+                list.value.map { sp ->
+                    sp.ifInstVerifyGetName("Class", ChoiceScope.choicePos).map { it.first }
+                }.filterRight()
+            }
+            Tuple4(it.first, l, spellLists, it.second)
+        }
+    }.filterRight().filter { pred(it.second) && (it.fourth || it.third.contains(classN)) }.map { it.first }
 }
 
 fun ChoiceScope.chooseNCantrips(args: List<Value>, p: PosInfo): Value {
@@ -499,13 +502,39 @@ fun ChoiceScope.chooseNCantrips(args: List<Value>, p: PosInfo): Value {
             arg[1].requireInt(pos).flatMap { count ->
                 arg[2].ifInstVerify("Class", pos).flatMap { cls ->
                     arg[3].requireList(pos).flatMap { spellList ->
-                        val baseList = spellList.toMutableList()
-                        baseList.addAll(filterSpellsByLevel { it == 0 })
-                        if(baseList.size < count.value) {
-                            CMLException("Cannot choose ${count.value} option(s) from a list of size ${baseList.size}. Error thrown at $pos").left()
+                        val clName = cls.getName(ChoiceScope.choicePos).fold({ CMLOut.addError(it.localizedMessage); "" }) { it }
+                        val options = filterSpellsByLevel(spellList.filterIsInstance<InstanceVal>(), clName) { it == 0 }
+
+                        if(options.size < count.value) {
+                            CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
                         }
                         else {
-                            requireChoice(name, count.value, baseList).right()
+                            requireChoice(name, count.value, options).right()
+                        }
+                    }
+                }
+            }
+        }
+    }.handle()
+}
+
+fun ChoiceScope.chooseNSpellsUpTo(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseNSpellsUpTo", 5, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { name ->
+            arg[1].requireInt(pos).flatMap { count ->
+                arg[2].requireInt(pos).flatMap { maxLvl ->
+                    arg[3].ifInstVerify("Class", pos).flatMap { cls ->
+                        arg[4].requireList(pos).flatMap { spellList ->
+                            val clName = cls.getName(ChoiceScope.choicePos)
+                                .fold({ CMLOut.addError(it.localizedMessage); "" }) { it }
+                            val options =
+                                filterSpellsByLevel(spellList.filterIsInstance<InstanceVal>(), clName) { it > 0 && it <= maxLvl.value }
+
+                            if (options.size < count.value) {
+                                CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
+                            } else {
+                                requireChoice(name, count.value, options).right()
+                            }
                         }
                     }
                 }
