@@ -202,7 +202,7 @@ object Scripts {
     }
 
     fun saveChar(data: Character) {
-        FileOutputStream(characterCache.resolve("${data.name}.cml").toFile()).use { stream ->
+        FileOutputStream(characterCache.resolve("${data.name.value}.cml").toFile()).use { stream ->
             val serialized = data.serialize()
             stream.write(serialized.toByteArray(Charset.defaultCharset()))
             stream.flush()

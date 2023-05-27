@@ -79,7 +79,7 @@ fun CharacterView(data: Character) {
 @Composable
 fun RowScope.sheetTopRow(data: Character) {
     val name by data.name
-    val classes by data.classes
+    var classes by data.classes
     val race by data.race
     val background by data.background
     var count by remember { mutableStateOf(0) }
@@ -99,7 +99,9 @@ fun RowScope.sheetTopRow(data: Character) {
                 listOf(IntVal(cl.level + 1, Character.posInit)),
                 Character.posInit
             ) ?: CMLOut.addWarning("Cannot call onLevelUp for $cName")
-            // update state
+            val upd = classes
+            upd[cName] = cl.copy(level = cl.level + 1)
+            classes = upd
         }
     }
 
