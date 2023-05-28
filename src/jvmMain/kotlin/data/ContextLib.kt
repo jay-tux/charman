@@ -27,8 +27,8 @@ fun CharacterScope.abilityIncrease(args: List<Value>, p: PosInfo): Value {
     return argCnt("abilityIncrease", 2, args, p).flatMap { (pos, arg) ->
         arg[0].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (abbr, _) ->
             arg[1].requireInt(pos).map {
-                val prev = char.abilities[abbr] ?: throw CMLException("Ability $abbr does not exist for this character at $pos")
-                char.abilities[abbr] = AbilityDesc(prev.name, prev.instance, prev.score + it.value)
+                val prev = char.abilities.value[abbr] ?: throw CMLException("Ability $abbr does not exist for this character at $pos")
+                char.abilities.value += Pair(abbr, AbilityDesc(prev.name, prev.instance, prev.score + it.value))
             }
         }
     }.handle(p)
@@ -53,10 +53,10 @@ fun CharacterScope.addRacialTraits(args: List<Value>, p: PosInfo): Value {
                 }
             }.map {
                 it.forEach{ (k, v) ->
-                    if(char.racialTraits.containsKey(k)) {
+                    if(char.racialTraits.value.containsKey(k)) {
                         CMLOut.addWarning("Overwriting racial trait $k for character ${char.name}")
                     }
-                    char.racialTraits[k] = v
+                    char.racialTraits.value += Pair(k, v)
                 }
             }
         }
@@ -74,10 +74,10 @@ fun CharacterScope.addBackgroundTraits(args: List<Value>, p: PosInfo): Value {
                 }
             }.map {
                 it.forEach{ (k, v) ->
-                    if(char.backgroundTraits.containsKey(k)) {
+                    if(char.backgroundTraits.value.containsKey(k)) {
                         CMLOut.addWarning("Overwriting background trait $k for character ${char.name}")
                     }
-                    char.backgroundTraits[k] = v
+                    char.backgroundTraits.value += Pair(k, v)
                 }
             }
         }
@@ -103,7 +103,7 @@ fun CharacterScope.addSkillProficiencies(args: List<Value>, p: PosInfo): Value {
             skills.mapOrEither {
                 elem -> elem.ifInstVerify("Skill", pos)
             }.map {
-                char.skillProficiencies.addAll(it)
+                char.skillProficiencies.value += it
             }
         }
     }.map { }.handle(p)
@@ -115,7 +115,7 @@ fun CharacterScope.addSaveProficiencies(args: List<Value>, p: PosInfo): Value {
             saves.mapOrEither {
                 elem -> elem.ifInstVerify("Ability", pos)
             }.map {
-                char.saveProficiencies.addAll(it)
+                char.saveProficiencies.value += it
             }
         }
     }.map { }.handle(p)
@@ -143,10 +143,10 @@ fun CharacterScope.addClassTraits(args: List<Value>, p: PosInfo): Value {
                     }
                 }.map {
                     it.forEach { (k, v) ->
-                        if (char.classTraits.containsKey(k)) {
+                        if (char.classTraits.value.containsKey(k)) {
                             CMLOut.addWarning("Overwriting class trait $k for character ${char.name}")
                         }
-                        char.classTraits[k] = v
+                        char.classTraits.value += Pair(k, v)
                     }
                 }
             }
@@ -277,7 +277,7 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
                 baseData[0].requireString(pos).flatMap { kind ->
                     baseData[1].ifInstVerify("Ability", pos).flatMap { ability ->
                         ability.getString("abbrev", pos).flatMap {
-                            c.abilities[it]?.right() ?: CMLException.invalidAbility(it, pos).left()
+                            c.abilities.value[it]?.right() ?: CMLException.invalidAbility(it, pos).left()
                         }
                     }.flatMap { ability ->
                         baseData[2].requireString(pos).flatMap { reachRange ->
@@ -316,7 +316,7 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
                         }.flatMap { damage ->
                             baseData[4].requireBool(pos).flatMap { addMod ->
                                 baseData[5].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (a, _) ->
-                                    c.abilities[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
+                                    c.abilities.value[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
                                 }.map { ability ->
                                     SpellAttackAction(name, ability, range, targets, damage, kind, addMod.value, tags)
                                 }
@@ -344,7 +344,7 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
                                 }
                             }.flatMap { damage ->
                                 baseData[5].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (a, _) ->
-                                    c.abilities[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
+                                    c.abilities.value[a]?.right() ?: CMLException.invalidAbility(a, pos).left()
                                 }.map { ability ->
                                     SpellDCAction(name, ability, range, targets, damage, kind, save, tags)
                                 }
@@ -410,7 +410,7 @@ fun CharacterScope.setSpecialCaster(args: List<Value>, p: PosInfo): Value {
 
 // region Choice Scope
 fun ChoiceScope.chooseDataByKind(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseDataByKind", 2, args, p).flatMap { (pos, arg) ->
+    return argCnt("chooseDataByKind", 2, args, p).flatMap { (pos, _) ->
         args[0].requireString(pos).flatMap { name ->
             args[1].requireString(pos).flatMap { kind ->
                 val options = Library.typesByKind(kind).map { type ->
@@ -429,7 +429,7 @@ fun ChoiceScope.chooseDataByKind(args: List<Value>, p: PosInfo): Value {
 }
 
 fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseNByKind", 3, args, p).flatMap { (pos, arg) ->
+    return argCnt("chooseNByKind", 3, args, p).flatMap { (pos, _) ->
         args[0].requireString(pos).flatMap { name ->
             args[1].requireInt(pos).flatMap { count ->
                 args[2].requireString(pos).flatMap { kind ->
@@ -453,7 +453,7 @@ fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
 }
 
 fun ChoiceScope.chooseFrom(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseFrom", 2, args, p).flatMap { (pos, arg) ->
+    return argCnt("chooseFrom", 2, args, p).flatMap { (pos, _) ->
         args[0].requireString(pos).flatMap { name ->
             args[1].requireList(pos).flatMap { options ->
                 if(options.isEmpty()) {

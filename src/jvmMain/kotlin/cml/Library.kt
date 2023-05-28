@@ -20,6 +20,8 @@ object StdLib {
         Pair("log") { args, p -> log(args, p) },
         Pair("isInt") { args, p -> isInt(args, p) },
         Pair("empty") { args, p -> empty(args, p) },
+        Pair("inList") { args, p -> inList(args, p) },
+        Pair("replace") { args, p -> replace(args, p) }
     )
 
     fun isStd(name: String): Boolean = functions.containsKey(name)
@@ -174,7 +176,7 @@ object Library {
                     render(count, options) { lock.update(it) }
                 },
                 onChoiceMade = { choice, option ->
-                    val map = selector(c.choices)
+                    val map = selector(c.choices.value)
                     if (map != null) {
                         map[StringVal(choice, Character.posInit)] = option
                     } else {

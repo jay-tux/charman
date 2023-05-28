@@ -202,7 +202,7 @@ object Scripts {
     }
 
     fun saveChar(data: Character) {
-        FileOutputStream(characterCache.resolve("${data.name}.cml").toFile()).use { stream ->
+        FileOutputStream(characterCache.resolve("${data.name.value}.cml").toFile()).use { stream ->
             val serialized = data.serialize()
             stream.write(serialized.toByteArray(Charset.defaultCharset()))
             stream.flush()
@@ -306,10 +306,10 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
             }
         }.flatMap { (char, choices) ->
             Library.withCharacter(char) {
-                val level = IntVal(char.classes.values.sumOf { it.level }, posRest)
-                char.race.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
+                val level = IntVal(char.classes.value.values.sumOf { it.level }, posRest)
+                char.race.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 val raceUpd = mutableListOf<Triple<String, String, Pair<String, InstanceVal>>>()
-                char.racialTraits.forEach { (k, v) ->
+                char.racialTraits.value.forEach { (k, v) ->
                     v.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)?.let {
                         v.second.getString("name", posRest).flatMap { name ->
                             v.second.getString("desc", posRest).map { desc ->
@@ -319,12 +319,12 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     }
                 }
                 raceUpd.forEach { (kOld, k, upd) ->
-                    char.racialTraits.remove(kOld)
-                    char.racialTraits[k] = upd
+                    char.racialTraits.value -= kOld
+                    char.racialTraits.value += Pair(k, upd)
                 }
 
                 val altMap = mutableMapOf<String, MutableMap<Value, Value>>()
-                char.classes.forEach { e ->
+                char.classes.value.forEach { e ->
                     e.value.cls.type.functions["onRestore"]?.call(
                         choices.classesChoices[e.key]?.let {
                             altMap[e.key] = it
@@ -336,7 +336,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
 
                 // ugly iteration hack to avoid java.util.ConcurrentModificationException
                 altMap.forEach { (cls, ch) ->
-                    char.classTraits.filter { it.value.second == cls }.forEach { (k, v) ->
+                    char.classTraits.value.filter { it.value.second == cls }.forEach { (k, v) ->
                         val classUpd = mutableListOf<Triple<String, String, Triple<String, String, InstanceVal>>>()
                         v.third.type.functions["onRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)?.let {
                             v.third.getString("name", posRest).flatMap { name ->
@@ -346,14 +346,14 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                             }.fold({ CMLOut.addError(it.localizedMessage) }, {})
                         }
                         classUpd.forEach { (kOld, k, upd) ->
-                            char.classTraits.remove(kOld)
-                            char.classTraits[k] = upd
+                            char.classTraits.value -= kOld
+                            char.classTraits.value += Pair(k, upd)
                         }
                     }
                 }
 
-                char.background.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
-                char.choices = choices
+                char.background.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
+                char.choices.value = choices
                 char
             }
         }.flatMap { char ->
