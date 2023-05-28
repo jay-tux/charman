@@ -83,6 +83,7 @@ fun RowScope.sheetTopRow(data: Character) {
     var classes by data.classes
     val race by data.race
     val background by data.background
+    val racialTraits by data.racialTraits
     val classTraits by data.classTraits
     var count by remember { mutableStateOf(0) }
     var options by remember { mutableStateOf(listOf<Value>()) }
@@ -97,16 +98,19 @@ fun RowScope.sheetTopRow(data: Character) {
                 choiceNo.value++; count = cnt; options = opts; setCallback = onSet
             }
         ) {
-            cl.cls.type.functions["onLevelUp"]?.call(
-                listOf(IntVal(cl.level + 1, Character.posInit)),
-                Character.posInit
-            ) ?: CMLOut.addWarning("Cannot call onLevelUp for $cName")
+            val args = listOf(IntVal(cl.level + 1, Character.posInit))
+
+            cl.cls.type.functions["onLevelUp"]?.call(args, Character.posInit)
+                ?: CMLOut.addWarning("Cannot call onLevelUp for $cName")
             classTraits.forEach { trait ->
-                trait.value.third.type.functions["onLevelUp"]?.call(
-                    listOf(IntVal(cl.level + 1, Character.posInit)),
-                    Character.posInit
-                ) ?: CMLOut.addWarning("Cannot call onLevelUp for class trait ${trait.key}")
+                trait.value.third.type.functions["onLevelUp"]?.call(args, Character.posInit)
+                    ?: CMLOut.addWarning("Cannot call onLevelUp for class trait ${trait.key}")
             }
+            race.second.type.functions["onLevelUp"]?.call(args, Character.posInit)
+            racialTraits.forEach { (_, trait) ->
+                trait.second.type.functions["onLevelUp"]?.call(args, Character.posInit)
+            }
+            CMLOut.addInfo("All level up functions have been called :)")
             classes += Pair(cName, cl.copy(level = cl.level + 1))
             CharacterData.refreshUI()
         }

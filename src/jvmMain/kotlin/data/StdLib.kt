@@ -85,3 +85,15 @@ fun inList(args: List<Value>, pos: PosInfo): Value {
         }
     }.handle()
 }
+
+fun replace(args: List<Value>, pos: PosInfo): Value {
+    return argCntStd("replace", 3, args, pos).flatMap { (p, arg) ->
+        arg[0].requireString(p).flatMap { original ->
+            arg[1].requireString(p).flatMap { search ->
+                arg[2].requireString(p).map { replace ->
+                    StringVal(original.replace(search, replace), p)
+               }
+            }
+        }
+    }.handle()
+}

@@ -21,6 +21,7 @@ object StdLib {
         Pair("isInt") { args, p -> isInt(args, p) },
         Pair("empty") { args, p -> empty(args, p) },
         Pair("inList") { args, p -> inList(args, p) },
+        Pair("replace") { args, p -> replace(args, p) }
     )
 
     fun isStd(name: String): Boolean = functions.containsKey(name)
