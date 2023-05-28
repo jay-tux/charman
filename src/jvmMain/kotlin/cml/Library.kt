@@ -20,6 +20,7 @@ object StdLib {
         Pair("log") { args, p -> log(args, p) },
         Pair("isInt") { args, p -> isInt(args, p) },
         Pair("empty") { args, p -> empty(args, p) },
+        Pair("inList") { args, p -> inList(args, p) },
     )
 
     fun isStd(name: String): Boolean = functions.containsKey(name)

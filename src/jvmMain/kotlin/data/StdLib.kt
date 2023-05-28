@@ -77,3 +77,11 @@ fun isInt(args: List<Value>, pos: PosInfo): Value {
     if(args.size != 1) throw CMLException.argCount("isInt", 1, args.size, p, pos)
     return BoolVal(args[0] is IntVal, p)
 }
+
+fun inList(args: List<Value>, pos: PosInfo): Value {
+    return argCntStd("inList", 2, args, pos).flatMap { (p, arg) ->
+        arg[0].requireList(p).map {
+            BoolVal(it.contains(args[1]), p)
+        }
+    }.handle()
+}

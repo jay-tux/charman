@@ -28,6 +28,7 @@ import ui.dialogs.ItemDialog
 import ui.dialogs.choiceDispatcher
 import ui.widgets.*
 import uiData.Character
+import uiData.CharacterData
 import uiData.ClassDesc
 import withSign
 
@@ -82,6 +83,7 @@ fun RowScope.sheetTopRow(data: Character) {
     var classes by data.classes
     val race by data.race
     val background by data.background
+    val classTraits by data.classTraits
     var count by remember { mutableStateOf(0) }
     var options by remember { mutableStateOf(listOf<Value>()) }
     var setCallback by remember { mutableStateOf({ _: Value -> }) }
@@ -99,9 +101,14 @@ fun RowScope.sheetTopRow(data: Character) {
                 listOf(IntVal(cl.level + 1, Character.posInit)),
                 Character.posInit
             ) ?: CMLOut.addWarning("Cannot call onLevelUp for $cName")
-            val upd = classes
-            upd[cName] = cl.copy(level = cl.level + 1)
-            classes = upd
+            classTraits.forEach { trait ->
+                trait.value.third.type.functions["onLevelUp"]?.call(
+                    listOf(IntVal(cl.level + 1, Character.posInit)),
+                    Character.posInit
+                ) ?: CMLOut.addWarning("Cannot call onLevelUp for class trait ${trait.key}")
+            }
+            classes += Pair(cName, cl.copy(level = cl.level + 1))
+            CharacterData.refreshUI()
         }
     }
 

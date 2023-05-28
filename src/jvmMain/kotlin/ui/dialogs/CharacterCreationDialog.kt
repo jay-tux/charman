@@ -229,7 +229,7 @@ fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean
 
     val onSelect = { classV: Pair<String, InstanceVal> ->
         delta {
-            classes[classV.first] = ClassDesc(classV.second, 1, true)
+            classes += Pair(classV.first, ClassDesc(classV.second, 1, true))
             val hitDie = classV.second.getDice("hitDie", Character.posInit).fold(
                 { CMLOut.addError("Hit Die not defined for class `${classV.first}."); 0 },
                 { k -> k.kind }
@@ -393,7 +393,7 @@ fun abilitiesPage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Chara
                         { mods += Pair(abbrev, it.toIntOrNull() ?: 0) },
                         Modifier.weight(0.25f).align(Alignment.CenterVertically).onFocusChanged {
                             if(!it.hasFocus) {
-                                data.abilities.value[abbrev] = desc.copy(score = (mods[abbrev] ?: 0) + desc.score)
+                                data.abilities.value += Pair(abbrev, desc.copy(score = (mods[abbrev] ?: 0) + desc.score))
                             }
                         },
                         maxLines = 1

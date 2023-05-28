@@ -28,7 +28,7 @@ fun CharacterScope.abilityIncrease(args: List<Value>, p: PosInfo): Value {
         arg[0].ifInstVerifyGetString("abbrev", "Ability", pos).flatMap { (abbr, _) ->
             arg[1].requireInt(pos).map {
                 val prev = char.abilities.value[abbr] ?: throw CMLException("Ability $abbr does not exist for this character at $pos")
-                char.abilities.value[abbr] = AbilityDesc(prev.name, prev.instance, prev.score + it.value)
+                char.abilities.value += Pair(abbr, AbilityDesc(prev.name, prev.instance, prev.score + it.value))
             }
         }
     }.handle(p)

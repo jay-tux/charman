@@ -41,8 +41,8 @@ class Character(
     val name = mutableStateOf(name)
     val race = mutableStateOf(race)
     val background = mutableStateOf(background)
-    val classes = mutableStateOf(classes)
-    val abilities = mutableStateOf(abilities)
+    val classes = mutableStateOf(classes.toMap())
+    val abilities = mutableStateOf(abilities.toMap())
 
     val classTraits = mutableStateOf(mapOf<String, Triple<String, String, InstanceVal>>())
     val backgroundTraits = mutableStateOf(mapOf<String, Pair<String, InstanceVal>>())
@@ -437,6 +437,10 @@ object CharacterData {
         _loadedCharacters.value.forEach {
             it.map { c -> Scripts.saveChar(c) }
         }
+    }
+
+    fun refreshUI() {
+        _characters.value = characters.value
     }
 
     fun <T> handleCMLException(ex: CMLException, character: Either<CMLException, InstanceVal>, index: Int, res: T): T {
