@@ -85,7 +85,7 @@ object Scripts {
             }
 
             globals.addAll(ast.globals)
-            templates.putAll(ast.templates.map { Pair(it.kind, it) })
+            templates.putAll(ast.templates.map { Pair(it.name, it) })
             instances.putAll(ast.instances.map { Pair(it.name, it) })
         }
     }

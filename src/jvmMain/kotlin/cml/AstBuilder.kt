@@ -528,6 +528,22 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
+    override fun visitTemplateAs(ctx: CMLParser.TemplateAsContext?): AstNode {
+        return nonNull(ctx) { c ->
+            val argNames = visit(c.args) as ArgsDecl
+            val body = visit(c.body) as DeclSet
+
+            TemplateDecl(
+                kind = c.kind.text,
+                name = c.name.text,
+                argNames = argNames.names,
+                functions = body.functions.associateBy { it.name },
+                fieldsPre = body.fields.associate { Pair(it.name, it.init) },
+                declPos = c.start.getPos(file)
+            )
+        }
+    }
+
     override fun visitInstance(ctx: CMLParser.InstanceContext?): AstNode {
         return nonNull(ctx) { c ->
             val args = visit(c.args) as ExpressionSet
