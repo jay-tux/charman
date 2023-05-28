@@ -19,7 +19,7 @@ data class ClassDesc(val cls: InstanceVal, val level: Int, val isPrimary: Boolea
 data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
 data class ItemDesc(val name: String, val weight: Float, val value: Triple<Int, String, InstanceVal>,
                     val actions: List<InstanceVal>, val traits: List<Triple<String, String, InstanceVal>>,
-                    val instance: InstanceVal
+                    val tags: List<String>, val instance: InstanceVal
 )
 data class SpellDesc(
     val name: String, val school: String, val level: Int, val castingTime: String, val range: String,

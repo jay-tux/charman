@@ -406,6 +406,21 @@ fun CharacterScope.setSpecialCaster(args: List<Value>, p: PosInfo): Value {
         }
     }.handle(p)
 }
+
+fun CharacterScope.addItem(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addItem", 1, args, p).flatMap { (pos, arg) ->
+        ExecutionStack.run {
+            Character.loadItem(arg[0]).map { (desc, actions) ->
+                char.addItem(desc, 1)
+                actions.forEach { action ->
+                    ExecutionStack.run {
+                        addAction(listOf(action), pos)
+                    }
+                }
+            }
+        }
+    }.handle(p)
+}
 // endregion
 
 // region Choice Scope
@@ -476,6 +491,40 @@ fun ChoiceScope.chooseNFrom(args: List<Value>, p: PosInfo): Value {
                         CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
                     } else {
                         requireChoice(name, count.value, options).right()
+                    }
+                }
+            }
+        }
+    }.handle()
+}
+
+fun ChoiceScope.chooseItem(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseItem", 3, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { name ->
+            arg[1].requireList(pos).flatMap { tags ->
+                tags.mapOrEither {
+                    it.requireString(pos)
+                }
+            }.flatMap { tags ->
+                Library.typesByKind("Item").mapOrEither { decl ->
+                    ExecutionStack.run {
+                        Character.loadItem(InstanceVal(decl, pos))
+                    }
+                }.map { sub ->
+                    sub.filter { item ->
+                        tags.all { item.first.tags.contains(it) }
+                    }
+                }
+            }.map{ tags ->
+                tags.map { it.first }.toSet().toList()
+            }.flatMap { items ->
+                arg[2].requireList(pos).flatMap { extra ->
+                    val options = items.map { it.instance }.union(extra).toList()
+                    if(options.isEmpty()) {
+                        CMLException("No items matching filter at $pos").left()
+                    }
+                    else {
+                        requireChoice(name, 1, options).right()
                     }
                 }
             }

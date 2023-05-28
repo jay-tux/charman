@@ -60,6 +60,7 @@ object Library {
         Pair("getAbilityMod") { args, pos -> getAbilityMod(args, pos) },
         Pair("getProficiency") { args, pos -> getProficiency(args, pos) },
         Pair("getArmor") { args, pos -> getArmor(args, pos) },
+        Pair("addItem") { args, pos -> addItem(args, pos) },
         Pair("addAction") { args, pos -> addAction(args, pos) },
         Pair("addSpell") { args, pos -> addSpell(args, pos) },
         Pair("setFullCaster") { args, pos -> setFullCaster(args, pos) },
@@ -74,6 +75,7 @@ object Library {
         Pair("chooseNFrom") { args, pos -> chooseNFrom(args, pos) },
         Pair("chooseNCantrips") { args, pos -> chooseNCantrips(args, pos) },
         Pair("chooseNSpellsUpTo") { args, pos -> chooseNSpellsUpTo(args, pos) },
+        Pair("chooseItem") { args, pos -> chooseItem(args, pos) },
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()
