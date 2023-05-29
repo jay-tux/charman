@@ -169,8 +169,8 @@ fun CharacterScope.getProficiency(args: List<Value>, p: PosInfo): Value {
 }
 
 fun CharacterScope.getArmor(args: List<Value>, p: PosInfo): Value {
-    return argCnt("getArmor", 0, args, p).map { _ ->
-        ListVal(mutableListOf(), p)
+    return argCnt("getArmor", 0, args, p).map { (pos, _) ->
+        ListVal(char.inventory.value.keys.filter { it.equipped }.map { it.instance }.toMutableList(), pos)
     }.handle()
 }
 
@@ -418,6 +418,22 @@ fun CharacterScope.addItem(args: List<Value>, p: PosInfo): Value {
                     }
                 }
             }
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.setAC(args: List<Value>, p: PosInfo): Value {
+    return argCnt("setAC", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireInt(pos).map {
+            char.ac.value = it.value
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.modAC(args: List<Value>, p: PosInfo): Value {
+    return argCnt("modAC", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireInt(pos).map {
+            char.acDelta += it.value
         }
     }.handle(p)
 }

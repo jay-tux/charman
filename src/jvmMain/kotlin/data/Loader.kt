@@ -444,7 +444,7 @@ fun Character.Companion.loadItem(item: Value): Either<CMLException, Pair<ItemDes
                         inst.getList("tags", posInit).flatMap { tags ->
                             tags.value.mapOrEither { it.requireString(posInit) }
                         }.map { tags ->
-                            ItemDesc(name, weight, price, actions, traits, tags, inst)
+                            ItemDesc(name, weight, price, actions, traits, tags, inst, inst.type.functions.containsKey("onDon"))
                         }
                     }
                 }

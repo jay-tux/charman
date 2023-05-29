@@ -5,11 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.RemoveModerator
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -377,9 +380,9 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
                     }
                 }
             }
-            items(inventory.toList()) { (item, count) ->
-                Row {
-                    indented(Modifier.weight(0.9f)) {
+            itemsIndexed(inventory.toList().sortedBy { it.first.name }) { index, (item, count) ->
+                Row() {
+                    indented(Modifier.weight(0.8f)) {
                         Text(
                             if (count == 1) item.name else "${item.name} x$count",
                             Modifier.weight(0.33f)
@@ -392,6 +395,15 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                    if(item.equippable) {
+                        Surface(Modifier.weight(0.1f).clickable { data.toggleItem(item) }) {
+                            if(item.equipped) Icon(Icons.Outlined.RemoveModerator, "Doff armor", Modifier.background(MaterialTheme.colors.surface))
+                            else Icon(Icons.Outlined.Shield, "Don armor", Modifier.background(MaterialTheme.colors.surface))
+                        }
+                    }
+                    else {
+                        Surface(Modifier.weight(0.1f)) {}
                     }
                     Surface(Modifier.weight(0.1f).clickable { data.removeItem(item) }) {
                         Icon(Icons.Default.Remove, "", Modifier.background(MaterialTheme.colors.surface))

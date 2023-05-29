@@ -67,6 +67,8 @@ object Library {
         Pair("setHalfCaster") { args, pos -> setHalfCaster(args, pos) },
         Pair("setThirdCaster") { args, pos -> setThirdCaster(args, pos) },
         Pair("setSpecialCaster") { args, pos -> setSpecialCaster(args, pos) },
+        Pair("setAC") { args, pos -> setAC(args, pos) },
+        Pair("modAC") { args, pos -> modAC(args, pos) },
     )
     private val choiceFunctions = mutableMapOf<String, ChoiceScope.(List<Value>, PosInfo) -> Value>(
         Pair("chooseDataByKind") { args, pos -> chooseDataByKind(args, pos) },
@@ -156,6 +158,7 @@ object Library {
             currentCharScope = null
             res
         } catch(ex: CMLException) {
+            CMLOut.addError(ex.localizedMessage)
             ex.left()
         }
     }
