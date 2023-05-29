@@ -19,7 +19,7 @@ You need to have the following programs installed to build Charman:
  - `antlr4` (either as a separate tool on your system, or via Python's pip, where it's called `antlr4-tools`)
 
 ### Building
-First we need to build the Antlr grammar (which is used to run all custom content) to Java. 
+First we need to build the Antlr grammar (which is used to run all custom content) to Java code. 
 ```sh
 antlr4 "./antlr/CML.g4" -Dlanguage=Java -visitor -o "./cml_parser/src/main/java/com/jaytux/cml_parser" -package "com.jaytux.cml_parser"
 
@@ -52,7 +52,10 @@ Click the indicated button. This will open a file browser where you can select t
 *Note: I am working to implement the 5e SRD for Charman, and when finished, will link it here. You can use those scripts as examples.*
 
 Charman uses a simple programming language to define all data in its system, CML. There is quite a bit of documentation about CML available in this repository:
- - [TODO]
+ - [CML base documentation](./docs/CML.md)
+ - [CML base library](./docs/CML_stdlib.md)
+ - [CML D&D 5e-related functions](./docs/CML_5e.md)
+ - [CML D&D 5e API to Charman](./docs/CML_Charman.md)
 
 Additionally, since Charman (at the moment) only loads data from its cache, you'll want to locate where this cache is located. A number of factors (OS, configuration, ...) influence this. One of the first lines in the console will tell you where you need to look: `Scripts directory is `. 
 

@@ -40,7 +40,7 @@ fun split(args: List<Value>, pos: PosInfo): Value {
 fun trim(args: List<Value>, pos: PosInfo): Value {
     return argCntStd("trim", 1, args, pos).flatMap { (p, arg) ->
         arg[0].requireString(p).map {
-            StringVal(it, p)
+            StringVal(it.trim(), p)
         }
     }.handle()
 }
@@ -61,7 +61,7 @@ fun empty(args: List<Value>, pos: PosInfo): Value {
 
 fun raise(args: List<Value>, pos: PosInfo): Value {
     val p = StdLib.posInfo("raise")
-    if(args.size != 1) throw CMLException.argCount("raise", 2, args.size, p, pos)
+    if(args.size != 1) throw CMLException.argCount("raise", 1, args.size, p, pos)
     throw CMLException("${args[0].repr()} at $pos")
 }
 
