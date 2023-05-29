@@ -7,6 +7,8 @@ topLevel:       DATA kind=IDENT name=IDENT B_O body=declSet B_C     #type
                                                                     #instance
         |       TEMPLATE kind=IDENT BR_O args=argDs BR_C B_O body=declSet B_C
                                                                     #template
+        |       TEMPLATE name=IDENT AS kind=IDENT BR_O args=argDs BR_C B_O body=declSet B_C
+                                                                    # templateAs
         |       FUN name=IDENT P_O args=argDs P_C B_O body=stmtSet B_C
                                                                     #freeFunDecl
         |       GLOBAL name=IDENT ASSIGN value=expr SEMI            #globalDecl

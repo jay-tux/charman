@@ -60,12 +60,15 @@ object Library {
         Pair("getAbilityMod") { args, pos -> getAbilityMod(args, pos) },
         Pair("getProficiency") { args, pos -> getProficiency(args, pos) },
         Pair("getArmor") { args, pos -> getArmor(args, pos) },
+        Pair("addItem") { args, pos -> addItem(args, pos) },
         Pair("addAction") { args, pos -> addAction(args, pos) },
         Pair("addSpell") { args, pos -> addSpell(args, pos) },
         Pair("setFullCaster") { args, pos -> setFullCaster(args, pos) },
         Pair("setHalfCaster") { args, pos -> setHalfCaster(args, pos) },
         Pair("setThirdCaster") { args, pos -> setThirdCaster(args, pos) },
         Pair("setSpecialCaster") { args, pos -> setSpecialCaster(args, pos) },
+        Pair("setAC") { args, pos -> setAC(args, pos) },
+        Pair("modAC") { args, pos -> modAC(args, pos) },
     )
     private val choiceFunctions = mutableMapOf<String, ChoiceScope.(List<Value>, PosInfo) -> Value>(
         Pair("chooseDataByKind") { args, pos -> chooseDataByKind(args, pos) },
@@ -74,6 +77,7 @@ object Library {
         Pair("chooseNFrom") { args, pos -> chooseNFrom(args, pos) },
         Pair("chooseNCantrips") { args, pos -> chooseNCantrips(args, pos) },
         Pair("chooseNSpellsUpTo") { args, pos -> chooseNSpellsUpTo(args, pos) },
+        Pair("chooseItem") { args, pos -> chooseItem(args, pos) },
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()
@@ -154,6 +158,7 @@ object Library {
             currentCharScope = null
             res
         } catch(ex: CMLException) {
+            CMLOut.addError(ex.localizedMessage)
             ex.left()
         }
     }

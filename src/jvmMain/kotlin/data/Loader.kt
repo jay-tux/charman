@@ -85,7 +85,7 @@ object Scripts {
             }
 
             globals.addAll(ast.globals)
-            templates.putAll(ast.templates.map { Pair(it.kind, it) })
+            templates.putAll(ast.templates.map { Pair(it.name, it) })
             instances.putAll(ast.instances.map { Pair(it.name, it) })
         }
     }
@@ -440,8 +440,12 @@ fun Character.Companion.loadItem(item: Value): Either<CMLException, Pair<ItemDes
                                 Triple(count, abbrev, cost)
                             }
                         }
-                    }.map { price ->
-                        ItemDesc(name, weight, price, actions, traits, inst)
+                    }.flatMap { price ->
+                        inst.getList("tags", posInit).flatMap { tags ->
+                            tags.value.mapOrEither { it.requireString(posInit) }
+                        }.map { tags ->
+                            ItemDesc(name, weight, price, actions, traits, tags, inst, inst.type.functions.containsKey("onDon"))
+                        }
                     }
                 }
             }

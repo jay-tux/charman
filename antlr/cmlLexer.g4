@@ -24,6 +24,7 @@ DICE:           'd'|'D';
 BOOL:           'true'|'false';
 COMPARISON_OP:  '=='|'!='|'<'|'<='|'>'|'>=';
 
+AS:             'as';
 IF:             'if';
 IN:             'in';
 FOR:            'for';
@@ -40,7 +41,7 @@ RETURN:         'return';
 INSTANCE:       'instance';
 TEMPLATE:       'template';
 
-INT:            [1-9][0-9]*|'0';
+INT:            '-'?[1-9][0-9]*|'0';
 FLOAT:          INT'.'[0-9]+;
 DICE_LIT:       INT('d'|'D')INT;
 IDENT:          [a-zA-Z_][a-zA-Z0-9_]*;

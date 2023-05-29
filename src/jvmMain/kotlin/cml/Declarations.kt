@@ -88,9 +88,13 @@ open class TopLevelDecl(
 }
 
 class TemplateDecl(
-    val kind: String, val argNames: List<String>, val functions: Map<String, FunDecl>,
+    val kind: String, val name: String, val argNames: List<String>, val functions: Map<String, FunDecl>,
     val fieldsPre: Map<String, Expression>, declPos: PosInfo
 ): AstNode(declPos) {
+    constructor(
+        kind: String, argNames: List<String>, functions: Map<String, FunDecl>, fieldsPre: Map<String, Expression>,
+        declPos: PosInfo) : this(kind, kind, argNames, functions, fieldsPre, declPos)
+
     fun instantiate(target: InstanceDecl): TopLevelDecl {
         if(argNames.size != target.args.size)
             throw AstException.templateArgCount(kind, target.name, argNames.size, target.args.size, target.pos)

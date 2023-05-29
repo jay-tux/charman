@@ -19,7 +19,8 @@ data class ClassDesc(val cls: InstanceVal, val level: Int, val isPrimary: Boolea
 data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
 data class ItemDesc(val name: String, val weight: Float, val value: Triple<Int, String, InstanceVal>,
                     val actions: List<InstanceVal>, val traits: List<Triple<String, String, InstanceVal>>,
-                    val instance: InstanceVal
+                    val tags: List<String>, val instance: InstanceVal, val equippable: Boolean,
+                    val equipped: Boolean = false
 )
 data class SpellDesc(
     val name: String, val school: String, val level: Int, val castingTime: String, val range: String,
@@ -66,6 +67,7 @@ class Character(
     val deathSaves = mutableStateOf(Pair(0, 0)) // failed, succeeded
     val speed = mutableStateOf(0)
     val ac = mutableStateOf(0)
+    var acDelta = 0 // not state cause temporary variable while recalculating AC
     val initMod = mutableStateOf(0)
     val hitDice = mutableStateOf(mapOf<Int, Int>()) // (dice type, amount)
     val inventory = mutableStateOf(mapOf<ItemDesc, Int>())
@@ -94,11 +96,26 @@ class Character(
         }.mapLeft { CMLOut.addError(it.localizedMessage) }
     }
 
-    fun onUpdate() {
-        var acM = 10
-        callOnAll("modAC") {
-            it.requireInt(posRender).map { v -> acM += v.value }
+    private fun recalcAC() {
+        val dexMod = abilities.value.firstNotNullOfOrNull { if(it.value.name == "Dexterity") it.value.score.toMod() else null } ?: 0
+        ac.value = 10 + dexMod
+        Library.withCharacter(this) {
+            inventory.value.forEach { (desc, _) ->
+                if (desc.equipped) {
+                    desc.instance.type.functions["onDon"]?.call(listOf(), posRender)
+                }
+            }
+
+            classTraits.value.forEach { (_, trait) ->
+                trait.third.type.functions["onDeltaAC"]?.call(listOf(), posRender)
+            }
         }
+        ac.value += acDelta
+        acDelta = 0
+    }
+
+    fun onUpdate() {
+        recalcAC()
 
         var initM = 0
         callOnAll("modInitiative") {
@@ -110,12 +127,10 @@ class Character(
             if (dex == null) CMLOut.addWarning("Ability Dexterity does not exist.")
             else {
                 val mod = abilityMod(dex)
-                acM += mod
                 initM += mod
             }
         }.mapLeft { CMLOut.addError(it.localizedMessage) }
 
-        ac.value = acM
         initMod.value = initM
 
         val hitDiceM = mutableMapOf<Int, Int>()
@@ -342,6 +357,13 @@ class Character(
                 }
             }
         }
+    }
+
+    fun toggleItem(desc: ItemDesc) {
+        val amount = inventory.value[desc] ?: 1
+        inventory.value -= desc
+        inventory.value += Pair(desc.copy(equipped = !desc.equipped), amount)
+        recalcAC()
     }
 
     fun itemsFor(a: AttackAction) =
