@@ -47,7 +47,6 @@ stmt:
 varRef:
                 value=IDENT                                         #varName
     |           base=varRef DOT name=IDENT                          #fieldExpr
-//    |           base=varRef BR_O index=expr BR_C                    #indexExpr
     ;
 
 expr:

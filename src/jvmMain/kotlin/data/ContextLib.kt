@@ -34,6 +34,108 @@ fun CharacterScope.abilityIncrease(args: List<Value>, p: PosInfo): Value {
     }.handle(p)
 }
 
+fun CharacterScope.addAction(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addAction", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].ifInstVerify("Action", pos).flatMap { action ->
+            action.getName(pos).flatMap { name ->
+                action.getList("tags", pos).flatMap { tags ->
+                    tags.value.mapOrEither {
+                        it.requireString(pos)
+                    }
+                }.flatMap { tags ->
+                    action.getList("baseAction", pos).flatMap { base ->
+                        verifyBaseAction(char, name, action.type.name, base.value, tags, pos).map { checked ->
+                            char.actions.value = char.actions.value + checked
+                        }
+                    }
+                }
+            }
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.addBackgroundTraits(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addBackgroundTraits", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireList(pos).flatMap { list ->
+            list.mapOrEither { elem ->
+                elem.ifInstVerifyGetName("Trait", pos).flatMap { (name, inst) ->
+                    inst.getString("desc", pos).map {
+                        Pair(name, Pair(it, inst))
+                    }
+                }
+            }.map {
+                it.forEach{ (k, v) ->
+                    if(char.backgroundTraits.value.containsKey(k)) {
+                        CMLOut.addWarning("Overwriting background trait $k for character ${char.name}")
+                    }
+                    char.backgroundTraits.value += Pair(k, v)
+                }
+            }
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.addClassTraits(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addClassTraits", 2, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { cls ->
+            arg[1].requireList(pos).flatMap { list ->
+                list.mapOrEither { elem ->
+                    elem.ifInstVerifyGetName("LevelUpTrait", pos).flatMap { (name, inst) ->
+                        inst.getString("desc", pos).map {
+                            Pair(name, Triple(it, cls, inst))
+                        }
+                    }
+                }.map {
+                    it.forEach { (k, v) ->
+                        if (char.classTraits.value.containsKey(k)) {
+                            CMLOut.addWarning("Overwriting class trait $k for character ${char.name}")
+                        }
+                        char.classTraits.value += Pair(k, v)
+                    }
+                }
+            }
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.addItem(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addItem", 1, args, p).flatMap { (pos, arg) ->
+        ExecutionStack.run {
+            Character.loadItem(arg[0]).map { (desc, actions) ->
+                char.addItem(desc, 1)
+                actions.forEach { action ->
+                    ExecutionStack.run {
+                        addAction(listOf(action), pos)
+                    }
+                }
+            }
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.addItemProficiencies(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addItemProficiencies", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireList(pos).flatMap { tags ->
+            tags.mapOrEither { elem -> elem.requireString(pos) }
+        }.map { tags ->
+            char.itemProficiencies.value = char.itemProficiencies.value + tags
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.addLanguages(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addLanguages", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireList(pos).flatMap { skills ->
+            skills.mapOrEither { elem ->
+                elem.ifInstVerifyGetName("Language", pos).map { (l, inst) ->
+                    if(char.languages.containsKey(l)) CMLOut.addWarning("Character ${char.name} already has language $l")
+                    char.languages[l] = inst
+                }
+            }
+        }
+    }.map { }.handle(p)
+}
+
 fun CharacterScope.addMaxHP(args: List<Value>, p: PosInfo): Value {
     return argCnt("addMaxHP", 1, args, p).flatMap { (pos, arg) ->
         arg[0].requireInt(pos).map {
@@ -63,35 +165,13 @@ fun CharacterScope.addRacialTraits(args: List<Value>, p: PosInfo): Value {
     }.handle(p)
 }
 
-fun CharacterScope.addBackgroundTraits(args: List<Value>, p: PosInfo): Value {
-    return argCnt("addBackgroundTraits", 1, args, p).flatMap { (pos, arg) ->
-        arg[0].requireList(pos).flatMap { list ->
-            list.mapOrEither { elem ->
-                elem.ifInstVerifyGetName("Trait", pos).flatMap { (name, inst) ->
-                    inst.getString("desc", pos).map {
-                        Pair(name, Pair(it, inst))
-                    }
-                }
+fun CharacterScope.addSaveProficiencies(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addSaveProficiencies", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireList(pos).flatMap { saves ->
+            saves.mapOrEither {
+                    elem -> elem.ifInstVerify("Ability", pos)
             }.map {
-                it.forEach{ (k, v) ->
-                    if(char.backgroundTraits.value.containsKey(k)) {
-                        CMLOut.addWarning("Overwriting background trait $k for character ${char.name}")
-                    }
-                    char.backgroundTraits.value += Pair(k, v)
-                }
-            }
-        }
-    }.handle(p)
-}
-
-fun CharacterScope.addLanguages(args: List<Value>, p: PosInfo): Value {
-    return argCnt("addLanguages", 1, args, p).flatMap { (pos, arg) ->
-        arg[0].requireList(pos).flatMap { skills ->
-            skills.mapOrEither { elem ->
-                elem.ifInstVerifyGetName("Language", pos).map { (l, inst) ->
-                    if(char.languages.containsKey(l)) CMLOut.addWarning("Character ${char.name} already has language $l")
-                    char.languages[l] = inst
-                }
+                char.saveProficiencies.value += it
             }
         }
     }.map { }.handle(p)
@@ -107,71 +187,6 @@ fun CharacterScope.addSkillProficiencies(args: List<Value>, p: PosInfo): Value {
             }
         }
     }.map { }.handle(p)
-}
-
-fun CharacterScope.addSaveProficiencies(args: List<Value>, p: PosInfo): Value {
-    return argCnt("addSaveProficiencies", 1, args, p).flatMap { (pos, arg) ->
-        arg[0].requireList(pos).flatMap { saves ->
-            saves.mapOrEither {
-                elem -> elem.ifInstVerify("Ability", pos)
-            }.map {
-                char.saveProficiencies.value += it
-            }
-        }
-    }.map { }.handle(p)
-}
-
-fun CharacterScope.addItemProficiencies(args: List<Value>, p: PosInfo): Value {
-    return argCnt("addItemProficiencies", 1, args, p).flatMap { (pos, arg) ->
-        arg[0].requireList(pos).flatMap { tags ->
-            tags.mapOrEither { elem -> elem.requireString(pos) }
-        }.map { tags ->
-            char.itemProficiencies.value = char.itemProficiencies.value + tags
-        }
-    }.handle(p)
-}
-
-fun CharacterScope.addClassTraits(args: List<Value>, p: PosInfo): Value {
-    return argCnt("addClassTraits", 2, args, p).flatMap { (pos, arg) ->
-        arg[0].requireString(pos).flatMap { cls ->
-            arg[1].requireList(pos).flatMap { list ->
-                list.mapOrEither { elem ->
-                    elem.ifInstVerifyGetName("LevelUpTrait", pos).flatMap { (name, inst) ->
-                        inst.getString("desc", pos).map {
-                            Pair(name, Triple(it, cls, inst))
-                        }
-                    }
-                }.map {
-                    it.forEach { (k, v) ->
-                        if (char.classTraits.value.containsKey(k)) {
-                            CMLOut.addWarning("Overwriting class trait $k for character ${char.name}")
-                        }
-                        char.classTraits.value += Pair(k, v)
-                    }
-                }
-            }
-        }
-    }.handle(p)
-}
-
-fun CharacterScope.getAbilityMod(args: List<Value>, p: PosInfo): Value {
-    return argCnt("getAbilityMod", 1, args, p).flatMap { (pos, arg) ->
-        arg[0].ifInstVerify("Ability", pos).map { ability ->
-            IntVal(char.abilityMod(ability), p)
-        }
-    }.handle()
-}
-
-fun CharacterScope.getProficiency(args: List<Value>, p: PosInfo): Value {
-    return argCnt("getProficiency", 0, args, p).map { _ ->
-        IntVal(char.proficiency(), p)
-    }.handle()
-}
-
-fun CharacterScope.getArmor(args: List<Value>, p: PosInfo): Value {
-    return argCnt("getArmor", 0, args, p).map { (pos, _) ->
-        ListVal(char.inventory.value.keys.filter { it.equipped }.map { it.instance }.toMutableList(), pos)
-    }.handle()
 }
 
 fun CharacterScope.addSpell(args: List<Value>, p: PosInfo): Value {
@@ -198,19 +213,19 @@ fun CharacterScope.addSpell(args: List<Value>, p: PosInfo): Value {
                                                     }
                                                 }.flatMap { actionsP ->
                                                     args[2].requireString(pos).map { source ->
-                                                            char.spells.value = char.spells.value + SpellDesc(
-                                                                name = name,
-                                                                school = school,
-                                                                level = level,
-                                                                castingTime = cast,
-                                                                range = range,
-                                                                components = components,
-                                                                duration = duration,
-                                                                actions = actionsP,
-                                                                desc = desc,
-                                                                source = source
-                                                            )
-                                                        }
+                                                        char.spells.value = char.spells.value + SpellDesc(
+                                                            name = name,
+                                                            school = school,
+                                                            level = level,
+                                                            castingTime = cast,
+                                                            range = range,
+                                                            components = components,
+                                                            duration = duration,
+                                                            actions = actionsP,
+                                                            desc = desc,
+                                                            source = source
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -225,6 +240,72 @@ fun CharacterScope.addSpell(args: List<Value>, p: PosInfo): Value {
     }.handle(p)
 }
 
+fun CharacterScope.getAbilityMod(args: List<Value>, p: PosInfo): Value {
+    return argCnt("getAbilityMod", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].ifInstVerify("Ability", pos).map { ability ->
+            IntVal(char.abilityMod(ability), p)
+        }
+    }.handle()
+}
+
+fun CharacterScope.getArmor(args: List<Value>, p: PosInfo): Value {
+    return argCnt("getArmor", 0, args, p).map { (pos, _) ->
+        ListVal(char.inventory.value.keys.filter { it.equipped }.map { it.instance }.toMutableList(), pos)
+    }.handle()
+}
+
+fun CharacterScope.getProficiency(args: List<Value>, p: PosInfo): Value {
+    return argCnt("getProficiency", 0, args, p).map { _ ->
+        IntVal(char.proficiency(), p)
+    }.handle()
+}
+
+fun CharacterScope.modAC(args: List<Value>, p: PosInfo): Value {
+    return argCnt("modAC", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireInt(pos).map {
+            char.acDelta += it.value
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.setAC(args: List<Value>, p: PosInfo): Value {
+    return argCnt("setAC", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireInt(pos).map {
+            char.ac.value = it.value
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.setFullCaster(args: List<Value>, p: PosInfo): Value { return setBaseCaster(char, args, "setFullCaster", 1, p) }
+
+fun CharacterScope.setHalfCaster(args: List<Value>, p: PosInfo): Value { return setBaseCaster(char, args, "setHalfCaster", 2, p) }
+
+fun CharacterScope.setSpecialCaster(args: List<Value>, p: PosInfo): Value {
+    return argCnt("setSpecialCaster", 2, args, p).flatMap { (pos, arg) ->
+        arg[0].requireList(pos).flatMap { l ->
+            if(l.size != 20) CMLException("Spell slots for setSpecialCaster should be a 20 (rows) x 9 (columns) matrix (${l.size} rows given) at $pos").left()
+            else l.mapIndexedOrEither { idx, sub ->
+                sub.requireList(pos).flatMap { subL ->
+                    if(subL.size != 9) CMLException("Spell slots for setSpecialCaster should be a 20 (rows) x 9 (columns) matrix (${subL.size} columns given for row $idx) at $pos").left()
+                    else subL.mapOrEither { elem ->
+                        elem.requireInt(pos).map { it.value }
+                    }
+                }
+            }
+        }.flatMap { slots ->
+            arg[1].requireString(pos).map { name ->
+                val mod = char.specialCasting.value.toMutableMap()
+                mod[name] = Pair(arg[0] as ListVal, slots)
+                char.specialCasting.value = mod.toMap()
+            }
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.setThirdCaster(args: List<Value>, p: PosInfo): Value { return setBaseCaster(char, args, "setThirdCaster", 3, p) }
+// endregion
+
+// region Helper functions
 fun verifyAddSpellAction(c: Character, sa: InstanceVal, ab: Value, pos: PosInfo): Either<CMLException, Action> {
     val kind = sa.type.name
     if (kind != "SpellHitAction" && kind != "SpellDCAction") return CMLException.typeError(
@@ -246,26 +327,6 @@ fun verifyAddSpellAction(c: Character, sa: InstanceVal, ab: Value, pos: PosInfo)
             }
         }
     }
-}
-
-fun CharacterScope.addAction(args: List<Value>, p: PosInfo): Value {
-    return argCnt("addAction", 1, args, p).flatMap { (pos, arg) ->
-        arg[0].ifInstVerify("Action", pos).flatMap { action ->
-            action.getName(pos).flatMap { name ->
-                action.getList("tags", pos).flatMap { tags ->
-                    tags.value.mapOrEither {
-                        it.requireString(pos)
-                    }
-                }.flatMap { tags ->
-                    action.getList("baseAction", pos).flatMap { base ->
-                        verifyBaseAction(char, name, action.type.name, base.value, tags, pos).map { checked ->
-                            char.actions.value = char.actions.value + checked
-                        }
-                    }
-                }
-            }
-        }
-    }.handle(p)
 }
 
 fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Value>, tags: List<String>, pos: PosInfo): Either<CMLException, Action> {
@@ -368,11 +429,6 @@ fun verifyDamageDesc(desc: List<Value>, pos: PosInfo): Either<CMLException, Dama
     }
 }
 
-
-fun CharacterScope.setFullCaster(args: List<Value>, p: PosInfo): Value { return setBaseCaster(char, args, "setFullCaster", 1, p) }
-fun CharacterScope.setHalfCaster(args: List<Value>, p: PosInfo): Value { return setBaseCaster(char, args, "setHalfCaster", 2, p) }
-fun CharacterScope.setThirdCaster(args: List<Value>, p: PosInfo): Value { return setBaseCaster(char, args, "setThirdCaster", 3, p) }
-
 fun setBaseCaster(c: Character, args: List<Value>, fName: String, div: Int, p: PosInfo): Value {
     return argCnt(fName, 1, args, p).flatMap { (pos, arg) ->
         arg[0].requireInt(pos).flatMap {
@@ -381,59 +437,6 @@ fun setBaseCaster(c: Character, args: List<Value>, fName: String, div: Int, p: P
                 c.casterLevelX6.value += it.value * 6 / div
                 Unit.right()
             }
-        }
-    }.handle(p)
-}
-
-fun CharacterScope.setSpecialCaster(args: List<Value>, p: PosInfo): Value {
-    return argCnt("setSpecialCaster", 2, args, p).flatMap { (pos, arg) ->
-        arg[0].requireList(pos).flatMap { l ->
-            if(l.size != 20) CMLException("Spell slots for setSpecialCaster should be a 20 (rows) x 9 (columns) matrix (${l.size} rows given) at $pos").left()
-            else l.mapIndexedOrEither { idx, sub ->
-                sub.requireList(pos).flatMap { subL ->
-                    if(subL.size != 9) CMLException("Spell slots for setSpecialCaster should be a 20 (rows) x 9 (columns) matrix (${subL.size} columns given for row $idx) at $pos").left()
-                    else subL.mapOrEither { elem ->
-                        elem.requireInt(pos).map { it.value }
-                    }
-                }
-            }
-        }.flatMap { slots ->
-            arg[1].requireString(pos).map { name ->
-                val mod = char.specialCasting.value.toMutableMap()
-                mod[name] = Pair(arg[0] as ListVal, slots)
-                char.specialCasting.value = mod.toMap()
-            }
-        }
-    }.handle(p)
-}
-
-fun CharacterScope.addItem(args: List<Value>, p: PosInfo): Value {
-    return argCnt("addItem", 1, args, p).flatMap { (pos, arg) ->
-        ExecutionStack.run {
-            Character.loadItem(arg[0]).map { (desc, actions) ->
-                char.addItem(desc, 1)
-                actions.forEach { action ->
-                    ExecutionStack.run {
-                        addAction(listOf(action), pos)
-                    }
-                }
-            }
-        }
-    }.handle(p)
-}
-
-fun CharacterScope.setAC(args: List<Value>, p: PosInfo): Value {
-    return argCnt("setAC", 1, args, p).flatMap { (pos, arg) ->
-        arg[0].requireInt(pos).map {
-            char.ac.value = it.value
-        }
-    }.handle(p)
-}
-
-fun CharacterScope.modAC(args: List<Value>, p: PosInfo): Value {
-    return argCnt("modAC", 1, args, p).flatMap { (pos, arg) ->
-        arg[0].requireInt(pos).map {
-            char.acDelta += it.value
         }
     }.handle(p)
 }
@@ -459,30 +462,6 @@ fun ChoiceScope.chooseDataByKind(args: List<Value>, p: PosInfo): Value {
     }.handle()
 }
 
-fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseNByKind", 3, args, p).flatMap { (pos, _) ->
-        args[0].requireString(pos).flatMap { name ->
-            args[1].requireInt(pos).flatMap { count ->
-                args[2].requireString(pos).flatMap { kind ->
-                    val options = Library.typesByKind(kind).map { type ->
-                        InstanceVal(type, pos)
-                    }
-
-                    if(options.isEmpty()) {
-                        CMLException("No types with kind `$kind' defined. Error thrown at $pos").left()
-                    }
-                    else if(options.size < count.value) {
-                        CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
-                    }
-                    else {
-                        requireChoice(name, count.value, options).right()
-                    }
-                }
-            }
-        }
-    }.handle()
-}
-
 fun ChoiceScope.chooseFrom(args: List<Value>, p: PosInfo): Value {
     return argCnt("chooseFrom", 2, args, p).flatMap { (pos, _) ->
         args[0].requireString(pos).flatMap { name ->
@@ -492,22 +471,6 @@ fun ChoiceScope.chooseFrom(args: List<Value>, p: PosInfo): Value {
                 }
                 else {
                     requireChoice(name, 1, options).right()
-                }
-            }
-        }
-    }.handle()
-}
-
-fun ChoiceScope.chooseNFrom(args: List<Value>, p: PosInfo): Value {
-    return argCnt("chooseNFrom", 3, args, p).flatMap { (pos, arg) ->
-        arg[0].requireString(pos).flatMap { name ->
-            arg[1].requireInt(pos).flatMap { count ->
-                arg[2].requireList(pos).flatMap { options ->
-                    if (options.size < count.value) {
-                        CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
-                    } else {
-                        requireChoice(name, count.value, options).right()
-                    }
                 }
             }
         }
@@ -548,17 +511,28 @@ fun ChoiceScope.chooseItem(args: List<Value>, p: PosInfo): Value {
     }.handle()
 }
 
-fun filterSpellsByLevel(baseList: List<InstanceVal>, classN: String, pred: (Int) -> Boolean): List<InstanceVal> {
-    return baseList.map{ Pair(it, true) }.union(Library.typesByKind("Spell").map { Pair(InstanceVal(it, ChoiceScope.choicePos), false) }).map {
-        it.first.getInt("level", ChoiceScope.choicePos).map { l ->
-            val spellLists = it.first.getList("onSpellLists", ChoiceScope.choicePos).fold({ listOf<String>() }) { list ->
-                list.value.map { sp ->
-                    sp.ifInstVerifyGetName("Class", ChoiceScope.choicePos).map { it.first }
-                }.filterRight()
+fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseNByKind", 3, args, p).flatMap { (pos, _) ->
+        args[0].requireString(pos).flatMap { name ->
+            args[1].requireInt(pos).flatMap { count ->
+                args[2].requireString(pos).flatMap { kind ->
+                    val options = Library.typesByKind(kind).map { type ->
+                        InstanceVal(type, pos)
+                    }
+
+                    if(options.isEmpty()) {
+                        CMLException("No types with kind `$kind' defined. Error thrown at $pos").left()
+                    }
+                    else if(options.size < count.value) {
+                        CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
+                    }
+                    else {
+                        requireChoice(name, count.value, options).right()
+                    }
+                }
             }
-            Tuple4(it.first, l, spellLists, it.second)
         }
-    }.filterRight().filter { pred(it.second) && (it.fourth || it.third.contains(classN)) }.map { it.first }
+    }.handle()
 }
 
 fun ChoiceScope.chooseNCantrips(args: List<Value>, p: PosInfo): Value {
@@ -576,6 +550,22 @@ fun ChoiceScope.chooseNCantrips(args: List<Value>, p: PosInfo): Value {
                         else {
                             requireChoice(name, count.value, options).right()
                         }
+                    }
+                }
+            }
+        }
+    }.handle()
+}
+
+fun ChoiceScope.chooseNFrom(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseNFrom", 3, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { name ->
+            arg[1].requireInt(pos).flatMap { count ->
+                arg[2].requireList(pos).flatMap { options ->
+                    if (options.size < count.value) {
+                        CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
+                    } else {
+                        requireChoice(name, count.value, options).right()
                     }
                 }
             }
@@ -606,5 +596,20 @@ fun ChoiceScope.chooseNSpellsUpTo(args: List<Value>, p: PosInfo): Value {
             }
         }
     }.handle()
+}
+// endregion
+
+// region Helper functions (bis)
+fun filterSpellsByLevel(baseList: List<InstanceVal>, classN: String, pred: (Int) -> Boolean): List<InstanceVal> {
+    return baseList.map{ Pair(it, true) }.union(Library.typesByKind("Spell").map { Pair(InstanceVal(it, ChoiceScope.choicePos), false) }).map {
+        it.first.getInt("level", ChoiceScope.choicePos).map { l ->
+            val spellLists = it.first.getList("onSpellLists", ChoiceScope.choicePos).fold({ listOf<String>() }) { list ->
+                list.value.map { sp ->
+                    sp.ifInstVerifyGetName("Class", ChoiceScope.choicePos).map { it.first }
+                }.filterRight()
+            }
+            Tuple4(it.first, l, spellLists, it.second)
+        }
+    }.filterRight().filter { pred(it.second) && (it.fourth || it.third.contains(classN)) }.map { it.first }
 }
 // endregion
