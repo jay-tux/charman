@@ -1,5 +1,5 @@
 # CML - D\&D 5e-Related Functions
-*These are the functions that are implemented in the runtime. For types and functions that are implemented in CML, see the (upcoming) SRD in CML repository.*
+*These are the functions that are implemented in the runtime. For types and functions that are implemented in CML, see the (upcoming) **SRD in CML** repository.*
 
 ## Overview
 - [Functions not requiring user choices](#functions-not-requiring-user-choices)
