@@ -15,6 +15,7 @@
 	- [addSaveProficiencies](#addsaveproficiencies)
 	- [addSkillProficiencies](#addskillproficiencies)
 	- [addSpell](#addspell)
+	- [getAbilities](#getAbilities)
 	- [getAbilityMod](#getabilitymod)
 	- [getArmor](#getarmor)
 	- [getProficiency](#getproficiency)
@@ -205,6 +206,16 @@ addSpell(spell)
 *Return value:* nothing
 
 Adds the spell to the player's currently available spells, and its action to the player's available actions.
+
+### getAbilities
+```cml
+getAbilities()
+```
+*Arguments:* None
+ 
+*Return value:* list of instance of Ability
+
+Gets all abilities known in the system.
 
 ### getAbilityMod
 ```cml

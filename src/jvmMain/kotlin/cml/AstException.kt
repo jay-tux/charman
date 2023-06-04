@@ -22,7 +22,7 @@ class LibraryException(msg: String) : Exception(msg) {
             LibraryException("Standard library function `$name' already exists.")
         fun libFunAlreadyExists(name: String) =
             LibraryException("Library free function `$name' already exists.")
-        fun libTypeAlreadyExists(name: String) =
-            LibraryException("Library type `$name' already exists.")
+        fun libTypeAlreadyExists(name: String, og: PosInfo, pos: PosInfo) =
+            LibraryException("Library type `$name' (declared at $og) already exists (redeclaration at $pos).")
     }
 }

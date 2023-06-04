@@ -21,6 +21,7 @@ import cml.Library
 import cml.Value
 import data.*
 import filterRight
+import fold
 import ui.dialogs.CreationPage.*
 import ui.widgets.LazyScrollColumn
 import ui.widgets.TraitCard
@@ -142,6 +143,11 @@ fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean)
     val onSelect = { race: Pair<String, InstanceVal> ->
          delta {
              raceV = race
+             it.speed.value = race.second.getInt("speed", Character.posInit).mapLeft { err ->
+                 CMLOut.addWarning("Couldn't load race's base speed. Assume 30 feet.")
+                 CMLOut.addError(err.localizedMessage)
+                 30
+             }.fold()
              Library.withChoices(
                  c = it,
                  selector = { c -> c.raceChoices },

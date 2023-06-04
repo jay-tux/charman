@@ -58,6 +58,7 @@ object Library {
         Pair("addItemProficiencies") { args, pos -> addItemProficiencies(args, pos) },
         Pair("addClassTraits") { args, pos -> addClassTraits(args, pos) },
         Pair("getAbilityMod") { args, pos -> getAbilityMod(args, pos) },
+        Pair("getAbilities") { args, pos -> getAbilities(args, pos) },
         Pair("getProficiency") { args, pos -> getProficiency(args, pos) },
         Pair("getArmor") { args, pos -> getArmor(args, pos) },
         Pair("addItem") { args, pos -> addItem(args, pos) },
@@ -69,6 +70,7 @@ object Library {
         Pair("setSpecialCaster") { args, pos -> setSpecialCaster(args, pos) },
         Pair("setAC") { args, pos -> setAC(args, pos) },
         Pair("modAC") { args, pos -> modAC(args, pos) },
+        Pair("addDCAction") { args, pos -> addDCAction(args, pos) },
     )
     private val choiceFunctions = mutableMapOf<String, ChoiceScope.(List<Value>, PosInfo) -> Value>(
         Pair("chooseDataByKind") { args, pos -> chooseDataByKind(args, pos) },
@@ -137,7 +139,7 @@ object Library {
     fun isLibType(name: String): Boolean = types.containsKey(name)
     fun construct(name: String, pos: PosInfo): InstanceVal? = types[name]?.let { InstanceVal(it.construct(), pos) }
     fun addType(name: String, type: TopLevelDecl) {
-        if(types.containsKey(name)) throw LibraryException.libTypeAlreadyExists(name)
+        if(types.containsKey(name)) throw LibraryException.libTypeAlreadyExists(name, types[name]!!.pos, type.pos)
         types[name] = type
     }
 

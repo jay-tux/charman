@@ -98,6 +98,28 @@ fun CharacterScope.addClassTraits(args: List<Value>, p: PosInfo): Value {
     }.handle(p)
 }
 
+fun CharacterScope.addDCAction(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addDCAction", 2, args, p).flatMap { (pos, arg) ->
+        arg[0].ifInstVerify("Action", pos).flatMap { action ->
+            action.getName(pos).flatMap { name ->
+                action.getList("tags", pos).flatMap { tags ->
+                    tags.value.mapOrEither {
+                        it.requireString(pos)
+                    }
+                }.flatMap { tags ->
+                    action.getList("baseAction", pos).flatMap { base ->
+                        arg[1].ifInstVerify("Ability", pos).flatMap { ab ->
+                            verifyBaseAction(char, name, action.type.name, base.value + ab, tags, pos).map { checked ->
+                                char.actions.value = char.actions.value + checked
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }.handle(p)
+}
+
 fun CharacterScope.addItem(args: List<Value>, p: PosInfo): Value {
     return argCnt("addItem", 1, args, p).flatMap { (pos, arg) ->
         ExecutionStack.run {
@@ -238,6 +260,15 @@ fun CharacterScope.addSpell(args: List<Value>, p: PosInfo): Value {
             }
         }
     }.handle(p)
+}
+
+fun CharacterScope.getAbilities(args: List<Value>, p: PosInfo): Value {
+    return argCnt("getAbilityMod", 0, args, p).map { (pos, _) ->
+        ListVal(
+            Library.typesByKind("Ability").map { d -> InstanceVal(d, pos) }.toMutableList(),
+            pos
+        )
+    }.handle()
 }
 
 fun CharacterScope.getAbilityMod(args: List<Value>, p: PosInfo): Value {
@@ -390,8 +421,10 @@ fun verifyBaseAction(c: Character, name: String, tag: String, baseData: List<Val
 
         "SpellDCAction" -> {
             // kind, range/reach, target desc, save kind, damage types
-            if(baseData.size < 6) // 6th is given by wrapper function, 5 are code-given
+            if(baseData.size < 5) // 6th is given by wrapper function, 5 are code-given
                 return CMLException("Action type `$tag' requires 5 arguments, ${baseData.size - 1} given at $pos").left()
+            else if(baseData.size == 5)
+                return CMLException("Could not infer spellcasting ability/DC determining ability (use addDCAction instead of addAction) at $pos").left()
 
             baseData[0].requireString(pos).flatMap { kind ->
                 baseData[1].requireString(pos).flatMap { range ->

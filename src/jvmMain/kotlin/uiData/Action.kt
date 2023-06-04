@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cml.DiceVal
 import cml.InstanceVal
@@ -41,7 +42,7 @@ class AttackAction(
     @Composable
     override fun render(c: Character, profTags: List<String>) {
         val dmg = remember { "${primary.dice.repr()}${c.abilityMod(stat.instance).withSign()} ${primary.damageKind.name} ${if(secondary.isNotEmpty()) "*" else ""}" }
-        val mod = c.abilityMod(stat.instance) + (if(profTags.intersect(tags).isNotEmpty()) c.proficiency() else 0)
+        val mod = c.abilityMod(stat.instance) + (if(profTags.intersect(tags.toSet()).isNotEmpty()) c.proficiency() else 0)
         Row {
             Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold)
             Text(reachRange, Modifier.weight(0.175f))
@@ -131,7 +132,7 @@ class SpellDCAction(
         }
 
         Row {
-            Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold)
+            Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold, overflow = TextOverflow.Ellipsis, maxLines = 1)
             Text(reachRange, Modifier.weight(0.175f))
             Row(Modifier.weight(0.15f)) {
                 Text("DC ")
