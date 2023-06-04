@@ -3,7 +3,7 @@
 
 ## Prerequisite
 Just a reminder that Charman only loads CML files (with the `.cml`) extension in its cache directory. You can find out which directory that is by looking at the CML Console in the app.  
-Additionally, it might help to look at how the SRD is implemented.
+Additionally, it might help to look at how the [SRD](https://github.com/jay-tux/SRDCML) is implemented.
 
 ## Races
 Types are only considered a playable race if they are of kind `Race`; this means they are defined in your code as `data Race <Name> { }`.

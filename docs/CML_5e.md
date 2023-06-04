@@ -7,6 +7,7 @@
 	- [addAction](#addaction)
 	- [addBackgroundTraits](#addbackgroundtraits)
 	- [addClassTraits](#addclasstraits)
+	- [addDCAction](#addDCAction)
 	- [addItem](#additem)
 	- [addItemProficiencies](#additemproficiencies)
 	- [addLanguages](#addlanguages)
@@ -94,6 +95,21 @@ addClassTraits(name, traits)
 *Return value:* nothing
 
 Adds one or more traits to the player (the source being the given class).
+
+### addDCAction
+```cml
+addDCAction(action, ability)
+```
+*Arguments:* 
+
+ **Argument Name** | **Expected Type** | <i></i>
+ ---|---|---
+ `action` | instance of a type of kind `Action` | The action to add
+ `ability` | instance of a type of kind `Ability` | The ability which determines the Save DC
+ 
+*Return value:* nothing
+
+Adds an action with a save DC (e.g. the Dragonborn's Breath Weapon) available to the player. The supplied `action` should be a `SpellDCAction`.
 
 ### addItem
 ```cml
