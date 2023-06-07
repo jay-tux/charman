@@ -2,23 +2,23 @@ package ui.widgets
 
 import CMLOut
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
 import data.Scripts
 import ui.dialogs.FileBrowserDialog
 import uiData.CharacterData
@@ -30,7 +30,7 @@ fun CmlConsole() {
     Row(
         Modifier.fillMaxWidth().fillMaxHeight(),
     ) {
-        LazyScrollColumn(modContaining = Modifier.horizontalScroll(rememberScrollState()).weight(0.8f)) {
+        LazyScrollColumn(modContaining = Modifier.horizontalScroll(rememberScrollState()).weight(0.95f)) {
             items(messages) { (k, m) ->
                 Text(
                     m,
@@ -43,9 +43,24 @@ fun CmlConsole() {
                 )
             }
         }
-        Column {
+        Column(Modifier.width(35.dp).padding(5.dp)) {
+            IconButton({ CharacterData.saveAll(); CMLOut.refresh() }) {
+                Box(Modifier.aspectRatio(1.0f)) {
+                    Icon(Icons.Default.Refresh, "Refresh all scripts and data (while saving changes)")
+                    Icon(
+                        Icons.Default.Save, "",
+                        Modifier.fillMaxSize(0.5f).align(Alignment.BottomEnd)
+                    )
+                }
+            }
             IconButton({ CMLOut.refresh() }) {
-                Icon(Icons.Default.Refresh, "Refresh all scripts and data")
+                Box(Modifier.aspectRatio(1.0f)) {
+                    Icon(Icons.Default.Refresh, "Refresh all scripts and data (without saving changes)")
+                    Icon(
+                        Icons.Default.Delete, "",
+                        Modifier.fillMaxSize(0.5f).align(Alignment.BottomEnd)
+                    )
+                }
             }
             IconButton({ showFBD = true }) {
                 Icon(Icons.Default.FileOpen, "Import scripts")
