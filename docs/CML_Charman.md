@@ -51,6 +51,10 @@ Furthermore, they are expected to have the following functions:
      ```
    - Don't forget to also restore the subclass using `subclass.onRestore(choices, level)`, if needed.
 
+Additionally, there is a special function available to classes:
+ - `fun onLateRestore(choices, level)`. This function is similar to the `onRestore` function, but has the benefit of being called after all other `onRestore` functions.
+   - This is used e.g. by the SRD Bard's `Jack of All Trades` feature (which needs to know all skill proficiencies).
+
 ## Backgrounds
 Backgrounds are very similar to [races](./CML_Charman.md), so I'll refer to that section instead. Note that the kind of a playable background should be `Background`.
 

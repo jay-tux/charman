@@ -267,6 +267,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 }
             }
         }.map{ char ->
+            char.onUpdate()
             Pair(char, Choices())
         }.flatMap { (c, ch) ->
             valid.getDictV("choicesRace", posRest).flatMap { cR ->
@@ -353,6 +354,25 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 }
 
                 char.background.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
+
+                altMap.forEach { (cls, ch) ->
+                    char.classTraits.value.filter { it.value.second == cls }.forEach { (k, v) ->
+                        val classUpd = mutableListOf<Triple<String, String, Triple<String, String, InstanceVal>>>()
+                        v.third.type.functions["onLateRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)
+                            ?.let {
+                                v.third.getString("name", posRest).flatMap { name ->
+                                    v.third.getString("desc", posRest).map { desc ->
+                                        classUpd.add(Triple(k, name, Triple(desc, v.second, v.third)))
+                                    }
+                                }.fold({ CMLOut.addError(it.localizedMessage) }, {})
+                            }
+                        classUpd.forEach { (kOld, k, upd) ->
+                            char.classTraits.value -= kOld
+                            char.classTraits.value += Pair(k, upd)
+                        }
+                    }
+                }
+
                 char.choices.value = choices
                 char
             }

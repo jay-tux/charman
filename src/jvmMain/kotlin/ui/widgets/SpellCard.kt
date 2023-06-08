@@ -33,13 +33,27 @@ fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, onClick: () -> Un
 }
 
 @Composable
-fun SpellSlots(amount: Int, used: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun SpellSlots(amount: Int, used: Int, modifier: Modifier = Modifier, overset: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
     Row(modifier.clickable { onClick() }) {
         for(i in 1..used) {
-            Icon(Icons.Default.RadioButtonChecked, "")
+            Box {
+                Icon(Icons.Default.RadioButtonChecked, "")
+                if(overset != null) {
+                    Box(Modifier.align(Alignment.Center)) {
+                        overset()
+                    }
+                }
+            }
         }
         for(i in used until amount) {
-            Icon(Icons.Default.RadioButtonUnchecked, "")
+            Box {
+                Icon(Icons.Default.RadioButtonUnchecked, "")
+                if(overset != null) {
+                    Box(Modifier.align(Alignment.Center)) {
+                        overset()
+                    }
+                }
+            }
         }
     }
 }

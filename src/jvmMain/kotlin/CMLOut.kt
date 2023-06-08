@@ -16,7 +16,7 @@ object CMLOut {
     fun clearStream() { _stream.value = listOf() }
     private fun add(msg: String, kind: MessageKind) {
         val message = "${formatTime()} $msg".replace("\t", "  ")
-        _stream.value = _stream.value + Pair(kind, message)
+        _stream.value += Pair(kind, message)
     }
     fun addInfo(msg: String) { add(msg, MessageKind.INFO) }
     fun addWarning(msg: String) { add(msg, MessageKind.WARNING) }

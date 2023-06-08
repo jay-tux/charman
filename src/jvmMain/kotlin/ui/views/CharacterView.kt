@@ -21,10 +21,13 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import arrow.core.flatMap
 import cml.CMLException
 import cml.IntVal
 import cml.Library
 import cml.Value
+import data.getName
+import data.getString
 import ui.Renderer
 import ui.dialogs.CurrencyDialog
 import ui.dialogs.ItemDialog
@@ -87,7 +90,7 @@ fun RowScope.sheetTopRow(data: Character) {
     val race by data.race
     val background by data.background
     val racialTraits by data.racialTraits
-    val classTraits by data.classTraits
+    var classTraits by data.classTraits
     var count by remember { mutableStateOf(0) }
     var options by remember { mutableStateOf(listOf<Value>()) }
     var setCallback by remember { mutableStateOf({ _: Value -> }) }
@@ -109,6 +112,15 @@ fun RowScope.sheetTopRow(data: Character) {
                 trait.value.third.type.functions["onLevelUp"]?.call(args, Character.posInit)
                     ?: CMLOut.addWarning("Cannot call onLevelUp for class trait ${trait.key}")
             }
+            classTraits = classTraits.map { (_, v) ->
+                val inst = v.third
+                inst.getName(Character.posRender).flatMap { name ->
+                    inst.getString("desc", Character.posRender).map { desc ->
+                        Pair(name, Triple(desc, v.second, inst))
+                    }
+                }.fold({ CMLOut.addError(it.localizedMessage); null }, { it })
+            }.filterNotNull().associate { it }
+
             race.second.type.functions["onLevelUp"]?.call(args, Character.posInit)
             racialTraits.forEach { (_, trait) ->
                 trait.second.type.functions["onLevelUp"]?.call(args, Character.posInit)
@@ -180,7 +192,7 @@ fun RowScope.sheetProficiencies(data: Character) {
         Spacer(Modifier.weight(0.025f))
         LazyScrollColumn(Modifier.weight(0.55f)) {
             items(skillProf.toList().sortedBy { it.first }) { (name, skill) ->
-                ModScoreCard("$name (${skill.third})", skill.first, skill.second)
+                ModScoreCard("$name (${skill.third})", skill.first + skill.fourth, skill.second)
             }
         }
     }
@@ -237,31 +249,9 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
     val level by data.casterLevelX6
     val specialCasting by data.specialCasting
     val used by data.usedSpellSlots
+    val usedSpecial by data.usedSpellSlotsSpecial
     val spells by data.spells
     val classes by data.classes
-
-    val currentSlots = remember {
-        val res = mutableListOf(0, 0, 0, 0, 0, 0, 0, 0, 0)
-        val actualL = level / 6
-        if(actualL > 0) {
-            val ref = Character.defaultSpellSlots[actualL - 1]
-            for(i in 0 until 9) {
-                res[i] += ref[i]
-            }
-        }
-        specialCasting.forEach { (n, d) ->
-            val l = classes[n]?.level
-            if(l == null) { CMLOut.addWarning("Spell slots have been added for class $n, but ${data.name} is not of this class.") }
-            else if(l > 0) {
-                val ref = d.second[l - 1]
-                for(i in 0 until 9) {
-                    res[i] += ref[i]
-                }
-            }
-        }
-
-        res
-    }
 
     if(level == 0 && specialCasting.isEmpty() && spells.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
@@ -303,11 +293,28 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
                     Box(Modifier.fillMaxWidth().background(MaterialTheme.colors.primary.copy(alpha = 0.2f)).padding(2.dp)) {
                         Text("Level $i Spells", Modifier.align(Alignment.TopStart), fontWeight = FontWeight.Bold)
 
-                        SpellSlots(
-                            amount = currentSlots[i - 1],
-                            used = used[i - 1],
-                            modifier = Modifier.align(Alignment.TopEnd)
-                        ) { data.useSpellSlot(i) }
+                        Row(Modifier.align(Alignment.TopEnd)) {
+                            SpellSlots(
+                                amount = Character.defaultSpellSlots[level / 6 - 1][i],
+                                used = used[i],
+                                modifier = Modifier
+                            ) { data.useSpellSlot(i) }
+
+                            specialCasting.forEach { (cls, count) ->
+                                val l = classes[cls]?.level
+                                if (l == null) {
+                                    CMLOut.addWarning("Spell slots have been added for class $cls, but ${data.name.value} is not of this class.")
+                                } else {
+                                    if(usedSpecial[cls] == null) { CMLOut.addWarning("Special spells slots have been added for class $cls, but ${data.name.value} does not track its spell slots.") }
+                                    SpellSlots(
+                                        amount = count.second[l - 1][i],
+                                        used = usedSpecial[cls]?.get(i) ?: count.second[l - 1][i],
+                                        overset = { Text("${cls[0]}", style = MaterialTheme.typography.subtitle2) },
+                                        modifier = Modifier
+                                    ) { data.useSpecialSpellSlot(i, cls) }
+                                }
+                            }
+                        }
                     }
                 }
                 items(spells.filter { it.level == i }) {

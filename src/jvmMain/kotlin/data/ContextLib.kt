@@ -263,7 +263,7 @@ fun CharacterScope.addSpell(args: List<Value>, p: PosInfo): Value {
 }
 
 fun CharacterScope.getAbilities(args: List<Value>, p: PosInfo): Value {
-    return argCnt("getAbilityMod", 0, args, p).map { (pos, _) ->
+    return argCnt("getAbilities", 0, args, p).map { (pos, _) ->
         ListVal(
             Library.typesByKind("Ability").map { d -> InstanceVal(d, pos) }.toMutableList(),
             pos
@@ -288,6 +288,23 @@ fun CharacterScope.getArmor(args: List<Value>, p: PosInfo): Value {
 fun CharacterScope.getProficiency(args: List<Value>, p: PosInfo): Value {
     return argCnt("getProficiency", 0, args, p).map { _ ->
         IntVal(char.proficiency(), p)
+    }.handle()
+}
+
+fun CharacterScope.getSkills(args: List<Value>, p: PosInfo): Value {
+    return argCnt("getSkills", 0, args, p).map { (pos, _) ->
+        ListVal(
+            Library.typesByKind("Skill").map { d -> InstanceVal(d, pos) }.toMutableList(),
+            pos
+        )
+    }.handle()
+}
+
+fun CharacterScope.isProficientSkill(args: List<Value>, p: PosInfo): Value {
+    return argCnt("isProficientSkill", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].ifInstVerify("Skill", pos).map { skill ->
+            BoolVal(char.skillProficiencies.value.contains(skill), pos)
+        }
     }.handle()
 }
 
@@ -323,17 +340,34 @@ fun CharacterScope.setSpecialCaster(args: List<Value>, p: PosInfo): Value {
                     }
                 }
             }
-        }.flatMap { slots ->
+        }.map { it.map { lvl -> SpellSlots.from(lvl) } }.flatMap { slots ->
             arg[1].requireString(pos).map { name ->
                 val mod = char.specialCasting.value.toMutableMap()
                 mod[name] = Pair(arg[0] as ListVal, slots)
                 char.specialCasting.value = mod.toMap()
+                char.usedSpellSlotsSpecial.value += Pair(name, SpellSlots())
             }
         }
     }.handle(p)
 }
 
 fun CharacterScope.setThirdCaster(args: List<Value>, p: PosInfo): Value { return setBaseCaster(char, args, "setThirdCaster", 3, p) }
+
+fun CharacterScope.updSkillMod(args: List<Value>, p: PosInfo): Value {
+    return argCnt("updSkillMod", 2, args, p).flatMap { (pos, arg) ->
+        arg[0].ifInstVerifyGetName("Skill", pos).flatMap { (name, _) ->
+            arg[1].requireInt(pos).flatMap { mod ->
+                val curr = char.skillMods.value[name]
+                if (curr == null) CMLException("Skill `$name' does not exist on this character.").left()
+                else {
+                    char.skillMods.value -= name
+                    char.skillMods.value += Pair(name, curr.copy(fourth = curr.fourth + mod.value))
+                    Unit.right()
+                }
+            }
+        }
+    }.handle(p)
+}
 // endregion
 
 // region Helper functions
@@ -623,6 +657,41 @@ fun ChoiceScope.chooseNSpellsUpTo(args: List<Value>, p: PosInfo): Value {
                             } else {
                                 requireChoice(name, count.value, options).right()
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }.handle()
+}
+
+fun ChoiceScope.chooseNItems(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseItem", 4, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { name ->
+            arg[1].requireInt(pos).flatMap { count ->
+                arg[2].requireList(pos).flatMap { tags ->
+                    tags.mapOrEither {
+                        it.requireString(pos)
+                    }
+                }.flatMap { tags ->
+                    Library.typesByKind("Item").mapOrEither { decl ->
+                        ExecutionStack.run {
+                            Character.loadItem(InstanceVal(decl, pos))
+                        }
+                    }.map { sub ->
+                        sub.filter { item ->
+                            tags.all { item.first.tags.contains(it) }
+                        }
+                    }
+                }.map { tags ->
+                    tags.map { it.first }.toSet().toList()
+                }.flatMap { items ->
+                    arg[3].requireList(pos).flatMap { extra ->
+                        val options = items.map { it.instance }.union(extra).toList()
+                        if (options.size < count.value) {
+                            CMLException("Not enough items (${options.size}/${count.value}) matching filter at $pos").left()
+                        } else {
+                            requireChoice(name, count.value, options).right()
                         }
                     }
                 }

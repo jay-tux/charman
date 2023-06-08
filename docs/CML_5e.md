@@ -233,6 +233,16 @@ getAbilities()
 
 Gets all abilities known in the system.
 
+### getSkills
+```cml
+getSkills()
+```
+*Arguments:* None
+ 
+*Return value:* list of instance of Skill
+
+Gets all skills known in the system.
+
 ### getAbilityMod
 ```cml
 getAbilityMod(ability)
@@ -266,6 +276,20 @@ getProficiency()
 *Return value:* int
 
 Gets the player's current proficiency bonus.
+
+### isProficientSkill
+```cml
+isProficientSkill(skill)
+```
+*Arguments:*
+
+ **Argument Name** | **Expected Type** | <i></i>
+ --|--|--
+ `skill` | instance of a type of kind `Skill` | The skill to check proficiency for.
+ 
+*Return value:* boolean
+
+Checks whether the character is proficient in the given skill, and returns `true` if so.
 
 ### modAC
 ```cml
@@ -452,6 +476,27 @@ chooseNFrom(tag, n, options)
 *Return value:* sub-list of length `n` of `options`
 
 Asks the user to select `n` unique value from the given list. These values are then returned in a list.
+
+### chooseNItems
+```cml
+chooseNItems(tag, count, tags, options)
+```
+*Arguments:* 
+
+ **Argument Name** | **Expected Type** | <i></i>
+ ---|---|---
+ `tag` | string | The name of the choice. Can be used later to restore it.
+ `count` | int | Amount of choices the user can make.
+ `tags` | list of string | Tags the items have to satisfy.
+ `options` | list | Additional options (should be list of `Item` instances).
+ 
+*Return value:* instance of a matching item, or one of the options
+
+Asks the user to choose `count` from either
+ - any item that matches all given `tags` (e.g. a simple melee weapon), or
+ - any option in the `options` list.
+The chosen values are then returned (as list of instances).
+
 
 ### chooseNSpellsUpTo
 ```cml

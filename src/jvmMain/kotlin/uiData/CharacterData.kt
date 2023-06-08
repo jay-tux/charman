@@ -4,10 +4,7 @@ import CMLOut
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.util.fastForEachReversed
-import arrow.core.Either
-import arrow.core.flatMap
-import arrow.core.left
-import arrow.core.right
+import arrow.core.*
 import cml.*
 import data.*
 import filterRight
@@ -32,6 +29,32 @@ data class MoneyDesc(
     val amount: Int, val fullName: String, val conversion: Int, val instance: InstanceVal
 )
 
+class SpellSlots {
+    private var number = arrayOf(0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+    operator fun get(i: Int): Int = number[i - 1]
+    override fun toString() = "[ ${number.joinToString { "$it" }} ]"
+    override fun hashCode() = number.contentHashCode()
+    override fun equals(other: Any?) = other is SpellSlots && number contentEquals other.number
+
+    fun reset() = SpellSlots()
+
+    fun useSlot(slot: Int): SpellSlots {
+        val copy = SpellSlots()
+        copy.number = number.copyOf()
+        copy.number[slot - 1]++
+        return copy
+    }
+
+    companion object {
+        fun from(count: List<Int>): SpellSlots {
+            val res = SpellSlots()
+            for (i in res.number.indices) res.number[i] = count[i]
+            return res
+        }
+    }
+}
+
 class Character(
     name: String,
     race: Pair<String, InstanceVal>,
@@ -53,11 +76,12 @@ class Character(
     val saveProficiencies = mutableStateOf(listOf<InstanceVal>())
     val itemProficiencies = mutableStateOf(listOf<String>())
     val saveMods = mutableStateOf(mapOf<String, Pair<Int, Boolean>>())
-    val skillMods = mutableStateOf(mapOf<String, Triple<Int, Boolean, String>>())
+    val skillMods = mutableStateOf(mapOf<String, Tuple4<Int, Boolean, String, Int>>())
 
     val casterLevelX6 = mutableStateOf(0)
-    val specialCasting = mutableStateOf(mapOf<String, Pair<ListVal, List<List<Int>>>>())
-    val usedSpellSlots = mutableStateOf(listOf(0, 0, 0, 0, 0, 0, 0, 0, 0))
+    val specialCasting = mutableStateOf(mapOf<String, Pair<ListVal, List<SpellSlots>>>())
+    val usedSpellSlots = mutableStateOf(SpellSlots()) // Mutable.stateFrom(SpellSlots())
+    val usedSpellSlotsSpecial = mutableStateOf(mapOf<String, SpellSlots>())
 
     val languages = mutableMapOf<String, InstanceVal>()
     val inspiration = mutableStateOf(false)
@@ -149,12 +173,14 @@ class Character(
         }
         saveMods.value = saveModsM
 
-        val skillModsM = mutableMapOf<String, Triple<Int, Boolean, String>>()
+        val skillModsM = mutableMapOf<String, Tuple4<Int, Boolean, String, Int>>()
         Library.typesByKind("Skill").forEach { decl ->
             val name = decl.fields.getVar("name")
+
             if(name == null) CMLOut.addWarning(CMLException.invalidField(decl.name, "name", posRender).localizedMessage)
             else if(name.value !is StringVal) CMLOut.addWarning(CMLException.typeError("String", name.value, posRender).localizedMessage)
             else {
+                val fourth = skillMods.value[(name.value as StringVal).value]?.fourth ?: 0
                 val ability = decl.fields.getVar("reliesOn")
                 var mod = 0
                 var ab = "Invalid"
@@ -168,8 +194,8 @@ class Character(
                     }
                 }
 
-                if(skillProficiencies.value.contains(InstanceVal(decl, posRender))) skillModsM[(name.value as StringVal).value] = Triple(mod + proficiency(), true, ab)
-                else skillModsM[(name.value as StringVal).value] = Triple(mod, false, ab)
+                if(skillProficiencies.value.contains(InstanceVal(decl, posRender))) skillModsM[(name.value as StringVal).value] = Tuple4(mod + proficiency(), true, ab, fourth)
+                else skillModsM[(name.value as StringVal).value] = Tuple4(mod, false, ab, fourth)
             }
         }
         skillMods.value = skillModsM
@@ -197,28 +223,22 @@ class Character(
         return 8 + proficiency() + abilityMod(ab)
     }
 
-    private fun totalSlotsFor(level: Int): Int {
-        var res = 0
-        val actualL = casterLevelX6.value / 6
-        if(actualL > 0) {
-            val ref = defaultSpellSlots[actualL - 1]
-            res += ref[level - 1]
-        }
-        specialCasting.value.forEach { (n, d) ->
-            val l = classes.value[n]?.level
-            if(l == null) { CMLOut.addWarning("Spell slots have been added for class $n, but $name is not of this class.") }
-            else if(l > 0) {
-                val ref = d.second[l - 1]
-                res += ref[level - 1]
-            }
-        }
-        return res
+    fun useSpellSlot(level: Int) {
+        if(usedSpellSlots.value[level] < defaultSpellSlots[casterLevelX6.value / 6 - 1][level])
+            usedSpellSlots.value = usedSpellSlots.value.useSlot(level)
     }
 
-    fun useSpellSlot(level: Int) {
-        val mod = usedSpellSlots.value.toMutableList()
-        if(mod[level - 1] < totalSlotsFor(level)) mod[level - 1]++
-        usedSpellSlots.value = mod.toList()
+    fun useSpecialSpellSlot(level: Int, cls: String) {
+        val dup = usedSpellSlotsSpecial.value.toMutableMap()
+        val tmp = dup[cls]
+        val caster = specialCasting.value[cls]
+        val l = classes.value[cls]?.level
+        if(l == null) { CMLOut.addWarning("Spell slots have been added for class $cls, but $name is not of this class.") }
+        else if(tmp != null && caster != null) {
+            if(tmp[level] < caster.second[l][level])
+                dup[cls] = tmp.useSlot(level)
+        }
+        usedSpellSlotsSpecial.value = dup
     }
 
     fun serialize(): String {
@@ -378,27 +398,27 @@ class Character(
         val posSer = PosInfo("<runtime:character:serialize>", 0, 0)
 
         val defaultSpellSlots = listOf(
-            //     0  1  2  3  4  5  6  7  8  9
-            listOf(2, 0, 0, 0, 0, 0, 0, 0, 0, 0), // Level  1
-            listOf(3, 0, 0, 0, 0, 0, 0, 0, 0, 0), // Level  2
-            listOf(4, 2, 0, 0, 0, 0, 0, 0, 0, 0), // Level  3
-            listOf(4, 3, 0, 0, 0, 0, 0, 0, 0, 0), // Level  4
-            listOf(4, 3, 2, 0, 0, 0, 0, 0, 0, 0), // Level  5
-            listOf(4, 3, 3, 0, 0, 0, 0, 0, 0, 0), // Level  6
-            listOf(4, 3, 3, 1, 0, 0, 0, 0, 0, 0), // Level  7
-            listOf(4, 3, 3, 2, 0, 0, 0, 0, 0, 0), // Level  8
-            listOf(4, 3, 3, 3, 1, 0, 0, 0, 0, 0), // Level  9
-            listOf(4, 3, 3, 3, 2, 0, 0, 0, 0, 0), // Level 10
-            listOf(4, 3, 3, 3, 2, 1, 0, 0, 0, 0), // Level 11
-            listOf(4, 3, 3, 3, 2, 1, 0, 0, 0, 0), // Level 12
-            listOf(4, 3, 3, 3, 2, 1, 1, 0, 0, 0), // Level 13
-            listOf(4, 3, 3, 3, 2, 1, 1, 0, 0, 0), // Level 14
-            listOf(4, 3, 3, 3, 2, 1, 1, 1, 0, 0), // Level 15
-            listOf(4, 3, 3, 3, 2, 1, 1, 1, 0, 0), // Level 16
-            listOf(4, 3, 3, 3, 2, 1, 1, 1, 0, 1), // Level 17
-            listOf(4, 3, 3, 3, 3, 1, 1, 1, 0, 1), // Level 18
-            listOf(4, 3, 3, 3, 3, 2, 1, 1, 0, 1), // Level 19
-            listOf(4, 3, 3, 3, 3, 2, 2, 1, 0, 1), // Level 20
+            //                     1  2  3  4  5  6  7  8  9
+            SpellSlots.from(listOf(2, 0, 0, 0, 0, 0, 0, 0, 0)), // Level  1
+            SpellSlots.from(listOf(3, 0, 0, 0, 0, 0, 0, 0, 0)), // Level  2
+            SpellSlots.from(listOf(4, 2, 0, 0, 0, 0, 0, 0, 0)), // Level  3
+            SpellSlots.from(listOf(4, 3, 0, 0, 0, 0, 0, 0, 0)), // Level  4
+            SpellSlots.from(listOf(4, 3, 2, 0, 0, 0, 0, 0, 0)), // Level  5
+            SpellSlots.from(listOf(4, 3, 3, 0, 0, 0, 0, 0, 0)), // Level  6
+            SpellSlots.from(listOf(4, 3, 3, 1, 0, 0, 0, 0, 0)), // Level  7
+            SpellSlots.from(listOf(4, 3, 3, 2, 0, 0, 0, 0, 0)), // Level  8
+            SpellSlots.from(listOf(4, 3, 3, 3, 1, 0, 0, 0, 0)), // Level  9
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 0, 0, 0, 0)), // Level 10
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 0, 0, 0)), // Level 11
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 0, 0, 0)), // Level 12
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 0, 0)), // Level 13
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 0, 0)), // Level 14
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 1, 1)), // Level 15
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 1, 1)), // Level 16
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 1, 1)), // Level 17
+            SpellSlots.from(listOf(4, 3, 3, 3, 3, 1, 1, 1, 1)), // Level 18
+            SpellSlots.from(listOf(4, 3, 3, 3, 3, 2, 1, 1, 1)), // Level 19
+            SpellSlots.from(listOf(4, 3, 3, 3, 3, 2, 2, 1, 1)), // Level 20
         )
 
         fun mold() = Character(

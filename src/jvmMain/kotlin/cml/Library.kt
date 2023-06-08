@@ -71,6 +71,9 @@ object Library {
         Pair("setAC") { args, pos -> setAC(args, pos) },
         Pair("modAC") { args, pos -> modAC(args, pos) },
         Pair("addDCAction") { args, pos -> addDCAction(args, pos) },
+        Pair("getSkills") { args, pos -> getSkills(args, pos) },
+        Pair("updSkillMod") { args, pos -> updSkillMod(args, pos) },
+        Pair("isProficientSkill") { args, pos -> isProficientSkill(args, pos) },
     )
     private val choiceFunctions = mutableMapOf<String, ChoiceScope.(List<Value>, PosInfo) -> Value>(
         Pair("chooseDataByKind") { args, pos -> chooseDataByKind(args, pos) },
@@ -80,6 +83,7 @@ object Library {
         Pair("chooseNCantrips") { args, pos -> chooseNCantrips(args, pos) },
         Pair("chooseNSpellsUpTo") { args, pos -> chooseNSpellsUpTo(args, pos) },
         Pair("chooseItem") { args, pos -> chooseItem(args, pos) },
+        Pair("chooseNItems") { args, pos -> chooseNItems(args, pos) },
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()
