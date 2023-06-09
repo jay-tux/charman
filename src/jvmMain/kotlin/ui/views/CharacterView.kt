@@ -125,8 +125,8 @@ fun RowScope.sheetTopRow(data: Character) {
             racialTraits.forEach { (_, trait) ->
                 trait.second.type.functions["onLevelUp"]?.call(args, Character.posInit)
             }
-            CMLOut.addInfo("All level up functions have been called :)")
             classes += Pair(cName, cl.copy(level = cl.level + 1))
+            data.onUpdate()
             CharacterData.refreshUI()
         }
     }
@@ -199,7 +199,7 @@ fun RowScope.sheetProficiencies(data: Character) {
 }
 
 enum class Tabs(val title: String) {
-    ACTIONS("Actions"), SPELLS("Spells"), TRAITS("Traits"), INVENTORY("Inventory")
+    ACTIONS("Actions"), SPELLS("Spells"), TRAITS("Traits"), INVENTORY("Inventory"), MISC("Miscellaneous")
 }
 
 @Composable
@@ -226,6 +226,7 @@ fun ColumnScope.sheetTraitsAndActions(data: Character, onDetails: (Renderer) -> 
                 Tabs.SPELLS -> sheetSpellsPanel(data) { r -> onDetails(r) }
                 Tabs.TRAITS -> sheetTraitsPanel(data)
                 Tabs.INVENTORY -> sheetInventoryPanel(data)
+                Tabs.MISC -> sheetMiscPanel(data)
             }
         }
     }
@@ -437,6 +438,24 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
             onClose = { addingItem = false },
             onAdd = { item, count -> data.addItem(item, count) }
         )
+    }
+}
+
+@Composable
+fun BoxScope.sheetMiscPanel(data: Character) {
+    LazyScrollColumn {
+        item {
+            Text("Passage of Time", fontStyle = FontStyle.Italic)
+            indented {
+                Row {
+                    Button({ data.shortRest() }, Modifier.weight(0.3f)) { Text("Short Rest") }
+                    Spacer(Modifier.weight(0.0166f))
+                    Button({ data.longRest() }, Modifier.weight(0.3f)) { Text("Long Rest") }
+                    Spacer(Modifier.weight(0.0166f))
+                    Button({ data.dawn() }, Modifier.weight(0.3f)) { Text("Next Dawn") }
+                }
+            }
+        }
     }
 }
 

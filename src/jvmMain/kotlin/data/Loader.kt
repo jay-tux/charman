@@ -309,19 +309,8 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
             Library.withCharacter(char) {
                 val level = IntVal(char.classes.value.values.sumOf { it.level }, posRest)
                 char.race.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
-                val raceUpd = mutableListOf<Triple<String, String, Pair<String, InstanceVal>>>()
                 char.racialTraits.value.forEach { (k, v) ->
-                    v.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)?.let {
-                        v.second.getString("name", posRest).flatMap { name ->
-                            v.second.getString("desc", posRest).map { desc ->
-                                raceUpd.add(Triple(k, name, Pair(desc, v.second)))
-                            }
-                        }.fold({ CMLOut.addError(it.localizedMessage) }, {})
-                    }
-                }
-                raceUpd.forEach { (kOld, k, upd) ->
-                    char.racialTraits.value -= kOld
-                    char.racialTraits.value += Pair(k, upd)
+                    v.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 }
 
                 val altMap = mutableMapOf<String, MutableMap<Value, Value>>()
@@ -335,21 +324,9 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     )
                 }
 
-                // ugly iteration hack to avoid java.util.ConcurrentModificationException
                 altMap.forEach { (cls, ch) ->
                     char.classTraits.value.filter { it.value.second == cls }.forEach { (k, v) ->
-                        val classUpd = mutableListOf<Triple<String, String, Triple<String, String, InstanceVal>>>()
-                        v.third.type.functions["onRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)?.let {
-                            v.third.getString("name", posRest).flatMap { name ->
-                                v.third.getString("desc", posRest).map { desc ->
-                                    classUpd.add(Triple(k, name, Triple(desc, v.second, v.third)))
-                                }
-                            }.fold({ CMLOut.addError(it.localizedMessage) }, {})
-                        }
-                        classUpd.forEach { (kOld, k, upd) ->
-                            char.classTraits.value -= kOld
-                            char.classTraits.value += Pair(k, upd)
-                        }
+                        v.third.type.functions["onRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)
                     }
                 }
 
@@ -357,23 +334,12 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
 
                 altMap.forEach { (cls, ch) ->
                     char.classTraits.value.filter { it.value.second == cls }.forEach { (k, v) ->
-                        val classUpd = mutableListOf<Triple<String, String, Triple<String, String, InstanceVal>>>()
                         v.third.type.functions["onLateRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)
-                            ?.let {
-                                v.third.getString("name", posRest).flatMap { name ->
-                                    v.third.getString("desc", posRest).map { desc ->
-                                        classUpd.add(Triple(k, name, Triple(desc, v.second, v.third)))
-                                    }
-                                }.fold({ CMLOut.addError(it.localizedMessage) }, {})
-                            }
-                        classUpd.forEach { (kOld, k, upd) ->
-                            char.classTraits.value -= kOld
-                            char.classTraits.value += Pair(k, upd)
-                        }
                     }
                 }
 
                 char.choices.value = choices
+                char.refreshData()
                 char
             }
         }.flatMap { char ->

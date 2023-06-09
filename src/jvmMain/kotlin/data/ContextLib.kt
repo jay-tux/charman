@@ -316,6 +316,27 @@ fun CharacterScope.modAC(args: List<Value>, p: PosInfo): Value {
     }.handle(p)
 }
 
+fun CharacterScope.recoverSpellSlots(args: List<Value>, p: PosInfo): Value {
+    return argCnt("recoverSpellSlots", 0, args, p).map {
+        char.usedSpellSlots.value = char.usedSpellSlots.value.reset()
+    }.handle(p)
+}
+
+fun CharacterScope.recoverSpellSlotsFor(args: List<Value>, p: PosInfo): Value {
+    return argCnt("recoverSpellSlotsFor", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap {
+            if(char.usedSpellSlotsSpecial.value.containsKey(it)) {
+                char.usedSpellSlotsSpecial.value -= it
+                char.usedSpellSlotsSpecial.value += Pair(it, SpellSlots())
+                Unit.right()
+            }
+            else {
+                CMLException("Can't recover spell slots for class `$it' on character `${char.name.value}' (try using `recoverSpellSlots()'.").left()
+            }
+        }
+    }.handle(p)
+}
+
 fun CharacterScope.setAC(args: List<Value>, p: PosInfo): Value {
     return argCnt("setAC", 1, args, p).flatMap { (pos, arg) ->
         arg[0].requireInt(pos).map {

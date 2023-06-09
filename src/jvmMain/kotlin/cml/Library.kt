@@ -74,6 +74,8 @@ object Library {
         Pair("getSkills") { args, pos -> getSkills(args, pos) },
         Pair("updSkillMod") { args, pos -> updSkillMod(args, pos) },
         Pair("isProficientSkill") { args, pos -> isProficientSkill(args, pos) },
+        Pair("recoverSpellSlots") { args, pos -> recoverSpellSlots(args, pos) },
+        Pair("recoverSpellSlotsFor") { args, pos -> recoverSpellSlotsFor(args, pos) },
     )
     private val choiceFunctions = mutableMapOf<String, ChoiceScope.(List<Value>, PosInfo) -> Value>(
         Pair("chooseDataByKind") { args, pos -> chooseDataByKind(args, pos) },

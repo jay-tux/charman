@@ -120,6 +120,40 @@ class Character(
         }.mapLeft { CMLOut.addError(it.localizedMessage) }
     }
 
+    fun callOnTraits(fn: String, args: List<Value> = listOf()) {
+        Library.withCharacter(this) {
+            classTraits.value.forEach { it.value.third.type.functions[fn]?.call(args, posRender) }
+            racialTraits.value.forEach { it.value.second.type.functions[fn]?.call(args, posRender) }
+            backgroundTraits.value.forEach { it.value.second.type.functions[fn]?.call(args, posRender) }
+        }
+        refreshData()
+    }
+
+    private fun <T> refold(e: Either<CMLException, T>, backup: T): T = e.fold({
+        CharacterData.setError(this, it)
+        backup
+    }) { it }
+
+    fun refreshData() {
+        val p = PosInfo("<runtime:character:refresh>", 0, 0)
+
+        classTraits.value = classTraits.value.map { (_, desc) ->
+            val n = refold(desc.third.getName(p), "")
+            val d = refold(desc.third.getString("desc", p), "")
+            Pair(n, desc.copy(first = d))
+        }.associate { it }
+        racialTraits.value = racialTraits.value.map { (_, desc) ->
+            val n = refold(desc.second.getName(p), "")
+            val d = refold(desc.second.getString("desc", p), "")
+            Pair(n, desc.copy(first = d))
+        }.associate { it }
+        backgroundTraits.value = backgroundTraits.value.map { (_, desc) ->
+            val n = refold(desc.second.getName(p), "")
+            val d = refold(desc.second.getString("desc", p), "")
+            Pair(n, desc.copy(first = d))
+        }.associate { it }
+    }
+
     private fun recalcAC() {
         val dexMod = abilities.value.firstNotNullOfOrNull { if(it.value.name == "Dexterity") it.value.score.toMod() else null } ?: 0
         ac.value = 10 + dexMod
@@ -391,6 +425,10 @@ class Character(
     fun spellsFor(s: SpellAttackAction) = spells.value.filter { it.name == s.name }
     fun spellsFor(s: SpellDCAction) = spells.value.filter { it.name == s.name }
 
+    fun shortRest() { callOnTraits("onShortRest"); callOnTraits("onAnyRest") }
+    fun longRest() { callOnTraits("onLongRest"); callOnTraits("onAnyRest") }
+    fun dawn() { callOnTraits("onDawn") }
+
     companion object {
         val posRender = PosInfo("<runtime:character:ui>", 0, 0)
         val posInit = PosInfo("<runtime:character:init>", 0, 0)
@@ -453,6 +491,7 @@ object CharacterData {
 
     fun clear() {
         _characters.value = listOf()
+        _loadedCharacters.value = listOf()
     }
 
     fun setError(index: Int, message: String) {
@@ -464,6 +503,17 @@ object CharacterData {
             index,
             Pair(_characters.value[index].fold({ it.first }, { it.type.name }), message).left()
         )
+    }
+
+    fun setError(v: Character, m: CMLException) {
+        _characters.value = _characters.value.mapIndexed { idx, it ->
+            it.fold({ it.left() }) {
+                if(_loadedCharacters.value[idx].fold({ false }) { it === v })
+                    Pair(it.type.name, m).left()
+                else
+                    it.right()
+            }
+        }
     }
 
     fun newCharacter(c: Character) {
