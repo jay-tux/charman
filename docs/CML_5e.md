@@ -305,6 +305,29 @@ modAC(delta)
 
 Adds a modifier to the player's AC (e.g. equipping a shield might call `modAC(2)`).
 
+### recoverSpellSlots
+```cml
+recoverSpellSlots()
+```
+*Arguments:* None   
+*Return value:* nothing
+
+Recover all of a character's normal spells slots (slots gained by the `setFullCaster`, `setHalfCaster` and `setThirdCaster` functions).
+
+### recoverSpellSlotsFor
+```cml
+recoverSpellSlotsFor(class)
+```
+*Arguments:* 
+
+ **Argument Name** | **Expected Type** | <i></i>
+ ---|---|---
+ `class` | string | The name of the class whose spell slots to recover.
+ 
+*Return value:* nothing
+
+Recover all of a character's spell slots granted by a certain class (slots associated with the `setSpecialCaster` function).
+
 ### setAC
 ```cml
 setAC(ac)
