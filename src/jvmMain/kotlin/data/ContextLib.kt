@@ -60,7 +60,7 @@ fun CharacterScope.addBackgroundTraits(args: List<Value>, p: PosInfo): Value {
             list.mapOrEither { elem ->
                 elem.ifInstVerifyGetName("Trait", pos).flatMap { (name, inst) ->
                     inst.getString("desc", pos).map {
-                        Pair(name, Pair(it, inst))
+                        Pair(name, BaseTrait(it, inst))
                     }
                 }
             }.map {
@@ -82,7 +82,7 @@ fun CharacterScope.addClassTraits(args: List<Value>, p: PosInfo): Value {
                 list.mapOrEither { elem ->
                     elem.ifInstVerifyGetName("LevelUpTrait", pos).flatMap { (name, inst) ->
                         inst.getString("desc", pos).map {
-                            Pair(name, Triple(it, cls, inst))
+                            Pair(name, ClassTrait(it, cls, inst))
                         }
                     }
                 }.map {
@@ -172,7 +172,7 @@ fun CharacterScope.addRacialTraits(args: List<Value>, p: PosInfo): Value {
             list.mapOrEither { elem ->
                 elem.ifInstVerifyGetName("Trait", pos).flatMap { (name, inst) ->
                     inst.getString("desc", pos).map {
-                        Pair(name, Pair(it, inst))
+                        Pair(name, BaseTrait(it, inst))
                     }
                 }
             }.map {

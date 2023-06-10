@@ -310,7 +310,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 val level = IntVal(char.classes.value.values.sumOf { it.level }, posRest)
                 char.race.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 char.racialTraits.value.forEach { (k, v) ->
-                    v.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
+                    v.instance.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 }
 
                 val altMap = mutableMapOf<String, MutableMap<Value, Value>>()
@@ -325,16 +325,16 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 }
 
                 altMap.forEach { (cls, ch) ->
-                    char.classTraits.value.filter { it.value.second == cls }.forEach { (k, v) ->
-                        v.third.type.functions["onRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)
+                    char.classTraits.value.filter { it.value.source == cls }.forEach { (k, v) ->
+                        v.instance.type.functions["onRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)
                     }
                 }
 
                 char.background.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
 
                 altMap.forEach { (cls, ch) ->
-                    char.classTraits.value.filter { it.value.second == cls }.forEach { (k, v) ->
-                        v.third.type.functions["onLateRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)
+                    char.classTraits.value.filter { it.value.source == cls }.forEach { (k, v) ->
+                        v.instance.type.functions["onLateRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)
                     }
                 }
 

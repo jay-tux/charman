@@ -56,6 +56,9 @@ class SpellSlots {
     }
 }
 
+data class ClassTrait(val desc: String, val source: String, val instance: InstanceVal)
+data class BaseTrait(val desc: String, val instance: InstanceVal)
+
 class Character(
     name: String,
     race: Pair<String, InstanceVal>,
@@ -69,9 +72,9 @@ class Character(
     val classes = mutableStateOf(classes.toMap())
     val abilities = mutableStateOf(abilities.toMap())
 
-    val classTraits = mutableStateOf(mapOf<String, Triple<String, String, InstanceVal>>())
-    val backgroundTraits = mutableStateOf(mapOf<String, Pair<String, InstanceVal>>())
-    val racialTraits = mutableStateOf(mapOf<String, Pair<String, InstanceVal>>())
+    val classTraits = mutableStateOf(mapOf<String, ClassTrait>())
+    val backgroundTraits = mutableStateOf(mapOf<String, BaseTrait>())
+    val racialTraits = mutableStateOf(mapOf<String, BaseTrait>())
 
     val skillProficiencies = mutableStateOf(listOf<InstanceVal>())
     val saveProficiencies = mutableStateOf(listOf<InstanceVal>())
@@ -124,9 +127,9 @@ class Character(
 
     fun callOnTraits(fn: String, args: List<Value> = listOf()) {
         Library.withCharacter(this) {
-            classTraits.value.forEach { it.value.third.type.functions[fn]?.call(args, posRender) }
-            racialTraits.value.forEach { it.value.second.type.functions[fn]?.call(args, posRender) }
-            backgroundTraits.value.forEach { it.value.second.type.functions[fn]?.call(args, posRender) }
+            classTraits.value.forEach { it.value.instance.type.functions[fn]?.call(args, posRender) }
+            racialTraits.value.forEach { it.value.instance.type.functions[fn]?.call(args, posRender) }
+            backgroundTraits.value.forEach { it.value.instance.type.functions[fn]?.call(args, posRender) }
         }
         refreshData()
     }
@@ -140,19 +143,19 @@ class Character(
         val p = PosInfo("<runtime:character:refresh>", 0, 0)
 
         classTraits.value = classTraits.value.map { (_, desc) ->
-            val n = refold(desc.third.getName(p), "")
-            val d = refold(desc.third.getString("desc", p), "")
-            Pair(n, desc.copy(first = d))
+            val n = refold(desc.instance.getName(p), "")
+            val d = refold(desc.instance.getString("desc", p), "")
+            Pair(n, desc.copy(desc = d))
         }.associate { it }
         racialTraits.value = racialTraits.value.map { (_, desc) ->
-            val n = refold(desc.second.getName(p), "")
-            val d = refold(desc.second.getString("desc", p), "")
-            Pair(n, desc.copy(first = d))
+            val n = refold(desc.instance.getName(p), "")
+            val d = refold(desc.instance.getString("desc", p), "")
+            Pair(n, desc.copy(desc = d))
         }.associate { it }
         backgroundTraits.value = backgroundTraits.value.map { (_, desc) ->
-            val n = refold(desc.second.getName(p), "")
-            val d = refold(desc.second.getString("desc", p), "")
-            Pair(n, desc.copy(first = d))
+            val n = refold(desc.instance.getName(p), "")
+            val d = refold(desc.instance.getString("desc", p), "")
+            Pair(n, desc.copy(desc = d))
         }.associate { it }
     }
 
@@ -166,9 +169,10 @@ class Character(
                 }
             }
 
-            classTraits.value.forEach { (_, trait) ->
-                trait.third.type.functions["onDeltaAC"]?.call(listOf(), posRender)
-            }
+            callOnTraits("onDeltaAC", listOf())
+//            classTraits.value.forEach { (_, trait) ->
+//                trait.instance.type.functions["onDeltaAC"]?.call(listOf(), posRender)
+//            }
         }
         ac.value += acDelta
         acDelta = 0

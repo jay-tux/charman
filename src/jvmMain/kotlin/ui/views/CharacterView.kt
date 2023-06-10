@@ -21,13 +21,10 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import arrow.core.flatMap
 import cml.CMLException
 import cml.IntVal
 import cml.Library
 import cml.Value
-import data.getName
-import data.getString
 import ui.Renderer
 import ui.dialogs.CurrencyDialog
 import ui.dialogs.ItemDialog
@@ -108,23 +105,7 @@ fun RowScope.sheetTopRow(data: Character) {
 
             cl.cls.type.functions["onLevelUp"]?.call(args, Character.posInit)
                 ?: CMLOut.addWarning("Cannot call onLevelUp for $cName")
-            classTraits.forEach { trait ->
-                trait.value.third.type.functions["onLevelUp"]?.call(args, Character.posInit)
-                    ?: CMLOut.addWarning("Cannot call onLevelUp for class trait ${trait.key}")
-            }
-            classTraits = classTraits.map { (_, v) ->
-                val inst = v.third
-                inst.getName(Character.posRender).flatMap { name ->
-                    inst.getString("desc", Character.posRender).map { desc ->
-                        Pair(name, Triple(desc, v.second, inst))
-                    }
-                }.fold({ CMLOut.addError(it.localizedMessage); null }, { it })
-            }.filterNotNull().associate { it }
-
-            race.second.type.functions["onLevelUp"]?.call(args, Character.posInit)
-            racialTraits.forEach { (_, trait) ->
-                trait.second.type.functions["onLevelUp"]?.call(args, Character.posInit)
-            }
+            data.callOnTraits("onLevelUp", args)
             classes += Pair(cName, cl.copy(level = cl.level + 1))
             data.onUpdate()
             CharacterData.refreshUI()
@@ -341,17 +322,17 @@ fun BoxScope.sheetTraitsPanel(data: Character) {
 
     LazyScrollColumn(Modifier.fillMaxSize()) {
         items(racialTraits.toList()) { (name, desc) ->
-            TraitCard(name, race.first, desc.first)
+            TraitCard(name, race.first, desc.desc)
             Spacer(Modifier.height(7.dp))
         }
 
-        items(classTraits.toList().sortedBy { it.second.second }) { (name, desc) ->
-            TraitCard(name, desc.second, desc.first)
+        items(classTraits.toList().sortedBy { it.second.source }) { (name, desc) ->
+            TraitCard(name, desc.source, desc.desc)
             Spacer(Modifier.height(7.dp))
         }
 
         items(backgroundTraits.toList()) { (name, desc) ->
-            TraitCard(name, background.first, desc.first)
+            TraitCard(name, background.first, desc.desc)
             Spacer(Modifier.height(7.dp))
         }
     }
