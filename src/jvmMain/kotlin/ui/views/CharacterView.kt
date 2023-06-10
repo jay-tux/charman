@@ -238,7 +238,7 @@ fun BoxScope.sheetActionsPanel(data: Character, onDetails: (Renderer) -> Unit) {
     LazyScrollColumn(Modifier.fillMaxSize()) {
         items(data.actions.value) { action ->
             Box(Modifier.clickable { onDetails(Renderer { action.renderFull(data, this, it) }) }) {
-                action.render(data, profs)
+                action.render(data, profs) { c, am -> data.useCharge(c, am) }
             }
             Spacer(Modifier.height(5.dp))
         }
@@ -253,6 +253,7 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
     val usedSpecial by data.usedSpellSlotsSpecial
     val spells by data.spells
     val classes by data.classes
+    val charges by data.charges
 
     if(level == 0 && specialCasting.isEmpty() && spells.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
@@ -285,7 +286,7 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
             }
             items(spells.filter { it.level == 0 }) {
                 indented {
-                    SpellCard(it) { onDetails(Renderer { m -> spellDetails(it, m) }) }
+                    SpellCard(it, getCharges = { charges[it] }, useCharge = { c, am -> data.useCharge(c, am) }) { onDetails(Renderer { m -> spellDetails(it, m) }) }
                 }
             }
 
@@ -320,7 +321,7 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
                 }
                 items(spells.filter { it.level == i }) {
                     indented {
-                        SpellCard(it) { onDetails(Renderer { m -> spellDetails(it, m) }) }
+                        SpellCard(it, getCharges = { charges[it] }, useCharge = { c, am -> data.useCharge(c, am) }) { onDetails(Renderer { m -> spellDetails(it, m) }) }
                     }
                 }
             }

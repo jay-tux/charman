@@ -211,7 +211,7 @@ fun CharacterScope.addSkillProficiencies(args: List<Value>, p: PosInfo): Value {
     }.map { }.handle(p)
 }
 
-fun CharacterScope.addSpell(args: List<Value>, p: PosInfo): Value {
+fun CharacterScope.addSpell(args: List<Value>, p: PosInfo, chargeDesc: Pair<String, Int>? = null): Value {
     return argCnt("addSpell", 3, args, p).flatMap { (pos, arg) ->
         arg[0].requireInstance(pos).flatMap { inst ->
             inst.ifInstVerifyGetName("Spell", pos).flatMap { (name, spell) ->
@@ -245,7 +245,8 @@ fun CharacterScope.addSpell(args: List<Value>, p: PosInfo): Value {
                                                             duration = duration,
                                                             actions = actionsP,
                                                             desc = desc,
-                                                            source = source
+                                                            source = source,
+                                                            charge = chargeDesc
                                                         )
                                                     }
                                                 }
@@ -260,6 +261,18 @@ fun CharacterScope.addSpell(args: List<Value>, p: PosInfo): Value {
             }
         }
     }.handle(p)
+}
+
+fun CharacterScope.addSpellUsing(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addSpellUsing", 5, args, p).flatMap { (pos, arg) ->
+        ExecutionStack.call(pos) {
+            arg[3].requireString(pos).flatMap { ch ->
+                arg[4].requireInt(pos).map { expend ->
+                    addSpell(args.subList(0, 3), pos, Pair(ch, expend.value))
+                }
+            }
+        }
+    }.handle()
 }
 
 fun CharacterScope.getAbilities(args: List<Value>, p: PosInfo): Value {
@@ -316,6 +329,20 @@ fun CharacterScope.modAC(args: List<Value>, p: PosInfo): Value {
     }.handle(p)
 }
 
+fun CharacterScope.recoverCharges(args: List<Value>, p: PosInfo): Value {
+    return argCnt("recoverCharges", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { name ->
+            val curr = char.charges.value[name]
+            if(curr == null) CMLException("Cannot recover charges for `$name' because they don't exist on character `${char.name.value}'.").left()
+            else {
+                char.charges.value -= name
+                char.charges.value += Pair(name, Pair(0, curr.second))
+                Unit.right()
+            }
+        }
+    }.handle(p)
+}
+
 fun CharacterScope.recoverSpellSlots(args: List<Value>, p: PosInfo): Value {
     return argCnt("recoverSpellSlots", 0, args, p).map {
         char.usedSpellSlots.value = char.usedSpellSlots.value.reset()
@@ -332,6 +359,16 @@ fun CharacterScope.recoverSpellSlotsFor(args: List<Value>, p: PosInfo): Value {
             }
             else {
                 CMLException("Can't recover spell slots for class `$it' on character `${char.name.value}' (try using `recoverSpellSlots()'.").left()
+            }
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.registerCharges(args: List<Value>, p: PosInfo): Value {
+    return argCnt("registerCharges", 2, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { charge ->
+            arg[1].requireInt(pos).map { count ->
+                char.charges.value += Pair(charge, Pair(0, count.value))
             }
         }
     }.handle(p)

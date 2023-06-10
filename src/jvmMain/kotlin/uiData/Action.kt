@@ -23,7 +23,7 @@ data class Damage(val dice: DiceVal, val damageKind: DamageKind)
 
 interface Action {
     @Composable
-    fun render(c: Character, profTags: List<String>)
+    fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit)
 
     @Composable
     fun renderFull(c: Character, scope: BoxScope, modifier: Modifier)
@@ -40,7 +40,7 @@ class AttackAction(
     val tags: List<String>
 ): Action {
     @Composable
-    override fun render(c: Character, profTags: List<String>) {
+    override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) {
         val dmg = remember { "${primary.dice.repr()}${c.abilityMod(stat.instance).withSign()} ${primary.damageKind.name} ${if(secondary.isNotEmpty()) "*" else ""}" }
         val mod = c.abilityMod(stat.instance) + (if(profTags.intersect(tags.toSet()).isNotEmpty()) c.proficiency() else 0)
         Row {
@@ -85,7 +85,7 @@ class SpellAttackAction(
     val tags: List<String>
 ): Action {
     @Composable
-    override fun render(c: Character, profTags: List<String>) {
+    override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) {
         val dmg = remember {
             val tmp = if(addModifier) c.abilityMod(stat.instance).withSign() else ""
             val tmp2 = if(damage.size > 1) " *" else ""
@@ -119,7 +119,7 @@ class SpellDCAction(
     val tags: List<String>
 ): Action {
     @Composable
-    override fun render(c: Character, profTags: List<String>) {
+    override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) {
         val dmg = remember {
             val tmp = if(damage.size > 1) " *" else ""
 

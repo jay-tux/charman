@@ -64,6 +64,7 @@ object Library {
         Pair("addItem") { args, pos -> addItem(args, pos) },
         Pair("addAction") { args, pos -> addAction(args, pos) },
         Pair("addSpell") { args, pos -> addSpell(args, pos) },
+        Pair("addSpellUsing") { args, pos -> addSpellUsing(args, pos) },
         Pair("setFullCaster") { args, pos -> setFullCaster(args, pos) },
         Pair("setHalfCaster") { args, pos -> setHalfCaster(args, pos) },
         Pair("setThirdCaster") { args, pos -> setThirdCaster(args, pos) },
@@ -76,6 +77,8 @@ object Library {
         Pair("isProficientSkill") { args, pos -> isProficientSkill(args, pos) },
         Pair("recoverSpellSlots") { args, pos -> recoverSpellSlots(args, pos) },
         Pair("recoverSpellSlotsFor") { args, pos -> recoverSpellSlotsFor(args, pos) },
+        Pair("registerCharges") { args, pos -> registerCharges(args, pos) },
+        Pair("recoverCharges") { args, pos -> recoverCharges(args, pos) },
     )
     private val choiceFunctions = mutableMapOf<String, ChoiceScope.(List<Value>, PosInfo) -> Value>(
         Pair("chooseDataByKind") { args, pos -> chooseDataByKind(args, pos) },

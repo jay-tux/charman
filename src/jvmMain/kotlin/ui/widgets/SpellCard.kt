@@ -19,16 +19,36 @@ import cardinal
 import uiData.SpellDesc
 
 @Composable
-fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Row(modifier.clickable { onClick() }) {
-        Spacer(Modifier.weight(0.03f))
-        Column(Modifier.weight(0.32f)) {
-            Text(spell.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(spell.source, fontStyle = FontStyle.Italic)
+fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, getCharges: (String) -> Pair<Int, Int>?, useCharge: (String, Int) -> Unit, onClick: () -> Unit) {
+    Column {
+        Row(modifier.clickable { onClick() }) {
+            Spacer(Modifier.weight(0.03f))
+            Column(Modifier.weight(0.32f)) {
+                Text(spell.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(spell.source, fontStyle = FontStyle.Italic)
+            }
+                    Text(spell.castingTime, Modifier.weight(0.20f).align(Alignment.CenterVertically))
+                    Text(spell.duration, Modifier.weight(0.25f).align(Alignment.CenterVertically))
+            Column(Modifier.weight(0.2f).align(Alignment.CenterVertically)) {
+                Text(
+                    spell.components.joinToString(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                val ch = spell.charge?.let { getCharges(it.first) }
+                if(ch != null) {
+                    Box(Modifier.fillMaxWidth()) {
+                        Row(Modifier.align(Alignment.CenterEnd)) {
+                            Text("Charges: ", fontStyle = FontStyle.Italic)
+                            SpellSlots(
+                                ch.second,
+                                ch.first
+                            ) { useCharge(spell.charge.first, spell.charge.second) }
+                        }
+                    }
+                }
+            }
         }
-        Text(spell.castingTime, Modifier.weight(0.20f).align(Alignment.CenterVertically))
-        Text(spell.duration, Modifier.weight(0.25f).align(Alignment.CenterVertically))
-        Text(spell.components.joinToString(), Modifier.weight(0.20f).align(Alignment.CenterVertically), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

@@ -10,6 +10,7 @@ import data.*
 import filterRight
 import updateGet
 import kotlin.math.floor
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 data class ClassDesc(val cls: InstanceVal, val level: Int, val isPrimary: Boolean)
@@ -22,7 +23,7 @@ data class ItemDesc(val name: String, val weight: Float, val value: Triple<Int, 
 data class SpellDesc(
     val name: String, val school: String, val level: Int, val castingTime: String, val range: String,
     val components: List<String>, val duration: String, val actions: List<InstanceVal>, val desc: String,
-    val source: String
+    val source: String, val charge: Pair<String, Int>? = null
 )
 
 data class MoneyDesc(
@@ -77,6 +78,7 @@ class Character(
     val itemProficiencies = mutableStateOf(listOf<String>())
     val saveMods = mutableStateOf(mapOf<String, Pair<Int, Boolean>>())
     val skillMods = mutableStateOf(mapOf<String, Tuple4<Int, Boolean, String, Int>>())
+    val charges = mutableStateOf(mapOf<String, Pair<Int, Int>>()) // used, max
 
     val casterLevelX6 = mutableStateOf(0)
     val specialCasting = mutableStateOf(mapOf<String, Pair<ListVal, List<SpellSlots>>>())
@@ -428,6 +430,14 @@ class Character(
     fun shortRest() { callOnTraits("onShortRest"); callOnTraits("onAnyRest") }
     fun longRest() { callOnTraits("onLongRest"); callOnTraits("onAnyRest") }
     fun dawn() { callOnTraits("onDawn") }
+
+    fun useCharge(c: String, amount: Int) {
+        val old = charges.value[c]
+        if(old != null) {
+            charges.value -= c
+            charges.value += Pair(c, old.copy(first = min(old.first + amount, old.second)))
+        }
+    }
 
     companion object {
         val posRender = PosInfo("<runtime:character:ui>", 0, 0)
