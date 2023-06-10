@@ -296,11 +296,13 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
                         Text("Level $i Spells", Modifier.align(Alignment.TopStart), fontWeight = FontWeight.Bold)
 
                         Row(Modifier.align(Alignment.TopEnd)) {
-                            SpellSlots(
-                                amount = Character.defaultSpellSlots[level / 6 - 1][i],
-                                used = used[i],
-                                modifier = Modifier
-                            ) { data.useSpellSlot(i) }
+                            if(level > 0) {
+                                SpellSlots(
+                                    amount = Character.defaultSpellSlots[level / 6 - 1][i],
+                                    used = used[i],
+                                    modifier = Modifier
+                                ) { data.useSpellSlot(i) }
+                            }
 
                             specialCasting.forEach { (cls, count) ->
                                 val l = classes[cls]?.level
