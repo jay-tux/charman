@@ -363,7 +363,8 @@ fun CharacterScope.registerCharges(args: List<Value>, p: PosInfo): Value {
     return argCnt("registerCharges", 2, args, p).flatMap { (pos, arg) ->
         arg[0].requireString(pos).flatMap { charge ->
             arg[1].requireInt(pos).map { count ->
-                char.charges.value += Pair(charge, Pair(0, count.value))
+                val prev = char.charges.value[charge]
+                char.charges.value += Pair(charge, Pair(prev?.first ?: 0, count.value))
             }
         }
     }.handle(p)

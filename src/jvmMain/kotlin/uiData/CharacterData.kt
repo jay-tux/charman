@@ -358,6 +358,16 @@ class Character(
         money.value.toSerializable { _, desc ->
             Pair(desc.instance.type.toCtor(), desc.amount.toSerializable())
         }.toField("currency").addTo(root)
+        charges.value.toSerializable { name, (used, max) ->
+            Pair(name.toSerializable(), listOf(used, max).toSerializable { it.toSerializable() })
+        }.toField("charges").addTo(root)
+        (1..9).map { usedSpellSlots.value[it] }.toSerializable { it.toSerializable() }.toField("usedSpellSlots").addTo(root)
+        usedSpellSlotsSpecial.value.toSerializable { cls, slots ->
+            Pair(
+                cls.toSerializable(),
+                (1..9).map { slots[it] }.toSerializable { it.toSerializable() }
+            )
+        }.toField("usedSpellSlotsSpecial").addTo(root)
         return root.serialize()
     }
 

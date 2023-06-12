@@ -266,6 +266,25 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     }
                 }
             }
+        }.flatMap{ char ->
+            valid.getDictV("charges", posInit).flatMap { charges ->
+                charges.value.mapOrEither { (chrg, useMax) ->
+                    chrg.requireString(posInit).flatMap { charge ->
+                        useMax.requireListV(posInit).flatMap { uML ->
+                            uML.requireSize(2).flatMap { sized ->
+                                sized[0].requireInt(posInit).flatMap { used ->
+                                    sized[1].requireInt(posInit).map { max ->
+                                        Pair(charge, Pair(used.value, max.value))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }.map { chargesParsed ->
+                    char.charges.value = chargesParsed
+                    char
+                }
+            }
         }.map{ char ->
             char.onUpdate()
             Pair(char, Choices())
@@ -393,12 +412,37 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     char
                 }
             }
+        }.flatMap { char ->
+            valid.getList("usedSpellSlots", posInit).flatMap { uSS ->
+                uSS.requireSize(9).flatMap { slots ->
+                    slots.mapOrEither { it.requireInt(posInit).map { it.value } }.map {
+                        char.usedSpellSlots.value = SpellSlots.from(it)
+                        char
+                    }
+                }
+            }
+        }.flatMap { char ->
+            valid.getDict("usedSpellSlotsSpecial", posInit).flatMap { uSSS ->
+                uSSS.mapOrEither { (clsPre, slotsPre) ->
+                    clsPre.requireString(posInit).flatMap { cls ->
+                        slotsPre.requireListV(posInit).flatMap { slotsUncounted ->
+                            slotsUncounted.requireSize(9).flatMap { slotsUnchecked ->
+                                slotsUnchecked.mapOrEither { it.requireInt(posInit).map { i -> i.value } }
+                            }.map { slots ->
+                                Pair(cls, SpellSlots.from(slots))
+                            }
+                        }
+                    }
+                }.map { slotData ->
+                    char.usedSpellSlotsSpecial.value = slotData
+                    char
+                }
+            }
         }
+    }.mapLeft {
+        it.message?.let { msg -> CMLOut.addError(msg) }
+        it
     }
-        .mapLeft {
-            it.message?.let { msg -> CMLOut.addError(msg) }
-            it
-        }
 }
 
 fun Character.Companion.loadItem(item: Value): Either<CMLException, Pair<ItemDesc, List<InstanceVal>>> {
