@@ -37,18 +37,8 @@ fun CharacterScope.abilityIncrease(args: List<Value>, p: PosInfo): Value {
 fun CharacterScope.addAction(args: List<Value>, p: PosInfo): Value {
     return argCnt("addAction", 1, args, p).flatMap { (pos, arg) ->
         arg[0].ifInstVerify("Action", pos).flatMap { action ->
-            action.getName(pos).flatMap { name ->
-                action.getList("tags", pos).flatMap { tags ->
-                    tags.value.mapOrEither {
-                        it.requireString(pos)
-                    }
-                }.flatMap { tags ->
-                    action.getList("baseAction", pos).flatMap { base ->
-                        verifyBaseAction(char, name, action.type.name, base.value, tags, pos).map { checked ->
-                            char.actions.value = char.actions.value + checked
-                        }
-                    }
-                }
+            ActionDesc.fromInstance(char, action).map {
+                char.actions.value += it
             }
         }
     }.handle(p)
@@ -101,23 +91,13 @@ fun CharacterScope.addClassTraits(args: List<Value>, p: PosInfo): Value {
 fun CharacterScope.addDCAction(args: List<Value>, p: PosInfo, chargeDesc: Pair<String, Int>? = null): Value {
     return argCnt("addDCAction", 2, args, p).flatMap { (pos, arg) ->
         arg[0].ifInstVerify("Action", pos).flatMap { action ->
-            action.getName(pos).flatMap { name ->
-                action.getList("tags", pos).flatMap { tags ->
-                    tags.value.mapOrEither {
-                        it.requireString(pos)
-                    }
-                }.flatMap { tags ->
-                    action.getList("baseAction", pos).flatMap { base ->
-                        arg[1].ifInstVerify("Ability", pos).flatMap { ab ->
-                            verifyBaseAction(char, name, action.type.name, base.value + ab, tags, pos).map { checked ->
-                                if(chargeDesc == null)
-                                    char.actions.value += checked
-                                else
-                                    char.actions.value += ActionWithCharges(checked, chargeDesc)
-                            }
-                        }
-                    }
+            arg[1].ifInstVerify("Ability", pos).flatMap { ab ->
+                action.getList("baseAction", pos).map {
+                    it.value.add(ab)
                 }
+            }
+            ActionDesc.fromInstance(char, action, chargeDesc).map {
+                char.actions.value += it
             }
         }
     }.handle(p)
@@ -452,17 +432,11 @@ fun verifyAddSpellAction(c: Character, sa: InstanceVal, ab: Value, pos: PosInfo,
         pos
     ).left()
 
-    return sa.getName(pos).flatMap { name ->
-        sa.getList("tags", pos).flatMap { tags ->
-            tags.value.mapOrEither { tag -> tag.requireString(pos) }
-        }.flatMap { tags ->
-            sa.getList("baseAction", pos).flatMap { base ->
-                val added = base.value + ab
-                verifyBaseAction(c, name, sa.type.name, added, tags, pos).map {
-                    c.actions.value += charges?.let{ c -> ActionWithCharges(it, c) } ?: it
-                    it
-                }
-            }
+    return sa.getList("baseAction", pos).flatMap { b ->
+        b.value.add(ab)
+        ActionDesc.fromInstance(c, sa, charges).map {
+            c.actions.value += it
+            it.action
         }
     }
 }

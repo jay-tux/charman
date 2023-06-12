@@ -38,6 +38,12 @@ class AttackAction(
     val kind: String,
     val tags: List<String>
 ): Action {
+    override fun equals(other: Any?): Boolean {
+        return other is AttackAction && name == other.name && stat == other.stat && reachRange == other.reachRange &&
+                targetDesc == other.targetDesc && primary == other.primary && secondary == other.secondary &&
+                kind == other.kind && tags == other.tags
+    }
+
     @Composable
     override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) {
         val dmg = remember { "${primary.dice.repr()}${c.abilityMod(stat.instance).withSign()} ${primary.damageKind.name} ${if(secondary.isNotEmpty()) "*" else ""}" }
@@ -71,6 +77,18 @@ class AttackAction(
             }
         }
     }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + stat.hashCode()
+        result = 31 * result + reachRange.hashCode()
+        result = 31 * result + targetDesc.hashCode()
+        result = 31 * result + primary.hashCode()
+        result = 31 * result + secondary.hashCode()
+        result = 31 * result + kind.hashCode()
+        result = 31 * result + tags.hashCode()
+        return result
+    }
 }
 
 class SpellAttackAction(
@@ -83,6 +101,12 @@ class SpellAttackAction(
     val addModifier: Boolean = false,
     val tags: List<String>
 ): Action {
+    override fun equals(other: Any?): Boolean {
+        return other is SpellAttackAction && name == other.name && stat == other.stat &&
+                reachRange == other.reachRange && targetDesc == other.targetDesc && damage == other.damage &&
+                kind == other.kind && addModifier == other.addModifier && tags == other.tags
+    }
+
     @Composable
     override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) {
         val dmg = remember {
@@ -109,6 +133,18 @@ class SpellAttackAction(
         else
             scope.noDetails(name, modifier)
     }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + stat.hashCode()
+        result = 31 * result + reachRange.hashCode()
+        result = 31 * result + targetDesc.hashCode()
+        result = 31 * result + damage.hashCode()
+        result = 31 * result + kind.hashCode()
+        result = 31 * result + addModifier.hashCode()
+        result = 31 * result + tags.hashCode()
+        return result
+    }
 }
 
 class SpellDCAction(
@@ -121,6 +157,12 @@ class SpellDCAction(
     val saveAbility: InstanceVal,
     val tags: List<String>
 ): Action {
+    override fun equals(other: Any?): Boolean {
+        return other is SpellDCAction && name == other.name && stat == other.stat && reachRange == other.reachRange &&
+                targetDesc == other.targetDesc && damage == other.damage && kind == other.kind &&
+                saveAbility == other.saveAbility && tags == other.tags
+    }
+
     @Composable
     override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) {
         val dmg = remember {
@@ -155,9 +197,25 @@ class SpellDCAction(
         else
             scope.noDetails(name, modifier)
     }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + stat.hashCode()
+        result = 31 * result + reachRange.hashCode()
+        result = 31 * result + targetDesc.hashCode()
+        result = 31 * result + damage.hashCode()
+        result = 31 * result + kind.hashCode()
+        result = 31 * result + saveAbility.hashCode()
+        result = 31 * result + tags.hashCode()
+        return result
+    }
 }
 
 class ActionWithCharges(private val base: Action, private val chargeDesc: Pair<String, Int>) : Action {
+    override fun equals(other: Any?): Boolean {
+        return other is ActionWithCharges && base == other.base && chargeDesc == other.chargeDesc
+    }
+
     @Composable
     override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) = Column {
         base.render(c, profTags, useCharge)
@@ -172,6 +230,12 @@ class ActionWithCharges(private val base: Action, private val chargeDesc: Pair<S
     @Composable
     override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
         base.renderFull(c, scope, modifier)
+    }
+
+    override fun hashCode(): Int {
+        var result = base.hashCode()
+        result = 31 * result + chargeDesc.hashCode()
+        return result
     }
 
 }

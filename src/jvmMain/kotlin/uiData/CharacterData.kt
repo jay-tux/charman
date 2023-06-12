@@ -8,6 +8,7 @@ import arrow.core.*
 import cml.*
 import data.*
 import filterRight
+import mapOrEither
 import updateGet
 import kotlin.math.floor
 import kotlin.math.min
@@ -32,6 +33,50 @@ data class BaseTrait(val desc: String, val instance: InstanceVal, val charge: Pa
 data class MoneyDesc(
     val amount: Int, val fullName: String, val conversion: Int, val instance: InstanceVal
 )
+
+class ActionDesc private constructor(act: Action, val instance: InstanceVal, private val chargeData: Pair<String, Int>?) {
+    var action = act
+        private set
+
+    fun reload(c: Character): ActionDesc {
+        val copy = fromInstance(c, instance, chargeData)
+//        val frozen = action
+//        if(frozen is SpellDCAction && frozen.name.startsWith("Breath Weapon"))
+//            CMLOut.addInfo("Reloading action $instance")
+        return copy.fold({ CMLOut.addError(it.localizedMessage); this }) { it }
+    }
+
+    companion object {
+        fun fromInstance(c: Character, instance: InstanceVal, withCharges: Pair<String, Int>? = null): Either<CMLException, ActionDesc> {
+            val p = Character.posRest
+            return instance.getName(p).flatMap { name ->
+                instance.getList("tags", p).flatMap { tags ->
+                    tags.value.mapOrEither { t ->
+                        t.requireString(p)
+                    }
+                }.flatMap { tags ->
+                    instance.getList("baseAction", p).flatMap { b ->
+                        verifyBaseAction(c, name, instance.type.name, b.value, tags, p)
+                    }.map { action ->
+                        withCharges?.let { ActionWithCharges(action, it) } ?: action
+                    }
+                }
+            }.map { ActionDesc(it, instance, withCharges) }
+        }
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other is ActionDesc && action == other.action && instance == other.instance &&
+                chargeData == other.chargeData
+    }
+
+    override fun hashCode(): Int {
+        var result = instance.hashCode()
+        result = 31 * result + (chargeData?.hashCode() ?: 0)
+        result = 31 * result + action.hashCode()
+        return result
+    }
+}
 
 class SpellSlots {
     private var number = arrayOf(0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -111,7 +156,7 @@ class Character(
         }
     }.filterRight().toMap())
     val spells = mutableStateOf(listOf<SpellDesc>())
-    val actions = mutableStateOf(listOf<Action>())
+    val actions = mutableStateOf(listOf<ActionDesc>())
 
     val choices = mutableStateOf(Choices())
 
@@ -157,6 +202,10 @@ class Character(
             val d = refold(desc.instance.getString("desc", p), "")
             Pair(n, desc.copy(desc = d))
         }.associate { it }
+
+        actions.value = actions.value.map { a ->
+            a.reload(this)
+        }
     }
 
     private fun recalcAC() {
@@ -170,9 +219,6 @@ class Character(
             }
 
             callOnTraits("onDeltaAC", listOf())
-//            classTraits.value.forEach { (_, trait) ->
-//                trait.instance.type.functions["onDeltaAC"]?.call(listOf(), posRender)
-//            }
         }
         ac.value += acDelta
         acDelta = 0
@@ -409,10 +455,10 @@ class Character(
 
         if(filterActions) {
             actions.value = actions.value.filter {
-                when(it) {
-                    is AttackAction -> itemsFor(it).isNotEmpty()
-                    is SpellAttackAction -> spellsFor(it).any { s -> s.source != desc.name }
-                    is SpellDCAction -> spellsFor(it).any { s -> s.source != desc.name }
+                when(val a = it.action) {
+                    is AttackAction -> itemsFor(a).isNotEmpty()
+                    is SpellAttackAction -> spellsFor(a).any { s -> s.source != desc.name }
+                    is SpellDCAction -> spellsFor(a).any { s -> s.source != desc.name }
                     else -> true
                 }
             }
