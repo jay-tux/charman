@@ -13,6 +13,9 @@ class AstException(msg: String) : Exception(msg) {
         fun templateArgCount(template: String, impl: String, expected: Int, got: Int, pos: PosInfo) =
             AstException("Instantiation of `$template' requires $expected arguments, $got given at $pos\n" +
                     "\tIn the instantiation of `$impl'")
+
+        fun nonAssignable(pos: PosInfo) =
+            AstException("Assignment to non-lvalue is invalid at $pos")
     }
 }
 

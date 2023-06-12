@@ -53,15 +53,25 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     // region Variable References
     override fun visitFieldExpr(ctx: CMLParser.FieldExprContext?): AstNode {
         return nonNull(ctx) {
-            FieldExpr(visit(it.base) as VarRef, it.name.text, it.DOT().symbol.getPos(file))
+            FieldExpr(visit(it.e) as Expression, it.name.text, it.DOT().symbol.getPos(file))
         }
     }
 
     override fun visitVarName(ctx: CMLParser.VarNameContext?): AstNode {
         return nonNull(ctx) {
             VarExpr(
-                it.value.text,
-                it.value.getPos(file)
+                it.name.text,
+                it.name.getPos(file)
+            )
+        }
+    }
+
+    override fun visitIndexExpr(ctx: CMLParser.IndexExprContext?): AstNode {
+        return nonNull(ctx) {
+            IndexExpr(
+                visit(it.e) as Expression,
+                visit(it.index) as Expression,
+                it.BR_O().symbol.getPos(file)
             )
         }
     }
@@ -100,22 +110,6 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         return nonNull(ctx, { it.value }) {
             val fields = it.text.split("[dD]".toRegex())
             LiteralExpr(DiceVal(fields[0].toInt(), fields[1].toInt(), it.getPos(file)), it.getPos(file))
-        }
-    }
-
-    override fun visitVarExpr(ctx: CMLParser.VarExprContext?): AstNode {
-        return nonNull(ctx, { it.value }) {
-            visit(it)
-        }
-    }
-
-    override fun visitIndexExpr(ctx: CMLParser.IndexExprContext?): AstNode {
-        return nonNull(ctx) {
-            IndexExpr(
-                visit(it.base) as Expression,
-                visit(it.index) as Expression,
-                it.BR_O().symbol.getPos(file)
-            )
         }
     }
 
@@ -305,10 +299,13 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
     override fun visitVarStoreStmt(ctx: CMLParser.VarStoreStmtContext?): AstNode {
         return nonNull(ctx) { c ->
             val visited = visit(c.name)
+            if(visited !is LValue) {
+                throw AstException.nonAssignable(c.ASSIGN().symbol.getPos(file))
+            }
             VarStoreStmt(
-                name = visited as VarRef,
+                name = visited,
                 upd = visit(c.value) as Expression,
-                pos = c.start.getPos(file)
+                pos = c.ASSIGN().symbol.getPos(file)
             )
         }
     }

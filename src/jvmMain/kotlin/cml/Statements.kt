@@ -33,7 +33,7 @@ class VarDeclStmt(
 }
 
 class VarStoreStmt(
-    private val name: VarRef,
+    private val name: LValue,
     private val upd: Expression,
     pos: PosInfo
 ): Statement(pos) {

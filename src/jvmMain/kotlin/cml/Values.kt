@@ -153,7 +153,7 @@ fun typeName(v: Value): String = when(v) {
     else -> throw CMLException.invalidType()
 }
 
-class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos: PosInfo) {
+open class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos: PosInfo) {
     var value: Value = v
         private set
 
@@ -166,7 +166,7 @@ class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos
         return name == other.name && value == other.value && isImmutable == other.isImmutable
     }
 
-    fun safeOverwrite(v: Value, pos: PosInfo) {
+    open fun safeOverwrite(v: Value, pos: PosInfo) {
         // overwrite position is given by the value
         if(isImmutable) throw CMLException.overwriteImmutable(name, declPos, pos)
         else {
@@ -189,6 +189,13 @@ class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos
     fun isDice() = value is DiceVal
 
     fun copy(): Variable = Variable(name, value.copy(), isImmutable, declPos)
+}
+
+class ListIndexVariable(val l: MutableList<Value>, val i: Int, isImmutable: Boolean, declPos: PosInfo) : Variable("[index variable]", l[i], isImmutable, declPos) {
+    override fun safeOverwrite(v: Value, pos: PosInfo) {
+        if(isImmutable) throw CMLException.overwriteImmutable("[index into list]", declPos, pos)
+        else l[i] = v
+    }
 }
 
 class ExecEnvironment private constructor(
