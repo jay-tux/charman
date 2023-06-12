@@ -15,6 +15,14 @@ abstract class LValue(pos: PosInfo) : Expression(pos) {
 
 }
 
+fun Expression.evaluateOrRef(ctxt: ExecEnvironment): Pair<Value, Boolean> {
+    if(this is LValue) {
+        val tmp = this.evaluateToRef(ctxt)
+        return Pair(tmp.value, tmp.isImmutable)
+    }
+    return Pair(this.evaluate(ctxt), false)
+}
+
 class ExpressionSet(pos: PosInfo) : AstNode(pos) {
     val values = mutableListOf<Expression>()
 }
@@ -42,7 +50,8 @@ class VarExpr(val ident: String, pos: PosInfo): LValue(pos) {
 
 class FieldExpr(val base: Expression, val name: String, pos: PosInfo): LValue(pos) {
     override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
-        val baseE = base.evaluate(ctxt)
+        val (baseE, _) = base.evaluateOrRef(ctxt)
+
         if(baseE !is InstanceVal) {
             throw CMLException.nonObjectVar(name, baseE, pos)
         }
@@ -57,13 +66,18 @@ class FieldExpr(val base: Expression, val name: String, pos: PosInfo): LValue(po
 
 class IndexExpr(val base: Expression, val index: Expression, pos: PosInfo) : LValue(pos) {
     override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
-        return when(val baseE = base.evaluate(ctxt)) {
+        val (baseE, isImmutable) = base.evaluateOrRef(ctxt)
+        return when(baseE) {
             is ListVal -> {
                 val indexE = index.evaluate(ctxt)
                 if(indexE !is IntVal) throw CMLException.invalidIndexType("list", "int", pos)
                 if(indexE.value < 0 || indexE.value >= baseE.value.size)
                     throw CMLException.listOutOfRange(indexE.value, baseE.value.size, pos)
-                ListIndexVariable(baseE.value, indexE.value, false, baseE.pos)
+                ListIndexVariable(baseE.value, indexE.value, isImmutable, baseE.pos)
+            }
+            is DictVal -> {
+                val indexE = index.evaluate(ctxt)
+                DictIndexVariable(baseE.value, indexE, isImmutable, baseE.pos)
             }
 
             else -> throw CMLException.nonIndexableVar(pos)

@@ -153,12 +153,15 @@ fun typeName(v: Value): String = when(v) {
     else -> throw CMLException.invalidType()
 }
 
-open class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos: PosInfo) {
+open class Variable protected constructor(allowVoid: Boolean, val name: String, v: Value, val isImmutable: Boolean, val declPos: PosInfo) {
     var value: Value = v
         private set
 
     init {
-        if(v is VoidVal) throw CMLException.voidVarException(name, declPos)
+        if(!allowVoid && v is VoidVal) throw CMLException.voidVarException(name, declPos)
+    }
+
+    constructor(name: String, v: Value, isImmutable: Boolean, declPos: PosInfo) : this(false, name, v, isImmutable, declPos) {
     }
 
     override fun equals(other: Any?): Boolean {
@@ -195,6 +198,13 @@ class ListIndexVariable(val l: MutableList<Value>, val i: Int, isImmutable: Bool
     override fun safeOverwrite(v: Value, pos: PosInfo) {
         if(isImmutable) throw CMLException.overwriteImmutable("[index into list]", declPos, pos)
         else l[i] = v
+    }
+}
+
+class DictIndexVariable(val d: MutableMap<Value, Value>, val k: Value, isImmutable: Boolean, declPos: PosInfo) : Variable(true, "[index variable]", d[k] ?: VoidVal(declPos), isImmutable, declPos) {
+    override fun safeOverwrite(v: Value, pos: PosInfo) {
+        if(isImmutable) throw CMLException.overwriteImmutable("[index into dict]", declPos, pos)
+        else d[k] = v
     }
 }
 
