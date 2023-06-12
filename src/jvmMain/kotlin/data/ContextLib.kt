@@ -98,7 +98,7 @@ fun CharacterScope.addClassTraits(args: List<Value>, p: PosInfo): Value {
     }.handle(p)
 }
 
-fun CharacterScope.addDCAction(args: List<Value>, p: PosInfo): Value {
+fun CharacterScope.addDCAction(args: List<Value>, p: PosInfo, chargeDesc: Pair<String, Int>? = null): Value {
     return argCnt("addDCAction", 2, args, p).flatMap { (pos, arg) ->
         arg[0].ifInstVerify("Action", pos).flatMap { action ->
             action.getName(pos).flatMap { name ->
@@ -110,7 +110,10 @@ fun CharacterScope.addDCAction(args: List<Value>, p: PosInfo): Value {
                     action.getList("baseAction", pos).flatMap { base ->
                         arg[1].ifInstVerify("Ability", pos).flatMap { ab ->
                             verifyBaseAction(char, name, action.type.name, base.value + ab, tags, pos).map { checked ->
-                                char.actions.value = char.actions.value + checked
+                                if(chargeDesc == null)
+                                    char.actions.value += checked
+                                else
+                                    char.actions.value += ActionWithCharges(checked, chargeDesc)
                             }
                         }
                     }
@@ -118,6 +121,18 @@ fun CharacterScope.addDCAction(args: List<Value>, p: PosInfo): Value {
             }
         }
     }.handle(p)
+}
+
+fun CharacterScope.addDCActionUsing(args: List<Value>, p: PosInfo): Value {
+    return argCnt("addDCActionUsing", 4, args, p).flatMap { (pos, arg) ->
+        arg[2].requireString(pos).flatMap { charge ->
+            arg[3].requireInt(pos).map { cost ->
+                ExecutionStack.call(pos) {
+                    addDCAction(args.subList(0, 2), pos, Pair(charge, cost.value))
+                }
+            }
+        }
+    }.handle()
 }
 
 fun CharacterScope.addItem(args: List<Value>, p: PosInfo): Value {
@@ -229,7 +244,7 @@ fun CharacterScope.addSpell(args: List<Value>, p: PosInfo, chargeDesc: Pair<Stri
                                             spell.getList("actions", pos).flatMap { actions ->
                                                 actions.value.mapOrEither { a ->
                                                     a.requireInstance(pos).flatMap {
-                                                        verifyAddSpellAction(char, it, args[1], pos).map { _ ->
+                                                        verifyAddSpellAction(char, it, args[1], pos, chargeDesc).map { _ ->
                                                             it
                                                         }
                                                     }
@@ -429,7 +444,7 @@ fun CharacterScope.updSkillMod(args: List<Value>, p: PosInfo): Value {
 // endregion
 
 // region Helper functions
-fun verifyAddSpellAction(c: Character, sa: InstanceVal, ab: Value, pos: PosInfo): Either<CMLException, Action> {
+fun verifyAddSpellAction(c: Character, sa: InstanceVal, ab: Value, pos: PosInfo, charges: Pair<String, Int>? = null): Either<CMLException, Action> {
     val kind = sa.type.name
     if (kind != "SpellHitAction" && kind != "SpellDCAction") return CMLException.typeError(
         "instance of `SpellHitAction' or `SpellDCAction'",
@@ -444,7 +459,7 @@ fun verifyAddSpellAction(c: Character, sa: InstanceVal, ab: Value, pos: PosInfo)
             sa.getList("baseAction", pos).flatMap { base ->
                 val added = base.value + ab
                 verifyBaseAction(c, name, sa.type.name, added, tags, pos).map {
-                    c.actions.value += it
+                    c.actions.value += charges?.let{ c -> ActionWithCharges(it, c) } ?: it
                     it
                 }
             }

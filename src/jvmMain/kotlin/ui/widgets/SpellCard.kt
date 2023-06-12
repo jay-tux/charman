@@ -40,10 +40,7 @@ fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, getCharges: (Stri
                     Box(Modifier.fillMaxWidth()) {
                         Row(Modifier.align(Alignment.CenterEnd)) {
                             Text("Charges: ", fontStyle = FontStyle.Italic)
-                            SpellSlots(
-                                ch.second,
-                                ch.first
-                            ) { useCharge(spell.charge.first, spell.charge.second) }
+                            ChargesWidget(ch) { useCharge(spell.charge.first, spell.charge.second) }
                         }
                     }
                 }
@@ -51,6 +48,9 @@ fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, getCharges: (Stri
         }
     }
 }
+
+@Composable
+fun ChargesWidget(pair: Pair<Int, Int>, onClick: () -> Unit) = SpellSlots(pair.second, pair.first) { onClick() }
 
 @Composable
 fun SpellSlots(amount: Int, used: Int, modifier: Modifier = Modifier, overset: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
@@ -95,5 +95,12 @@ fun BoxScope.spellDetails(spell: SpellDesc, modifier: Modifier) {
         BoldAndNot("Duration: ", spell.duration)
         Spacer(Modifier.height(5.dp))
         Text(spell.desc)
+    }
+}
+
+@Composable
+fun BoxScope.noDetails(name: String, modifier: Modifier) {
+    Column(modifier.fillMaxHeight().align(Alignment.CenterEnd).padding(10.dp)) {
+        Text("Spell or action `$name' has no details.")
     }
 }

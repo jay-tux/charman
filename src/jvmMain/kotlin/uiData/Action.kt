@@ -14,8 +14,7 @@ import androidx.compose.ui.unit.dp
 import cml.DiceVal
 import cml.InstanceVal
 import data.getString
-import ui.widgets.BoldAndNot
-import ui.widgets.spellDetails
+import ui.widgets.*
 import withSign
 
 data class DamageKind(val name: String, val inst: InstanceVal)
@@ -104,7 +103,11 @@ class SpellAttackAction(
 
     @Composable
     override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
-        scope.spellDetails(c.spellsFor(this)[0], modifier)
+        val maybe = c.spellsFor(this)
+        if(maybe.isNotEmpty())
+            scope.spellDetails(maybe[0], modifier)
+        else
+            scope.noDetails(name, modifier)
     }
 }
 
@@ -146,6 +149,29 @@ class SpellDCAction(
 
     @Composable
     override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
-        scope.spellDetails(c.spellsFor(this)[0], modifier)
+        val maybe = c.spellsFor(this)
+        if(maybe.isNotEmpty())
+            scope.spellDetails(maybe[0], modifier)
+        else
+            scope.noDetails(name, modifier)
     }
+}
+
+class ActionWithCharges(private val base: Action, private val chargeDesc: Pair<String, Int>) : Action {
+    @Composable
+    override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) = Column {
+        base.render(c, profTags, useCharge)
+        indented {
+            Text("Charges: ", fontStyle = FontStyle.Italic)
+            val chData = c.charges.value[chargeDesc.first]
+            if(chData == null) Text("(cannot get charge data for `${chargeDesc.first}')", color = MaterialTheme.colors.error)
+            else ChargesWidget(chData) { c.useCharge(chargeDesc.first, chargeDesc.second) }
+        }
+    }
+
+    @Composable
+    override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
+        base.renderFull(c, scope, modifier)
+    }
+
 }

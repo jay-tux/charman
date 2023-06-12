@@ -26,6 +26,9 @@ data class SpellDesc(
     val source: String, val charge: Pair<String, Int>? = null
 )
 
+data class ClassTrait(val desc: String, val source: String, val instance: InstanceVal, val charge: Pair<String, Int>? = null)
+data class BaseTrait(val desc: String, val instance: InstanceVal, val charge: Pair<String, Int>? = null)
+
 data class MoneyDesc(
     val amount: Int, val fullName: String, val conversion: Int, val instance: InstanceVal
 )
@@ -56,9 +59,6 @@ class SpellSlots {
     }
 }
 
-data class ClassTrait(val desc: String, val source: String, val instance: InstanceVal)
-data class BaseTrait(val desc: String, val instance: InstanceVal)
-
 class Character(
     name: String,
     race: Pair<String, InstanceVal>,
@@ -85,7 +85,7 @@ class Character(
 
     val casterLevelX6 = mutableStateOf(0)
     val specialCasting = mutableStateOf(mapOf<String, Pair<ListVal, List<SpellSlots>>>())
-    val usedSpellSlots = mutableStateOf(SpellSlots()) // Mutable.stateFrom(SpellSlots())
+    val usedSpellSlots = mutableStateOf(SpellSlots())
     val usedSpellSlotsSpecial = mutableStateOf(mapOf<String, SpellSlots>())
 
     val languages = mutableMapOf<String, InstanceVal>()

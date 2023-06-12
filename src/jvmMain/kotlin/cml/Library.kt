@@ -72,6 +72,7 @@ object Library {
         Pair("setAC") { args, pos -> setAC(args, pos) },
         Pair("modAC") { args, pos -> modAC(args, pos) },
         Pair("addDCAction") { args, pos -> addDCAction(args, pos) },
+        Pair("addDCActionUsing") { args, pos -> addDCActionUsing(args, pos) },
         Pair("getSkills") { args, pos -> getSkills(args, pos) },
         Pair("updSkillMod") { args, pos -> updSkillMod(args, pos) },
         Pair("isProficientSkill") { args, pos -> isProficientSkill(args, pos) },
