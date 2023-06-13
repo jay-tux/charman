@@ -159,6 +159,7 @@ class Character(
     val actions = mutableStateOf(listOf<ActionDesc>())
 
     val choices = mutableStateOf(Choices())
+    val notes = mutableStateOf("")
 
     private fun callOnAll(fn: String, args: List<Value> = listOf(), withResult: (Value) -> Unit) {
         Library.withCharacter(this) {
@@ -368,6 +369,7 @@ class Character(
                 (1..9).map { slots[it] }.toSerializable { it.toSerializable() }
             )
         }.toField("usedSpellSlotsSpecial").addTo(root)
+        notes.value.toSerializable().toField("notes").addTo(root)
         return root.serialize()
     }
 

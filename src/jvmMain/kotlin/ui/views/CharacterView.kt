@@ -428,6 +428,7 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
 
 @Composable
 fun BoxScope.sheetMiscPanel(data: Character) {
+    var notes by data.notes
     LazyScrollColumn {
         item {
             Text("Passage of Time", fontStyle = FontStyle.Italic)
@@ -439,6 +440,12 @@ fun BoxScope.sheetMiscPanel(data: Character) {
                     Spacer(Modifier.weight(0.0166f))
                     Button({ data.dawn() }, Modifier.weight(0.3f)) { Text("Next Dawn") }
                 }
+            }
+        }
+        item {
+            Text("Notes", fontStyle = FontStyle.Italic)
+            indented {
+                OutlinedTextField(notes, { notes = it }, Modifier.fillMaxWidth(), minLines = 5, maxLines = 5)
             }
         }
     }
