@@ -14,7 +14,7 @@ import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-data class ClassDesc(val cls: InstanceVal, val level: Int, val isPrimary: Boolean)
+data class ClassDesc(val cls: InstanceVal, val level: Int, val hitDice: DiceVal, val isPrimary: Boolean)
 data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
 data class ItemDesc(val name: String, val weight: Float, val value: Triple<Int, String, InstanceVal>,
                     val actions: List<InstanceVal>, val traits: List<Triple<String, String, InstanceVal>>,

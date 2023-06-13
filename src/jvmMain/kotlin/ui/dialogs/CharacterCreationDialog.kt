@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import arrow.core.flatMap
+import cml.DiceVal
 import cml.InstanceVal
 import cml.Library
 import cml.Value
@@ -235,12 +236,12 @@ fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean
 
     val onSelect = { classV: Pair<String, InstanceVal> ->
         delta {
-            classes += Pair(classV.first, ClassDesc(classV.second, 1, true))
             val hitDie = classV.second.getDice("hitDie", Character.posInit).fold(
-                { CMLOut.addError("Hit Die not defined for class `${classV.first}."); 0 },
-                { k -> k.kind }
+                { CMLOut.addError("Hit Die not defined for class `${classV.first}."); DiceVal(1, 1, Character.posInit) },
+                { k -> k }
             )
-            it.hitDice.value += Pair(hitDie, 1)
+            classes += Pair(classV.first, ClassDesc(classV.second, 1, hitDie, true))
+            it.hitDice.value += Pair(hitDie.kind, 1)
             it.choices.value.classesChoices[classV.first] = mutableMapOf()
 
             Library.withChoices(

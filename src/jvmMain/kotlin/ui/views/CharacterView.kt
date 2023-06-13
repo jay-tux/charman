@@ -21,18 +21,17 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import cml.CMLException
-import cml.IntVal
-import cml.Library
-import cml.Value
+import cml.*
 import ui.Renderer
 import ui.dialogs.CurrencyDialog
 import ui.dialogs.ItemDialog
+import ui.dialogs.RollDialog
 import ui.dialogs.choiceDispatcher
 import ui.widgets.*
 import uiData.Character
 import uiData.CharacterData
 import uiData.ClassDesc
+import uiData.toMod
 import withSign
 
 @Composable
@@ -92,8 +91,10 @@ fun RowScope.sheetTopRow(data: Character) {
     var options by remember { mutableStateOf(listOf<Value>()) }
     var setCallback by remember { mutableStateOf({ _: Value -> }) }
     val choiceNo = remember { mutableStateOf(0) }
+    var addingHP by remember { mutableStateOf(false) }
+    var addDice by remember { mutableStateOf(DiceVal(1, 1, Character.posRender)) }
 
-    val levelUp = { cName: String, cl: ClassDesc ->
+    val startLevelUp = { cName: String, cl: ClassDesc ->
         Library.withChoices(
             c = data,
             selector = { it.classesChoices[cName] },
@@ -107,8 +108,11 @@ fun RowScope.sheetTopRow(data: Character) {
                 ?: CMLOut.addWarning("Cannot call onLevelUp for $cName")
             data.callOnTraits("onLevelUp", args)
             classes += Pair(cName, cl.copy(level = cl.level + 1))
+
             data.onUpdate()
             CharacterData.refreshUI()
+            addingHP = true
+            addDice = cl.hitDice
         }
     }
 
@@ -119,7 +123,7 @@ fun RowScope.sheetTopRow(data: Character) {
                 Text("Classes", fontWeight = FontWeight.Bold)
             }
             items(classes.toList()) { (cl, lvl) ->
-                indented(Modifier.clickable { levelUp(cl, lvl) }) {
+                indented(Modifier.clickable { startLevelUp(cl, lvl) }) {
                     Text("$cl (level ${lvl.level}")
                     Icon(Icons.Default.ArrowDropUp, "")
                     Text(")")
@@ -141,6 +145,13 @@ fun RowScope.sheetTopRow(data: Character) {
         choiceDispatcher(
             count, choiceNo.value, options, { count = 0 }, setCallback
         )
+    }
+    if(addingHP) {
+        val conMod = data.abilities.value.firstNotNullOfOrNull { if(it.value.name == "Constitution") it.value.score.toMod() else null } ?: 0
+        RollDialog(addDice, conMod, { /* automatically done by other lambda */ }) { add ->
+            data.hp.value += add
+            addingHP = false
+        }
     }
 }
 

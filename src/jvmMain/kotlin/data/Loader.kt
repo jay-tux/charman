@@ -230,14 +230,16 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                             clsI.ifInstVerifyGetName("Class", posInit).flatMap { (classN, classI) ->
                                 lvlI.requireInt(posInit).flatMap { lvl ->
                                     if(lvl.value <= 0 || lvl.value > 20) CMLException("Class level should be at least 1 and no more than 20, ${lvl.value} given for class `$classN' at $posInit").left()
-                                    else Pair(classN, ClassDesc(classI, lvl.value, false)).right()
+                                    else classI.getDice("hitDie", posInit).map { dice ->
+                                        Pair(classN, ClassDesc(classI, lvl.value, dice, false))
+                                    }
                                 }
                             }
                         }.map { v -> v.toMutableMap() }.flatMap { classes ->
                             valid.getInst("primary", "Class", posInit).flatMap { cls ->
                                 cls.getName(posInit).flatMap { initN ->
                                     classes[initN]?.let {
-                                        classes[initN] = ClassDesc(it.cls, it.level, true)
+                                        classes[initN] = ClassDesc(it.cls, it.level, it.hitDice, true)
                                         Unit.right()
                                     } ?: CMLException("Primary class is not one of the character's classes at ${cls.pos}").left()
                                 }.map { classes }
