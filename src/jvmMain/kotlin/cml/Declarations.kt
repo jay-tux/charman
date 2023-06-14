@@ -105,7 +105,7 @@ class TemplateDecl(
             name = target.name,
             functions = functions.map { (k, v) -> Pair(k, v.instantiate(inst)) }.toMap(),
             fieldsPre = fieldsPre.map { (k, v) -> Pair(k, v.instantiate(inst)) }.toMap(),
-            declPos = pos
+            declPos = target.pos
         )
         res.functions.forEach { (_, v) ->
             v.parent = res

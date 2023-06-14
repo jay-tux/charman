@@ -149,6 +149,7 @@ object Library {
     fun isLibType(name: String): Boolean = types.containsKey(name)
     fun construct(name: String, pos: PosInfo): InstanceVal? = types[name]?.let { InstanceVal(it.construct(), pos) }
     fun addType(name: String, type: TopLevelDecl) {
+        if(name == "ChillTouch") CMLOut.addInfo("Encountered it: $name at ${type.pos}")
         if(types.containsKey(name)) throw LibraryException.libTypeAlreadyExists(name, types[name]!!.pos, type.pos)
         types[name] = type
     }

@@ -25,8 +25,8 @@ import kotlin.io.path.*
 
 object Scripts {
     private val pos = PosInfo("<repl>", 0, 0)
-    private val templates = mutableMapOf<String, TemplateDecl>()
-    private val instances = mutableMapOf<String, InstanceDecl>()
+    private val templates = mutableListOf<TemplateDecl>()
+    private val instances = mutableListOf<InstanceDecl>()
     private val globals = mutableListOf<GlobalDecl>()
     var loading = true
         private set
@@ -80,30 +80,34 @@ object Scripts {
                     Library.addType(it.name, it)
                 }
             } catch(ex: LibraryException) {
-                ex.message?.let { CMLOut.addError(it) }
+                CMLOut.addError(ex.localizedMessage)
+                println(ex.localizedMessage)
                 return@use
             }
 
             globals.addAll(ast.globals)
-            templates.putAll(ast.templates.map { Pair(it.name, it) })
-            instances.putAll(ast.instances.map { Pair(it.name, it) })
+            templates.addAll(ast.templates)
+            instances.addAll(ast.instances)
         }
     }
 
     private fun instantiateAll() {
-        instances.forEach { (name, instance) ->
+        instances.forEach { instance ->
             try {
                 Library.addType(
-                    name,
-                    templates[instance.template]?.instantiate(instance) ?:
-                        throw AstException.undefinedTemplate(instance.template, name, instance.pos)
+                    instance.name,
+                    templates.firstOrNull { it.name == instance.template }?.instantiate(instance) ?:
+                        throw AstException.undefinedTemplate(instance.template, instance.name, instance.pos)
                 )
             } catch(ex: LibraryException) {
-                ex.message?.let { CMLOut.addError(it) }
+                CMLOut.addError(ex.localizedMessage)
+                println(ex.localizedMessage)
             } catch(ex: AstException) {
-                ex.message?.let { CMLOut.addError(it) }
+                CMLOut.addError(ex.localizedMessage)
+                println(ex.localizedMessage)
             } catch(ex: CMLException) {
-                ex.message?.let { CMLOut.addError(it) }
+                CMLOut.addError(ex.localizedMessage)
+                println(ex.localizedMessage)
             }
         }
     }
