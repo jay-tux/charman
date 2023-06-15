@@ -123,9 +123,9 @@ fun RowScope.sheetTopRow(data: Character) {
                 Text("Classes", fontWeight = FontWeight.Bold)
             }
             items(classes.toList()) { (cl, lvl) ->
-                indented(Modifier.clickable { startLevelUp(cl, lvl) }) {
+                indented(if(lvl.level < 20) Modifier.clickable { startLevelUp(cl, lvl) } else Modifier) {
                     Text("$cl (level ${lvl.level}")
-                    Icon(Icons.Default.ArrowDropUp, "")
+                    if(lvl.level < 20) Icon(Icons.Default.ArrowDropUp, "")
                     Text(")")
                 }
             }

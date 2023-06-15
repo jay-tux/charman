@@ -80,6 +80,8 @@ object Library {
         Pair("recoverSpellSlotsFor") { args, pos -> recoverSpellSlotsFor(args, pos) },
         Pair("registerCharges") { args, pos -> registerCharges(args, pos) },
         Pair("recoverCharges") { args, pos -> recoverCharges(args, pos) },
+        Pair("getName") { args, pos -> getName(args, pos) },
+        Pair("getSpells") { args, pos -> getSpells(args, pos) },
     )
     private val choiceFunctions = mutableMapOf<String, ChoiceScope.(List<Value>, PosInfo) -> Value>(
         Pair("chooseDataByKind") { args, pos -> chooseDataByKind(args, pos) },
@@ -90,6 +92,7 @@ object Library {
         Pair("chooseNSpellsUpTo") { args, pos -> chooseNSpellsUpTo(args, pos) },
         Pair("chooseItem") { args, pos -> chooseItem(args, pos) },
         Pair("chooseNItems") { args, pos -> chooseNItems(args, pos) },
+        Pair("chooseNSpellsOrCantripsUpTo") { args, pos -> chooseNSpellsOrCantripsUpTo(args, pos) },
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()
@@ -149,7 +152,6 @@ object Library {
     fun isLibType(name: String): Boolean = types.containsKey(name)
     fun construct(name: String, pos: PosInfo): InstanceVal? = types[name]?.let { InstanceVal(it.construct(), pos) }
     fun addType(name: String, type: TopLevelDecl) {
-        if(name == "ChillTouch") CMLOut.addInfo("Encountered it: $name at ${type.pos}")
         if(types.containsKey(name)) throw LibraryException.libTypeAlreadyExists(name, types[name]!!.pos, type.pos)
         types[name] = type
     }
@@ -184,12 +186,17 @@ object Library {
         c: Character,
         selector: (Choices) -> MutableMap<Value, Value>?,
         render: (count: Int, options: List<Value>, onSet: (Value) -> Unit) -> Unit,
+        onError: ((CMLException) -> Unit)? = null,
         action: () -> T
     ) {
         currentChoiceScope = ChoiceScope()
         thread {
             currentChoiceScope?.runScript(
-                script = { withCharacter(c, action).mapLeft { CMLOut.addError(it.localizedMessage) } },
+                script = {
+                    withCharacter(c, action).mapLeft {
+                        if (onError != null) onError(it)
+                    }
+                },
                 onRequireRender = { options, count, lock ->
                     render(count, options) { lock.update(it) }
                 },

@@ -293,6 +293,12 @@ fun CharacterScope.getArmor(args: List<Value>, p: PosInfo): Value {
     }.handle()
 }
 
+fun CharacterScope.getName(args: List<Value>, p: PosInfo): Value {
+    return argCnt("getName", 0, args, p).map { (pos, _) ->
+        StringVal(char.name.value, pos)
+    }.handle()
+}
+
 fun CharacterScope.getProficiency(args: List<Value>, p: PosInfo): Value {
     return argCnt("getProficiency", 0, args, p).map { _ ->
         IntVal(char.proficiency(), p)
@@ -304,6 +310,14 @@ fun CharacterScope.getSkills(args: List<Value>, p: PosInfo): Value {
         ListVal(
             Library.typesByKind("Skill").map { d -> InstanceVal(d, pos) }.toMutableList(),
             pos
+        )
+    }.handle()
+}
+
+fun CharacterScope.getSpells(args: List<Value>, p: PosInfo): Value {
+    return argCnt("getSpells", 0, args, p).map { (pos, _) ->
+        ListVal(
+            Library.typesByKind("Spell").map { d -> InstanceVal(d, pos) }.toMutableList(), pos
         )
     }.handle()
 }
@@ -642,12 +656,12 @@ fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
                         CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
                     }
                     else {
-                        requireChoice(name, count.value, options).right()
+                        requireChoice(name, count.value, options, pos).right()
                     }
                 }
             }
         }
-    }.handle()
+    }.ensureList(p).handle()
 }
 
 fun ChoiceScope.chooseNCantrips(args: List<Value>, p: PosInfo): Value {
@@ -663,13 +677,13 @@ fun ChoiceScope.chooseNCantrips(args: List<Value>, p: PosInfo): Value {
                             CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
                         }
                         else {
-                            requireChoice(name, count.value, options).right()
+                            requireChoice(name, count.value, options, pos).right()
                         }
                     }
                 }
             }
         }
-    }.handle()
+    }.ensureList(p).handle()
 }
 
 fun ChoiceScope.chooseNFrom(args: List<Value>, p: PosInfo): Value {
@@ -680,12 +694,37 @@ fun ChoiceScope.chooseNFrom(args: List<Value>, p: PosInfo): Value {
                     if (options.size < count.value) {
                         CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
                     } else {
-                        requireChoice(name, count.value, options).right()
+                        requireChoice(name, count.value, options, pos).right()
                     }
                 }
             }
         }
-    }.handle()
+    }.ensureList(p).handle()
+}
+
+fun ChoiceScope.chooseNSpellsOrCantripsUpTo(args: List<Value>, p: PosInfo): Value {
+    return argCnt("chooseNSpellsOrCantripsUpTo", 5, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { name ->
+            arg[1].requireInt(pos).flatMap { count ->
+                arg[2].requireInt(pos).flatMap { maxLvl ->
+                    arg[3].ifInstVerify("Class", pos).flatMap { cls ->
+                        arg[4].requireList(pos).flatMap { spellList ->
+                            val clName = cls.getName(ChoiceScope.choicePos)
+                                .fold({ CMLOut.addError(it.localizedMessage); "" }) { it }
+                            val options =
+                                filterSpellsByLevel(spellList.filterIsInstance<InstanceVal>(), clName) { it <= maxLvl.value }
+
+                            if (options.size < count.value) {
+                                CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
+                            } else {
+                                requireChoice(name, count.value, options, pos).right()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }.ensureList(p).handle()
 }
 
 fun ChoiceScope.chooseNSpellsUpTo(args: List<Value>, p: PosInfo): Value {
@@ -703,14 +742,14 @@ fun ChoiceScope.chooseNSpellsUpTo(args: List<Value>, p: PosInfo): Value {
                             if (options.size < count.value) {
                                 CMLException("Cannot choose ${count.value} option(s) from a list of size ${options.size}. Error thrown at $pos").left()
                             } else {
-                                requireChoice(name, count.value, options).right()
+                                requireChoice(name, count.value, options, pos).right()
                             }
                         }
                     }
                 }
             }
         }
-    }.handle()
+    }.ensureList(p).handle()
 }
 
 fun ChoiceScope.chooseNItems(args: List<Value>, p: PosInfo): Value {
@@ -739,13 +778,13 @@ fun ChoiceScope.chooseNItems(args: List<Value>, p: PosInfo): Value {
                         if (options.size < count.value) {
                             CMLException("Not enough items (${options.size}/${count.value}) matching filter at $pos").left()
                         } else {
-                            requireChoice(name, count.value, options).right()
+                            requireChoice(name, count.value, options, pos).right()
                         }
                     }
                 }
             }
         }
-    }.handle()
+    }.ensureList(p).handle()
 }
 // endregion
 
@@ -761,5 +800,12 @@ fun filterSpellsByLevel(baseList: List<InstanceVal>, classN: String, pred: (Int)
             Tuple4(it.first, l, spellLists, it.second)
         }
     }.filterRight().filter { pred(it.second) && (it.fourth || it.third.contains(classN)) }.map { it.first }
+}
+
+fun Either<CMLException, Value>.ensureList(pos: PosInfo): Either<CMLException, Value> {
+    return map { v ->
+        if(v is ListVal) v
+        else ListVal(mutableListOf(v), pos)
+    }
 }
 // endregion

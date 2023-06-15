@@ -22,8 +22,10 @@ object CMLOut {
     fun addWarning(msg: String) { add(msg, MessageKind.WARNING) }
     fun addError(msg: String) { add(msg, MessageKind.ERROR) }
 
-    fun refresh() {
-        clearStream()
+    fun refresh(clear: Boolean = true) {
+        if(clear) {
+            clearStream()
+        }
         addInfo("Reloading cache...")
         CharacterData.clear()
         Library.clear()

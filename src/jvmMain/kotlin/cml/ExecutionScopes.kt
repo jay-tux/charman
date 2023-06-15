@@ -31,13 +31,14 @@ class ChoiceScope {
         return res!! // set by thread
     }
 
-    fun requireChoice(name: String, count: Int, options: List<Value>): Value {
+    fun requireChoice(name: String, count: Int, options: List<Value>, pos: PosInfo? = null): Value {
         val waiter = Wait(VoidVal(PosInfo("<scope:waiting>", 0, 0)))
         renderCallback(options, count, waiter)
         synchronized(waiter) {
             (waiter as Object).wait()
         }
-        val res = waiter.get()
+        var res = waiter.get()
+        if(pos != null && res !is ListVal) res = ListVal(mutableListOf(res), pos)
         choiceMadeCallback(name, res)
         return res
     }
