@@ -39,10 +39,15 @@ fun indented(modifier: Modifier = Modifier, content: @Composable RowScope.() -> 
 }
 
 @Composable
-fun TraitCard(name: String, source: String, desc: String) = Column {
+fun TraitCard(name: String, source: String, desc: String, charge: Pair<Int, Int>?, useCharge: (() -> Unit)?) = Column {
     boldThenItalic(name, "($source)")
     indented {
         Text(desc)
+    }
+    if(charge != null && useCharge != null) {
+        Column(Modifier.fillMaxWidth()) {
+            ChargesWidget(charge, modifier = Modifier.align(Alignment.End)) { useCharge() }
+        }
     }
 }
 

@@ -220,7 +220,6 @@ class ActionWithCharges(private val base: Action, private val chargeDesc: Pair<S
     override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) = Column {
         base.render(c, profTags, useCharge)
         indented {
-            Text("Charges: ", fontStyle = FontStyle.Italic)
             val chData = c.charges.value[chargeDesc.first]
             if(chData == null) Text("(cannot get charge data for `${chargeDesc.first}')", color = MaterialTheme.colors.error)
             else ChargesWidget(chData) { c.useCharge(chargeDesc.first, chargeDesc.second) }

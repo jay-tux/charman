@@ -39,7 +39,6 @@ fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, getCharges: (Stri
                 if(ch != null) {
                     Box(Modifier.fillMaxWidth()) {
                         Row(Modifier.align(Alignment.CenterEnd)) {
-                            Text("Charges: ", fontStyle = FontStyle.Italic)
                             ChargesWidget(ch) { useCharge(spell.charge.first, spell.charge.second) }
                         }
                     }
@@ -50,7 +49,10 @@ fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, getCharges: (Stri
 }
 
 @Composable
-fun ChargesWidget(pair: Pair<Int, Int>, onClick: () -> Unit) = SpellSlots(pair.second, pair.first) { onClick() }
+fun ChargesWidget(pair: Pair<Int, Int>, modifier: Modifier = Modifier, onClick: () -> Unit) = Row(modifier) {
+    Text("Charges: ", fontStyle = FontStyle.Italic)
+    SpellSlots(pair.second, pair.first) { onClick() }
+}
 
 @Composable
 fun SpellSlots(amount: Int, used: Int, modifier: Modifier = Modifier, overset: (@Composable () -> Unit)? = null, onClick: () -> Unit) {

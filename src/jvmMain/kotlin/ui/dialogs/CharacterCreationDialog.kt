@@ -214,7 +214,7 @@ fun racePage(
                     if(expanded) {
                         Text("Below are some traits this race will give you. Others might depends on additional choices.", fontStyle = FontStyle.Italic)
                         traits.forEach { (tName, tDesc) ->
-                            TraitCard(tName, name, tDesc)
+                            TraitCard(tName, name, tDesc, null, null)
                         }
                         Button({ onSelect(Pair(name, inst)) }) {
                             Spacer(Modifier.width(10.dp))

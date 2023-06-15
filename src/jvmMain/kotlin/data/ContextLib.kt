@@ -51,7 +51,7 @@ fun CharacterScope.addBackgroundTraits(args: List<Value>, p: PosInfo): Value {
                 elem.ifInstVerifyGetName("Trait", pos).flatMap { (name, inst) ->
                     inst.getString("desc", pos).map {
                         Pair(name, BaseTrait(it, inst))
-                    }
+                    }.checkForCharges(inst, pos)
                 }
             }.map {
                 it.forEach{ (k, v) ->
@@ -73,7 +73,7 @@ fun CharacterScope.addClassTraits(args: List<Value>, p: PosInfo): Value {
                     elem.ifInstVerifyGetName("LevelUpTrait", pos).flatMap { (name, inst) ->
                         inst.getString("desc", pos).map {
                             Pair(name, ClassTrait(it, cls, inst))
-                        }
+                        }.checkForClassCharges(inst, pos)
                     }
                 }.map {
                     it.forEach { (k, v) ->
@@ -168,7 +168,7 @@ fun CharacterScope.addRacialTraits(args: List<Value>, p: PosInfo): Value {
                 elem.ifInstVerifyGetName("Trait", pos).flatMap { (name, inst) ->
                     inst.getString("desc", pos).map {
                         Pair(name, BaseTrait(it, inst))
-                    }
+                    }.checkForCharges(inst, pos)
                 }
             }.map {
                 it.forEach{ (k, v) ->
@@ -568,6 +568,34 @@ fun setBaseCaster(c: Character, args: List<Value>, fName: String, div: Int, p: P
             }
         }
     }.handle(p)
+}
+
+fun Either<CMLException, Pair<String, BaseTrait>>.checkForCharges(inst: InstanceVal, pos: PosInfo): Either<CMLException, Pair<String, BaseTrait>> {
+    return flatMap { trait ->
+        inst.getList("usesCharge", pos).flatMap { l ->
+            l.requireSize(2).flatMap { sized ->
+                sized[0].requireString(pos).flatMap { charge ->
+                    sized[1].requireInt(pos).map { cost ->
+                        trait.copy(second = trait.second.copy(charge = Pair(charge, cost.value)))
+                    }
+                }
+            }
+        }.fold({ trait.right() }) { it.right() }
+    }
+}
+
+fun Either<CMLException, Pair<String, ClassTrait>>.checkForClassCharges(inst: InstanceVal, pos: PosInfo): Either<CMLException, Pair<String, ClassTrait>> {
+    return flatMap { trait ->
+        inst.getList("usesCharge", pos).flatMap { l ->
+            l.requireSize(2).flatMap { sized ->
+                sized[0].requireString(pos).flatMap { charge ->
+                    sized[1].requireInt(pos).map { cost ->
+                        trait.copy(second = trait.second.copy(charge = Pair(charge, cost.value)))
+                    }
+                }
+            }
+        }.fold({ trait.right() }) { it.right() }
+    }
 }
 // endregion
 

@@ -331,21 +331,56 @@ fun BoxScope.sheetTraitsPanel(data: Character) {
     val racialTraits by data.racialTraits
     val classTraits by data.classTraits
     val backgroundTraits by data.backgroundTraits
+    val charges by data.charges
+
+    val chData = { c: Pair<String, Int>? ->
+        Pair(c?.first?.let { charges[it] }, c?.second?.let { { data.useCharge(c.first, it) } })
+    }
 
     LazyScrollColumn(Modifier.fillMaxSize()) {
         items(racialTraits.toList()) { (name, desc) ->
-            TraitCard(name, race.first, desc.desc)
-            Spacer(Modifier.height(7.dp))
+            Column(Modifier.fillMaxWidth()) {
+                val (c, c2) = chData(desc.charge)
+                TraitCard(name, race.first, desc.desc, c, c2)
+                if (desc.charge != null && c == null) {
+                    Text(
+                        "Charge is set but not registered (charge `${desc.charge.first}')",
+                        Modifier.align(Alignment.End),
+                        color = MaterialTheme.colors.error
+                    )
+                }
+                Spacer(Modifier.height(7.dp))
+            }
         }
 
         items(classTraits.toList().sortedBy { it.second.source }) { (name, desc) ->
-            TraitCard(name, desc.source, desc.desc)
-            Spacer(Modifier.height(7.dp))
+            Column(Modifier.fillMaxWidth()) {
+                val (c, c2) = chData(desc.charge)
+                TraitCard(name, desc.source, desc.desc, c, c2)
+                if (desc.charge != null && c == null) {
+                    Text(
+                        "Charge is set but not registered (charge `${desc.charge.first}')",
+                        Modifier.align(Alignment.End),
+                        color = MaterialTheme.colors.error
+                    )
+                }
+                Spacer(Modifier.height(7.dp))
+            }
         }
 
         items(backgroundTraits.toList()) { (name, desc) ->
-            TraitCard(name, background.first, desc.desc)
-            Spacer(Modifier.height(7.dp))
+            Column(Modifier.fillMaxWidth()) {
+                val (c, c2) = chData(desc.charge)
+                TraitCard(name, background.first, desc.desc, c, c2)
+                if (desc.charge != null && c == null) {
+                    Text(
+                        "Charge is set but not registered (charge `${desc.charge.first}')",
+                        Modifier.align(Alignment.End),
+                        color = MaterialTheme.colors.error
+                    )
+                }
+                Spacer(Modifier.height(7.dp))
+            }
         }
     }
 }
