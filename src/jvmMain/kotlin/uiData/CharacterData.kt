@@ -486,8 +486,12 @@ class Character(
 
     fun itemsFor(a: AttackAction) =
         inventory.value.filterKeys { it.name == a.name.split('(')[0].trim() }.map { it.key }
-    fun spellsFor(s: SpellAttackAction) = spells.value.filter { it.name == s.name }
-    fun spellsFor(s: SpellDCAction) = spells.value.filter { it.name == s.name }
+    fun spellsFor(s: SpellAttackAction) =
+        spells.value.filter { it.name == s.name }
+            .ifEmpty { spells.value.filter { it.name == s.name.split('(')[0].trim() } }
+    fun spellsFor(s: SpellDCAction) =
+        spells.value.filter { it.name == s.name }
+            .ifEmpty { spells.value.filter { it.name == s.name.split('(')[0].trim() } }
 
     fun shortRest() { callOnTraits("onShortRest"); callOnTraits("onAnyRest") }
     fun longRest() { callOnTraits("onLongRest"); callOnTraits("onAnyRest") }
