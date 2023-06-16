@@ -10,24 +10,31 @@ import java.util.*
 object CMLOut {
     enum class MessageKind { INFO, WARNING, ERROR }
 
+    private var alsoStdout = false
     private val _stream = mutableStateOf(listOf<Pair<MessageKind, String>>())
     val stream: State<List<Pair<MessageKind, String>>> = _stream
 
     fun clearStream() { _stream.value = listOf() }
     private fun add(msg: String, kind: MessageKind) {
-        _stream.value = _stream.value + Pair(kind, "${formatTime()} $msg".replace("\t", "  "))
+        val message = "${formatTime()} $msg".replace("\t", "  ")
+        _stream.value += Pair(kind, message)
+        if(alsoStdout) println(message)
     }
     fun addInfo(msg: String) { add(msg, MessageKind.INFO) }
     fun addWarning(msg: String) { add(msg, MessageKind.WARNING) }
     fun addError(msg: String) { add(msg, MessageKind.ERROR) }
 
-    fun refresh() {
-        clearStream()
+    fun refresh(clear: Boolean = true) {
+        if(clear) {
+            clearStream()
+        }
         addInfo("Reloading cache...")
         CharacterData.clear()
         Library.clear()
         Scripts.loadCache()
     }
+
+    fun tee() { alsoStdout = true }
 
     fun formatTime(): String {
         return SimpleDateFormat("[hh:mm:ss]:").format(Date())

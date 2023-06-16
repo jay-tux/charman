@@ -31,7 +31,7 @@ stmt:
 // base statements
                 e=expr SEMI                                         #exprStmt
     |           VAR name=IDENT ASSIGN init=expr SEMI                #varDeclStmt
-    |           name=varRef ASSIGN value=expr SEMI                  #varStoreStmt
+    |           name=expr ASSIGN value=expr SEMI                    #varStoreStmt
 // conditionals and flow control
     |           IF P_O cond=expr P_C B_O bTrue=stmtSet B_C          #ifStmt
     |           IF P_O cond=expr P_C B_O bTrue=stmtSet B_C ELSE B_O bFalse=stmtSet B_C
@@ -44,10 +44,12 @@ stmt:
     |           RETURN v=expr SEMI                                  #returnValStmt
     ;
 
-varRef:
-                value=IDENT                                         #varName
-    |           base=varRef DOT name=IDENT                          #fieldExpr
-    ;
+//varRef:
+//                value=IDENT                                         #varName
+//    |           base=varRef DOT name=IDENT                          #fieldExpr
+////    |           e=indexExprR                                        #indexExprWrapper
+//    |           base=varRef BR_O index=expr BR_C                    #indexExpr
+//    ;
 
 expr:
 // Literals
@@ -56,9 +58,13 @@ expr:
     |           value=BOOL                                          #boolLit
     |           value=FLOAT                                         #floatLit
     |           value=DICE_LIT                                      #diceLit
-    |           value=varRef                                        #varExpr
-    |           base=expr BR_O index=expr BR_C                      #indexExpr
+//    |           value=varRef                                        #varExpr
     |           ph=PLACEHOLDER                                      #placeholderExpr
+// Variable references
+    |           THIS                                                #thisExpr
+    |           name=IDENT                                          #varName
+    |           e=expr DOT name=IDENT                               #fieldExpr
+    |           e=expr BR_O index=expr BR_C                         #indexExpr
 // Pseudo-constructors
     |           DOT type=IDENT                                      #ctorExpr
 // Arithmetic and operators

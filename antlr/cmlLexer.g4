@@ -32,6 +32,7 @@ FUN:            'fun';
 VAR:            'var';
 DATA:           'data';
 ELSE:           'else';
+THIS:           'this';
 BREAK:          'break';
 FIELD:          'field';
 UNTIL:          'until';

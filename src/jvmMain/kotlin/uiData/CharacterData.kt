@@ -4,18 +4,17 @@ import CMLOut
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.util.fastForEachReversed
-import arrow.core.Either
-import arrow.core.flatMap
-import arrow.core.left
-import arrow.core.right
+import arrow.core.*
 import cml.*
 import data.*
 import filterRight
+import mapOrEither
 import updateGet
 import kotlin.math.floor
+import kotlin.math.min
 import kotlin.math.roundToInt
 
-data class ClassDesc(val cls: InstanceVal, val level: Int, val isPrimary: Boolean)
+data class ClassDesc(val cls: InstanceVal, val level: Int, val hitDice: DiceVal, val isPrimary: Boolean)
 data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
 data class ItemDesc(val name: String, val weight: Float, val value: Triple<Int, String, InstanceVal>,
                     val actions: List<InstanceVal>, val traits: List<Triple<String, String, InstanceVal>>,
@@ -25,12 +24,85 @@ data class ItemDesc(val name: String, val weight: Float, val value: Triple<Int, 
 data class SpellDesc(
     val name: String, val school: String, val level: Int, val castingTime: String, val range: String,
     val components: List<String>, val duration: String, val actions: List<InstanceVal>, val desc: String,
-    val source: String
+    val source: String, val charge: Pair<String, Int>? = null
 )
+
+data class ClassTrait(val desc: String, val source: String, val instance: InstanceVal, val charge: Pair<String, Int>? = null)
+data class BaseTrait(val desc: String, val instance: InstanceVal, val charge: Pair<String, Int>? = null)
 
 data class MoneyDesc(
     val amount: Int, val fullName: String, val conversion: Int, val instance: InstanceVal
 )
+
+class ActionDesc private constructor(act: Action, val instance: InstanceVal, private val chargeData: Pair<String, Int>?) {
+    var action = act
+        private set
+
+    fun reload(c: Character): ActionDesc {
+        val copy = fromInstance(c, instance, chargeData)
+//        val frozen = action
+//        if(frozen is SpellDCAction && frozen.name.startsWith("Breath Weapon"))
+//            CMLOut.addInfo("Reloading action $instance")
+        return copy.fold({ CMLOut.addError(it.localizedMessage); this }) { it }
+    }
+
+    companion object {
+        fun fromInstance(c: Character, instance: InstanceVal, withCharges: Pair<String, Int>? = null): Either<CMLException, ActionDesc> {
+            val p = Character.posRest
+            return instance.getName(p).flatMap { name ->
+                instance.getList("tags", p).flatMap { tags ->
+                    tags.value.mapOrEither { t ->
+                        t.requireString(p)
+                    }
+                }.flatMap { tags ->
+                    instance.getList("baseAction", p).flatMap { b ->
+                        verifyBaseAction(c, name, instance.type.name, b.value, tags, p)
+                    }.map { action ->
+                        withCharges?.let { ActionWithCharges(action, it) } ?: action
+                    }
+                }
+            }.map { ActionDesc(it, instance, withCharges) }
+        }
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other is ActionDesc && action == other.action && instance == other.instance &&
+                chargeData == other.chargeData
+    }
+
+    override fun hashCode(): Int {
+        var result = instance.hashCode()
+        result = 31 * result + (chargeData?.hashCode() ?: 0)
+        result = 31 * result + action.hashCode()
+        return result
+    }
+}
+
+class SpellSlots {
+    private var number = arrayOf(0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+    operator fun get(i: Int): Int = number[i - 1]
+    override fun toString() = "[ ${number.joinToString { "$it" }} ]"
+    override fun hashCode() = number.contentHashCode()
+    override fun equals(other: Any?) = other is SpellSlots && number contentEquals other.number
+
+    fun reset() = SpellSlots()
+
+    fun useSlot(slot: Int): SpellSlots {
+        val copy = SpellSlots()
+        copy.number = number.copyOf()
+        copy.number[slot - 1]++
+        return copy
+    }
+
+    companion object {
+        fun from(count: List<Int>): SpellSlots {
+            val res = SpellSlots()
+            for (i in res.number.indices) res.number[i] = count[i]
+            return res
+        }
+    }
+}
 
 class Character(
     name: String,
@@ -45,19 +117,21 @@ class Character(
     val classes = mutableStateOf(classes.toMap())
     val abilities = mutableStateOf(abilities.toMap())
 
-    val classTraits = mutableStateOf(mapOf<String, Triple<String, String, InstanceVal>>())
-    val backgroundTraits = mutableStateOf(mapOf<String, Pair<String, InstanceVal>>())
-    val racialTraits = mutableStateOf(mapOf<String, Pair<String, InstanceVal>>())
+    val classTraits = mutableStateOf(mapOf<String, ClassTrait>())
+    val backgroundTraits = mutableStateOf(mapOf<String, BaseTrait>())
+    val racialTraits = mutableStateOf(mapOf<String, BaseTrait>())
 
     val skillProficiencies = mutableStateOf(listOf<InstanceVal>())
     val saveProficiencies = mutableStateOf(listOf<InstanceVal>())
     val itemProficiencies = mutableStateOf(listOf<String>())
     val saveMods = mutableStateOf(mapOf<String, Pair<Int, Boolean>>())
-    val skillMods = mutableStateOf(mapOf<String, Triple<Int, Boolean, String>>())
+    val skillMods = mutableStateOf(mapOf<String, Tuple4<Int, Boolean, String, Int>>())
+    val charges = mutableStateOf(mapOf<String, Pair<Int, Int>>()) // used, max
 
     val casterLevelX6 = mutableStateOf(0)
-    val specialCasting = mutableStateOf(mapOf<String, Pair<ListVal, List<List<Int>>>>())
-    val usedSpellSlots = mutableStateOf(listOf(0, 0, 0, 0, 0, 0, 0, 0, 0))
+    val specialCasting = mutableStateOf(mapOf<String, Pair<ListVal, List<SpellSlots>>>())
+    val usedSpellSlots = mutableStateOf(SpellSlots())
+    val usedSpellSlotsSpecial = mutableStateOf(mapOf<String, SpellSlots>())
 
     val languages = mutableMapOf<String, InstanceVal>()
     val inspiration = mutableStateOf(false)
@@ -72,7 +146,7 @@ class Character(
     val hitDice = mutableStateOf(mapOf<Int, Int>()) // (dice type, amount)
     val inventory = mutableStateOf(mapOf<ItemDesc, Int>())
     val money = mutableStateOf(Library.typesByKind("Currency").map { decl ->
-        val inst = InstanceVal(decl, posInit)
+        val inst = decl.construct(posInit)
         inst.getName(posInit).flatMap { name ->
             inst.getString("abbrev", posInit).flatMap { abbrev ->
                 inst.getInt("conversionRatio", posInit).map { ratio ->
@@ -82,18 +156,57 @@ class Character(
         }
     }.filterRight().toMap())
     val spells = mutableStateOf(listOf<SpellDesc>())
-    val actions = mutableStateOf(listOf<Action>())
+    val actions = mutableStateOf(listOf<ActionDesc>())
 
     val choices = mutableStateOf(Choices())
+    val notes = mutableStateOf("")
 
     private fun callOnAll(fn: String, args: List<Value> = listOf(), withResult: (Value) -> Unit) {
         Library.withCharacter(this) {
-            race.value.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
+            race.value.second.invoke(fn, args, posRender)?.let(withResult)
             classes.value.forEach { (_, v) ->
-                v.cls.type.functions[fn]?.call(args, posRender)?.let(withResult)
+                v.cls.invoke(fn, args, posRender)?.let(withResult)
             }
-            background.value.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
+            background.value.second.invoke(fn, args, posRender)?.let(withResult)
         }.mapLeft { CMLOut.addError(it.localizedMessage) }
+    }
+
+    fun callOnTraits(fn: String, args: List<Value> = listOf()) {
+        Library.withCharacter(this) {
+            classTraits.value.forEach { it.value.instance.invoke(fn, args, posRender) }
+            racialTraits.value.forEach { it.value.instance.invoke(fn, args, posRender) }
+            backgroundTraits.value.forEach { it.value.instance.invoke(fn, args, posRender) }
+        }
+        refreshData()
+    }
+
+    private fun <T> refold(e: Either<CMLException, T>, backup: T): T = e.fold({
+        CharacterData.setError(this, it)
+        backup
+    }) { it }
+
+    fun refreshData() {
+        val p = PosInfo("<runtime:character:refresh>", 0, 0)
+
+        classTraits.value = classTraits.value.map { (_, desc) ->
+            val n = refold(desc.instance.getName(p), "")
+            val d = refold(desc.instance.getString("desc", p), "")
+            Pair(n, desc.copy(desc = d))
+        }.associate { it }
+        racialTraits.value = racialTraits.value.map { (_, desc) ->
+            val n = refold(desc.instance.getName(p), "")
+            val d = refold(desc.instance.getString("desc", p), "")
+            Pair(n, desc.copy(desc = d))
+        }.associate { it }
+        backgroundTraits.value = backgroundTraits.value.map { (_, desc) ->
+            val n = refold(desc.instance.getName(p), "")
+            val d = refold(desc.instance.getString("desc", p), "")
+            Pair(n, desc.copy(desc = d))
+        }.associate { it }
+
+        actions.value = actions.value.map { a ->
+            a.reload(this)
+        }
     }
 
     private fun recalcAC() {
@@ -102,13 +215,11 @@ class Character(
         Library.withCharacter(this) {
             inventory.value.forEach { (desc, _) ->
                 if (desc.equipped) {
-                    desc.instance.type.functions["onDon"]?.call(listOf(), posRender)
+                    desc.instance.invoke("onDon", listOf(), posRender)
                 }
             }
 
-            classTraits.value.forEach { (_, trait) ->
-                trait.third.type.functions["onDeltaAC"]?.call(listOf(), posRender)
-            }
+            callOnTraits("onDeltaAC", listOf())
         }
         ac.value += acDelta
         acDelta = 0
@@ -123,7 +234,7 @@ class Character(
         }
 
         Library.withCharacter(this) {
-            val dex = Library.types()["Dexterity"]?.let { InstanceVal(it, posRender) }
+            val dex = Library.types()["Dexterity"]?.let { it.construct(posRender) }
             if (dex == null) CMLOut.addWarning("Ability Dexterity does not exist.")
             else {
                 val mod = abilityMod(dex)
@@ -149,13 +260,16 @@ class Character(
         }
         saveMods.value = saveModsM
 
-        val skillModsM = mutableMapOf<String, Triple<Int, Boolean, String>>()
+        val skillModsM = mutableMapOf<String, Tuple4<Int, Boolean, String, Int>>()
         Library.typesByKind("Skill").forEach { decl ->
-            val name = decl.fields.getVar("name")
+            val inst = decl.construct(posRender)
+            val name = inst.getFieldAsVar("name")
+
             if(name == null) CMLOut.addWarning(CMLException.invalidField(decl.name, "name", posRender).localizedMessage)
             else if(name.value !is StringVal) CMLOut.addWarning(CMLException.typeError("String", name.value, posRender).localizedMessage)
             else {
-                val ability = decl.fields.getVar("reliesOn")
+                val fourth = skillMods.value[(name.value as StringVal).value]?.fourth ?: 0
+                val ability = inst.getFieldAsVar("reliesOn")
                 var mod = 0
                 var ab = "Invalid"
                 if(ability == null) CMLOut.addWarning(CMLException.invalidField(decl.name, "reliesOn", posRender).localizedMessage)
@@ -168,8 +282,8 @@ class Character(
                     }
                 }
 
-                if(skillProficiencies.value.contains(InstanceVal(decl, posRender))) skillModsM[(name.value as StringVal).value] = Triple(mod + proficiency(), true, ab)
-                else skillModsM[(name.value as StringVal).value] = Triple(mod, false, ab)
+                if(skillProficiencies.value.contains(inst)) skillModsM[(name.value as StringVal).value] = Tuple4(mod + proficiency(), true, ab, fourth)
+                else skillModsM[(name.value as StringVal).value] = Tuple4(mod, false, ab, fourth)
             }
         }
         skillMods.value = skillModsM
@@ -197,28 +311,22 @@ class Character(
         return 8 + proficiency() + abilityMod(ab)
     }
 
-    private fun totalSlotsFor(level: Int): Int {
-        var res = 0
-        val actualL = casterLevelX6.value / 6
-        if(actualL > 0) {
-            val ref = defaultSpellSlots[actualL - 1]
-            res += ref[level - 1]
-        }
-        specialCasting.value.forEach { (n, d) ->
-            val l = classes.value[n]?.level
-            if(l == null) { CMLOut.addWarning("Spell slots have been added for class $n, but $name is not of this class.") }
-            else if(l > 0) {
-                val ref = d.second[l - 1]
-                res += ref[level - 1]
-            }
-        }
-        return res
+    fun useSpellSlot(level: Int) {
+        if(usedSpellSlots.value[level] < defaultSpellSlots[casterLevelX6.value / 6 - 1][level])
+            usedSpellSlots.value = usedSpellSlots.value.useSlot(level)
     }
 
-    fun useSpellSlot(level: Int) {
-        val mod = usedSpellSlots.value.toMutableList()
-        if(mod[level - 1] < totalSlotsFor(level)) mod[level - 1]++
-        usedSpellSlots.value = mod.toList()
+    fun useSpecialSpellSlot(level: Int, cls: String) {
+        val dup = usedSpellSlotsSpecial.value.toMutableMap()
+        val tmp = dup[cls]
+        val caster = specialCasting.value[cls]
+        val l = classes.value[cls]?.level
+        if(l == null) { CMLOut.addWarning("Spell slots have been added for class $cls, but $name is not of this class.") }
+        else if(tmp != null && caster != null) {
+            if(tmp[level] < caster.second[l][level])
+                dup[cls] = tmp.useSlot(level)
+        }
+        usedSpellSlotsSpecial.value = dup
     }
 
     fun serialize(): String {
@@ -252,6 +360,17 @@ class Character(
         money.value.toSerializable { _, desc ->
             Pair(desc.instance.type.toCtor(), desc.amount.toSerializable())
         }.toField("currency").addTo(root)
+        charges.value.toSerializable { name, (used, max) ->
+            Pair(name.toSerializable(), listOf(used, max).toSerializable { it.toSerializable() })
+        }.toField("charges").addTo(root)
+        (1..9).map { usedSpellSlots.value[it] }.toSerializable { it.toSerializable() }.toField("usedSpellSlots").addTo(root)
+        usedSpellSlotsSpecial.value.toSerializable { cls, slots ->
+            Pair(
+                cls.toSerializable(),
+                (1..9).map { slots[it] }.toSerializable { it.toSerializable() }
+            )
+        }.toField("usedSpellSlotsSpecial").addTo(root)
+        notes.value.toSerializable().toField("notes").addTo(root)
         return root.serialize()
     }
 
@@ -349,10 +468,10 @@ class Character(
 
         if(filterActions) {
             actions.value = actions.value.filter {
-                when(it) {
-                    is AttackAction -> itemsFor(it).isNotEmpty()
-                    is SpellAttackAction -> spellsFor(it).any { s -> s.source != desc.name }
-                    is SpellDCAction -> spellsFor(it).any { s -> s.source != desc.name }
+                when(val a = it.action) {
+                    is AttackAction -> itemsFor(a).isNotEmpty()
+                    is SpellAttackAction -> spellsFor(a).any { s -> s.source != desc.name }
+                    is SpellDCAction -> spellsFor(a).any { s -> s.source != desc.name }
                     else -> true
                 }
             }
@@ -368,8 +487,24 @@ class Character(
 
     fun itemsFor(a: AttackAction) =
         inventory.value.filterKeys { it.name == a.name.split('(')[0].trim() }.map { it.key }
-    fun spellsFor(s: SpellAttackAction) = spells.value.filter { it.name == s.name }
-    fun spellsFor(s: SpellDCAction) = spells.value.filter { it.name == s.name }
+    fun spellsFor(s: SpellAttackAction) =
+        spells.value.filter { it.name == s.name }
+            .ifEmpty { spells.value.filter { it.name == s.name.split('(')[0].trim() } }
+    fun spellsFor(s: SpellDCAction) =
+        spells.value.filter { it.name == s.name }
+            .ifEmpty { spells.value.filter { it.name == s.name.split('(')[0].trim() } }
+
+    fun shortRest() { callOnTraits("onShortRest"); callOnTraits("onAnyRest") }
+    fun longRest() { callOnTraits("onLongRest"); callOnTraits("onAnyRest") }
+    fun dawn() { callOnTraits("onDawn") }
+
+    fun useCharge(c: String, amount: Int) {
+        val old = charges.value[c]
+        if(old != null) {
+            charges.value -= c
+            charges.value += Pair(c, old.copy(first = min(old.first + amount, old.second)))
+        }
+    }
 
     companion object {
         val posRender = PosInfo("<runtime:character:ui>", 0, 0)
@@ -378,27 +513,27 @@ class Character(
         val posSer = PosInfo("<runtime:character:serialize>", 0, 0)
 
         val defaultSpellSlots = listOf(
-            //     0  1  2  3  4  5  6  7  8  9
-            listOf(2, 0, 0, 0, 0, 0, 0, 0, 0, 0), // Level  1
-            listOf(3, 0, 0, 0, 0, 0, 0, 0, 0, 0), // Level  2
-            listOf(4, 2, 0, 0, 0, 0, 0, 0, 0, 0), // Level  3
-            listOf(4, 3, 0, 0, 0, 0, 0, 0, 0, 0), // Level  4
-            listOf(4, 3, 2, 0, 0, 0, 0, 0, 0, 0), // Level  5
-            listOf(4, 3, 3, 0, 0, 0, 0, 0, 0, 0), // Level  6
-            listOf(4, 3, 3, 1, 0, 0, 0, 0, 0, 0), // Level  7
-            listOf(4, 3, 3, 2, 0, 0, 0, 0, 0, 0), // Level  8
-            listOf(4, 3, 3, 3, 1, 0, 0, 0, 0, 0), // Level  9
-            listOf(4, 3, 3, 3, 2, 0, 0, 0, 0, 0), // Level 10
-            listOf(4, 3, 3, 3, 2, 1, 0, 0, 0, 0), // Level 11
-            listOf(4, 3, 3, 3, 2, 1, 0, 0, 0, 0), // Level 12
-            listOf(4, 3, 3, 3, 2, 1, 1, 0, 0, 0), // Level 13
-            listOf(4, 3, 3, 3, 2, 1, 1, 0, 0, 0), // Level 14
-            listOf(4, 3, 3, 3, 2, 1, 1, 1, 0, 0), // Level 15
-            listOf(4, 3, 3, 3, 2, 1, 1, 1, 0, 0), // Level 16
-            listOf(4, 3, 3, 3, 2, 1, 1, 1, 0, 1), // Level 17
-            listOf(4, 3, 3, 3, 3, 1, 1, 1, 0, 1), // Level 18
-            listOf(4, 3, 3, 3, 3, 2, 1, 1, 0, 1), // Level 19
-            listOf(4, 3, 3, 3, 3, 2, 2, 1, 0, 1), // Level 20
+            //                     1  2  3  4  5  6  7  8  9
+            SpellSlots.from(listOf(2, 0, 0, 0, 0, 0, 0, 0, 0)), // Level  1
+            SpellSlots.from(listOf(3, 0, 0, 0, 0, 0, 0, 0, 0)), // Level  2
+            SpellSlots.from(listOf(4, 2, 0, 0, 0, 0, 0, 0, 0)), // Level  3
+            SpellSlots.from(listOf(4, 3, 0, 0, 0, 0, 0, 0, 0)), // Level  4
+            SpellSlots.from(listOf(4, 3, 2, 0, 0, 0, 0, 0, 0)), // Level  5
+            SpellSlots.from(listOf(4, 3, 3, 0, 0, 0, 0, 0, 0)), // Level  6
+            SpellSlots.from(listOf(4, 3, 3, 1, 0, 0, 0, 0, 0)), // Level  7
+            SpellSlots.from(listOf(4, 3, 3, 2, 0, 0, 0, 0, 0)), // Level  8
+            SpellSlots.from(listOf(4, 3, 3, 3, 1, 0, 0, 0, 0)), // Level  9
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 0, 0, 0, 0)), // Level 10
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 0, 0, 0)), // Level 11
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 0, 0, 0)), // Level 12
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 0, 0)), // Level 13
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 0, 0)), // Level 14
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 1, 1)), // Level 15
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 1, 1)), // Level 16
+            SpellSlots.from(listOf(4, 3, 3, 3, 2, 1, 1, 1, 1)), // Level 17
+            SpellSlots.from(listOf(4, 3, 3, 3, 3, 1, 1, 1, 1)), // Level 18
+            SpellSlots.from(listOf(4, 3, 3, 3, 3, 2, 1, 1, 1)), // Level 19
+            SpellSlots.from(listOf(4, 3, 3, 3, 3, 2, 2, 1, 1)), // Level 20
         )
 
         fun mold() = Character(
@@ -412,7 +547,7 @@ class Character(
         // data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
         fun loadAbilities() =
             Library.typesByKind("Ability").map { ability ->
-                val inst = InstanceVal(ability, posInit)
+                val inst = ability.construct(posInit)
                 inst.getString("abbrev", posInit).flatMap { abbrev ->
                     inst.getName(posInit)
                         .map { name -> AbilityDesc(name, inst, 0) }
@@ -433,6 +568,7 @@ object CharacterData {
 
     fun clear() {
         _characters.value = listOf()
+        _loadedCharacters.value = listOf()
     }
 
     fun setError(index: Int, message: String) {
@@ -446,12 +582,23 @@ object CharacterData {
         )
     }
 
+    fun setError(v: Character, m: CMLException) {
+        _characters.value = _characters.value.mapIndexed { idx, it ->
+            it.fold({ it.left() }) {
+                if(_loadedCharacters.value[idx].fold({ false }) { it === v })
+                    Pair(it.type.name, m).left()
+                else
+                    it.right()
+            }
+        }
+    }
+
     fun newCharacter(c: Character) {
         _loadedCharacters.value += c.right()
     }
 
     fun loadFromLibrary() {
-        _characters.value = _characters.value + Library.typesByKind("Character").map { InstanceVal(it, runtimeLoadPos).right() }
+        _characters.value = _characters.value + Library.typesByKind("Character").map { it.construct(runtimeLoadPos).right() }
         _loadedCharacters.value = characters.value.map { pre -> pre.mapLeft { it.second }.flatMap { Character.loadFromInstance(it) } }
     }
 

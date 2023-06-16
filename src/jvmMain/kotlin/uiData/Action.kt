@@ -9,12 +9,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cml.DiceVal
 import cml.InstanceVal
 import data.getString
-import ui.widgets.BoldAndNot
-import ui.widgets.spellDetails
+import ui.widgets.*
 import withSign
 
 data class DamageKind(val name: String, val inst: InstanceVal)
@@ -22,7 +22,7 @@ data class Damage(val dice: DiceVal, val damageKind: DamageKind)
 
 interface Action {
     @Composable
-    fun render(c: Character, profTags: List<String>)
+    fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit)
 
     @Composable
     fun renderFull(c: Character, scope: BoxScope, modifier: Modifier)
@@ -38,10 +38,16 @@ class AttackAction(
     val kind: String,
     val tags: List<String>
 ): Action {
+    override fun equals(other: Any?): Boolean {
+        return other is AttackAction && name == other.name && stat == other.stat && reachRange == other.reachRange &&
+                targetDesc == other.targetDesc && primary == other.primary && secondary == other.secondary &&
+                kind == other.kind && tags == other.tags
+    }
+
     @Composable
-    override fun render(c: Character, profTags: List<String>) {
+    override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) {
         val dmg = remember { "${primary.dice.repr()}${c.abilityMod(stat.instance).withSign()} ${primary.damageKind.name} ${if(secondary.isNotEmpty()) "*" else ""}" }
-        val mod = c.abilityMod(stat.instance) + (if(profTags.intersect(tags).isNotEmpty()) c.proficiency() else 0)
+        val mod = c.abilityMod(stat.instance) + (if(profTags.intersect(tags.toSet()).isNotEmpty()) c.proficiency() else 0)
         Row {
             Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold)
             Text(reachRange, Modifier.weight(0.175f))
@@ -71,6 +77,18 @@ class AttackAction(
             }
         }
     }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + stat.hashCode()
+        result = 31 * result + reachRange.hashCode()
+        result = 31 * result + targetDesc.hashCode()
+        result = 31 * result + primary.hashCode()
+        result = 31 * result + secondary.hashCode()
+        result = 31 * result + kind.hashCode()
+        result = 31 * result + tags.hashCode()
+        return result
+    }
 }
 
 class SpellAttackAction(
@@ -83,8 +101,14 @@ class SpellAttackAction(
     val addModifier: Boolean = false,
     val tags: List<String>
 ): Action {
+    override fun equals(other: Any?): Boolean {
+        return other is SpellAttackAction && name == other.name && stat == other.stat &&
+                reachRange == other.reachRange && targetDesc == other.targetDesc && damage == other.damage &&
+                kind == other.kind && addModifier == other.addModifier && tags == other.tags
+    }
+
     @Composable
-    override fun render(c: Character, profTags: List<String>) {
+    override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) {
         val dmg = remember {
             val tmp = if(addModifier) c.abilityMod(stat.instance).withSign() else ""
             val tmp2 = if(damage.size > 1) " *" else ""
@@ -103,7 +127,23 @@ class SpellAttackAction(
 
     @Composable
     override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
-        scope.spellDetails(c.spellsFor(this)[0], modifier)
+        val maybe = c.spellsFor(this)
+        if(maybe.isNotEmpty())
+            scope.spellDetails(maybe[0], modifier)
+        else
+            scope.noDetails(name, modifier)
+    }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + stat.hashCode()
+        result = 31 * result + reachRange.hashCode()
+        result = 31 * result + targetDesc.hashCode()
+        result = 31 * result + damage.hashCode()
+        result = 31 * result + kind.hashCode()
+        result = 31 * result + addModifier.hashCode()
+        result = 31 * result + tags.hashCode()
+        return result
     }
 }
 
@@ -117,8 +157,14 @@ class SpellDCAction(
     val saveAbility: InstanceVal,
     val tags: List<String>
 ): Action {
+    override fun equals(other: Any?): Boolean {
+        return other is SpellDCAction && name == other.name && stat == other.stat && reachRange == other.reachRange &&
+                targetDesc == other.targetDesc && damage == other.damage && kind == other.kind &&
+                saveAbility == other.saveAbility && tags == other.tags
+    }
+
     @Composable
-    override fun render(c: Character, profTags: List<String>) {
+    override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) {
         val dmg = remember {
             val tmp = if(damage.size > 1) " *" else ""
 
@@ -131,7 +177,7 @@ class SpellDCAction(
         }
 
         Row {
-            Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold)
+            Text(name, Modifier.weight(0.225f), fontWeight = FontWeight.Bold, overflow = TextOverflow.Ellipsis, maxLines = 1)
             Text(reachRange, Modifier.weight(0.175f))
             Row(Modifier.weight(0.15f)) {
                 Text("DC ")
@@ -145,6 +191,50 @@ class SpellDCAction(
 
     @Composable
     override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
-        scope.spellDetails(c.spellsFor(this)[0], modifier)
+        val maybe = c.spellsFor(this)
+        if(maybe.isNotEmpty())
+            scope.spellDetails(maybe[0], modifier)
+        else
+            scope.noDetails(name, modifier)
     }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + stat.hashCode()
+        result = 31 * result + reachRange.hashCode()
+        result = 31 * result + targetDesc.hashCode()
+        result = 31 * result + damage.hashCode()
+        result = 31 * result + kind.hashCode()
+        result = 31 * result + saveAbility.hashCode()
+        result = 31 * result + tags.hashCode()
+        return result
+    }
+}
+
+class ActionWithCharges(private val base: Action, private val chargeDesc: Pair<String, Int>) : Action {
+    override fun equals(other: Any?): Boolean {
+        return other is ActionWithCharges && base == other.base && chargeDesc == other.chargeDesc
+    }
+
+    @Composable
+    override fun render(c: Character, profTags: List<String>, useCharge: (String, Int) -> Unit) = Column {
+        base.render(c, profTags, useCharge)
+        indented {
+            val chData = c.charges.value[chargeDesc.first]
+            if(chData == null) Text("(cannot get charge data for `${chargeDesc.first}')", color = MaterialTheme.colors.error)
+            else ChargesWidget(chData) { c.useCharge(chargeDesc.first, chargeDesc.second) }
+        }
+    }
+
+    @Composable
+    override fun renderFull(c: Character, scope: BoxScope, modifier: Modifier) {
+        base.renderFull(c, scope, modifier)
+    }
+
+    override fun hashCode(): Int {
+        var result = base.hashCode()
+        result = 31 * result + chargeDesc.hashCode()
+        return result
+    }
+
 }

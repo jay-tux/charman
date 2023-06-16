@@ -1,6 +1,5 @@
 package cml
 
-import CMLOut
 import arrow.core.Either
 
 abstract class Value(pos: PosInfo) : AstNode(pos) {
@@ -16,51 +15,34 @@ abstract class BaseValue<T>(val value: T, pos: PosInfo) : Value(pos) {
     override fun hashCode(): Int {
         return value.hashCode()
     }
+
+    override fun equals(other: Any?): Boolean {
+        return other is BaseValue<*> && other.value == value
+    }
 }
 
 class BoolVal(value: Boolean, pos: PosInfo): BaseValue<Boolean>(value, pos) {
     override fun repr(): String = "$value"
-    override fun equals(other: Any?): Boolean {
-        return if(other is BoolVal) value == other.value else false
-    }
     override fun copy(newPos: PosInfo): Value = BoolVal(value, newPos)
 }
 class IntVal(value: Int, pos: PosInfo) : BaseValue<Int>(value, pos) {
     override fun repr(): String = "$value"
-    override fun equals(other: Any?): Boolean {
-        return if(other is IntVal) value == other.value else false
-    }
     override fun copy(newPos: PosInfo): Value = IntVal(value, newPos)
 }
 class FloatVal(value: Float, pos: PosInfo) : BaseValue<Float>(value, pos) {
     override fun repr(): String = "$value"
-    override fun equals(other: Any?): Boolean {
-        return if(other is FloatVal) value == other.value else false
-    }
     override fun copy(newPos: PosInfo): Value = FloatVal(value, newPos)
 }
 class StringVal(value: String, pos: PosInfo): BaseValue<String>(value, pos){
     override fun repr(): String = value
-    override fun equals(other: Any?): Boolean {
-        if(other is StringVal) {
-            return value == other.value
-        }
-        return false
-    }
     override fun copy(newPos: PosInfo): Value = StringVal(value, newPos)
 }
 class ListVal(value: MutableList<Value>, pos: PosInfo): BaseValue<MutableList<Value>>(value, pos) {
     override fun repr(): String = "[ ${value.joinToString(", ") { it.repr() }} ]"
-    override fun equals(other: Any?): Boolean {
-        return if(other is ListVal) value == other.value else false
-    }
     override fun copy(newPos: PosInfo): Value = ListVal(value.map { it.copy() }.toMutableList(), newPos)
 }
 class DictVal(value: MutableMap<Value, Value>, pos: PosInfo): BaseValue<MutableMap<Value, Value>>(value, pos) {
     override fun repr(): String = "{ ${value.map { "(${it.key.repr()} = ${it.value.repr()})" }.joinToString(", ")} }"
-    override fun equals(other: Any?): Boolean {
-        return if(other is DictVal) value == other.value else false
-    }
     override fun copy(newPos: PosInfo): Value = DictVal(value.map { (k, v) -> Pair(k.copy(), v.copy()) }.associate { it }.toMutableMap(), newPos)
 }
 class RangeVal(val begin: Int, val end: Int, pos: PosInfo): Value(pos) {
@@ -93,9 +75,15 @@ class VoidVal(pos: PosInfo): Value(pos) {
     override fun copy(newPos: PosInfo): Value = VoidVal(newPos)
     override fun hashCode(): Int = javaClass.hashCode()
 }
-class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
+class InstanceVal private constructor(val type: TopLevelDecl, val fields: ExecEnvironment, pos: PosInfo): Value(pos) {
+    constructor(type: TopLevelDecl, fields: Map<String, Value>, pos: PosInfo): this(type, ExecEnvironment(fields, pos), pos)
+
+    init {
+        fields.thisVar = this
+    }
+
     override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
-    override fun copy(newPos: PosInfo): Value = InstanceVal(type.construct(), newPos)
+    override fun copy(newPos: PosInfo): Value = InstanceVal(type, fields, newPos)
 
     override fun equals(other: Any?): Boolean {
         if(other !is InstanceVal) return false
@@ -110,32 +98,22 @@ class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     }
 
     inline fun <reified T: Value> attemptFieldAs(field: String, typename: String, rPos: PosInfo): Either<CMLException, T> {
-        return when(val variable = type.getField(field)) {
+        return when(val variable = fields.getVar(field)?.value) {
             null -> Either.Left(CMLException.invalidField(repr(), field, rPos))
             !is T -> Either.Left(CMLException.typeError(typename, variable, rPos))
             else -> Either.Right(variable)
         }
     }
 
-    inline fun <reified T: Value> ifKindGetFieldAs(kind: String, field: String, typename: String, rPos: PosInfo): T {
-        if(type.kind != kind) { throw CMLException.wrongKind(kind, type.kind, rPos) }
-        return getFieldAs(field, typename, rPos)
-    }
-
     inline fun <reified T: Value> getFieldAs(field: String, typename: String, rPos: PosInfo): T {
-        val variable = type.getField(field) ?: throw CMLException.invalidField(repr(), field, rPos)
+        val variable = fields.getVar(field)?.value ?: throw CMLException.invalidField(repr(), field, rPos)
         if(variable !is T) throw CMLException.typeError(typename, variable, rPos)
         return variable
     }
-}
 
-class DelayedVal(val scope: ChoiceScope, val name: String, pos: PosInfo): Value(pos) {
-    override fun repr(): String {
-        CMLOut.addWarning("Attempting to take repr of a delayed value (choice value)")
-        return "(delayed choice value `$name')"
-    }
+    fun invoke(name: String, args: List<Value>, callSite: PosInfo) = type.invokeWith(name, args, fields, callSite)
 
-    override fun copy(newPos: PosInfo): Value = DelayedVal(scope, name, newPos)
+    fun getFieldAsVar(field: String) = fields.getVar(field)
 }
 
 fun typeName(v: Value): String = when(v) {
@@ -153,12 +131,15 @@ fun typeName(v: Value): String = when(v) {
     else -> throw CMLException.invalidType()
 }
 
-class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos: PosInfo) {
+open class Variable protected constructor(allowVoid: Boolean, val name: String, v: Value, val isImmutable: Boolean, val declPos: PosInfo) {
     var value: Value = v
         private set
 
     init {
-        if(v is VoidVal) throw CMLException.voidVarException(name, declPos)
+        if(!allowVoid && v is VoidVal) throw CMLException.voidVarException(name, declPos)
+    }
+
+    constructor(name: String, v: Value, isImmutable: Boolean, declPos: PosInfo) : this(false, name, v, isImmutable, declPos) {
     }
 
     override fun equals(other: Any?): Boolean {
@@ -166,7 +147,7 @@ class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos
         return name == other.name && value == other.value && isImmutable == other.isImmutable
     }
 
-    fun safeOverwrite(v: Value, pos: PosInfo) {
+    open fun safeOverwrite(v: Value, pos: PosInfo) {
         // overwrite position is given by the value
         if(isImmutable) throw CMLException.overwriteImmutable(name, declPos, pos)
         else {
@@ -189,29 +170,49 @@ class Variable(val name: String, v: Value, val isImmutable: Boolean, val declPos
     fun isDice() = value is DiceVal
 
     fun copy(): Variable = Variable(name, value.copy(), isImmutable, declPos)
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + isImmutable.hashCode()
+        result = 31 * result + declPos.hashCode()
+        result = 31 * result + value.hashCode()
+        return result
+    }
+}
+
+class ListIndexVariable(private val l: MutableList<Value>, private val i: Int, isImmutable: Boolean, declPos: PosInfo)
+    : Variable("[index variable]", l[i], isImmutable, declPos) {
+    override fun safeOverwrite(v: Value, pos: PosInfo) {
+        if(isImmutable) throw CMLException.overwriteImmutable("[index into list]", declPos, pos)
+        else l[i] = v
+    }
+}
+
+class DictIndexVariable(private val d: MutableMap<Value, Value>, val k: Value, isImmutable: Boolean, declPos: PosInfo)
+    : Variable(true, "[index variable]", d[k] ?: VoidVal(declPos), isImmutable, declPos) {
+    override fun safeOverwrite(v: Value, pos: PosInfo) {
+        if(isImmutable) throw CMLException.overwriteImmutable("[index into dict]", declPos, pos)
+        else d[k] = v
+    }
 }
 
 class ExecEnvironment private constructor(
-    private val parent: ExecEnvironment?, ignore: Boolean
+    private val parent: ExecEnvironment?, ignore: Boolean, private val pos: PosInfo
 ) {
-    constructor(parent: ExecEnvironment) : this(parent, false) {
-        functions = parent.functions
+    constructor(parent: ExecEnvironment, pos: PosInfo) : this(parent, false, pos) {}
+
+    constructor(vars: Map<String, Value>, pos: PosInfo) : this(null, false, pos) {
+        variables.putAll(vars.map { Pair(it.key, Variable(it.key, it.value.copy(), false, it.value.pos)) })
     }
 
-    constructor(funcs: Map<String, FunDecl>) : this(null, false) {
-        functions = funcs
-    }
-
-    private var functions = mapOf<String, FunDecl>()
-    private val variables = mutableMapOf<String, Variable>()
-
+    var thisVar: InstanceVal? = null
     var varsAreImmutable: Boolean = false
         private set
-    var isInLoop: Boolean = false
-        private set
+    private var isInLoop: Boolean = false
     var hitBreak = false
     var hitReturn = false
     var returnValue: Value = VoidVal(PosInfo("", 0, 0))
+
+    private val variables = mutableMapOf<String, Variable>()
 
     override fun equals(other: Any?): Boolean {
         if(other !is ExecEnvironment) return false
@@ -220,24 +221,28 @@ class ExecEnvironment private constructor(
 
     override fun hashCode(): Int = Triple(variables, varsAreImmutable, isInLoop).hashCode()
 
-    fun isInThisEnv(name: String) = variables.containsKey(name)
-    fun isInEnv(name: String): Boolean = isInThisEnv(name) || (parent?.isInEnv(name) ?: false)
-    fun containing(name: String): ExecEnvironment? = if(variables.containsKey(name)) this else parent?.containing(name)
+    fun isInLoop() = isInLoop || (parent?.isInLoop ?: false)
     fun getVar(name: String): Variable? = variables[name] ?: parent?.getVar(name) ?: Library.getGlobal(name)
-    fun vars() = variables.keys
-    fun log() = variables.map { "${it.key} = ${it.value.value.repr()}" }.joinToString(", ")
 
-    fun isFunction(name: String): Boolean =
-        StdLib.isStd(name) || Library.isLibFunc(name) || functions.containsKey(name)
+//    fun isEnvFunction(name: String): Boolean =
+//        thisVar?.type?.isFun(name) == true || (parent !== this && parent?.isEnvFunction(name) == true)
+
+    fun listVars() = variables.map { it.key }
+
+    fun isEnvFunction(name: String): Boolean {
+        if(thisVar?.type?.isFun(name) == true) return true
+        return parent !== this && parent?.isEnvFunction(name) == true
+    }
+
+    fun currentThis(): InstanceVal? = thisVar ?: parent?.currentThis()
 
     fun invoke(name: String, args: List<Value>, callSite: PosInfo): Value? {
-        val f = functions[name]
-        if(f == null) {
-            if(Library.isLibFunc(name)) return Library.invoke(name, args, callSite)
-            if(StdLib.isStd(name)) return StdLib.invoke(name, args, callSite)
-            return null
+        if(isEnvFunction(name)) {
+            return currentThis()?.type?.invokeWith(name, args, this, callSite)
         }
-        return functions[name]?.call(args, callSite)
+        return if(Library.isLibFunc(name)) Library.invoke(name, args, callSite)
+            else if(StdLib.isStd(name)) StdLib.invoke(name, args, callSite)
+            else null
     }
 
     fun addVar(name: String, value: Value, currPos: PosInfo) {
@@ -245,29 +250,14 @@ class ExecEnvironment private constructor(
         variables[name] = Variable(name, value, varsAreImmutable, currPos)
     }
 
-    fun copy(useFuns: Map<String, FunDecl>): ExecEnvironment {
-        if(parent != null) throw CMLException.internalCopyExecEnv()
-        val res = ExecEnvironment(useFuns)
-        res.varsAreImmutable = varsAreImmutable
-        res.isInLoop = isInLoop
-        res.hitBreak = hitBreak
-        res.hitReturn = hitReturn
-        res.returnValue = returnValue
-        res.variables.clear()
-        variables.forEach { (varName, varVal) ->
-            res.variables[varName] = varVal.copy()
-        }
-        return res
-    }
-
     companion object {
-        fun defaultEnv(parent: ExecEnvironment): ExecEnvironment = ExecEnvironment(parent)
+        fun defaultEnv(parent: ExecEnvironment, pos: PosInfo): ExecEnvironment = ExecEnvironment(parent, pos)
 
-        fun constVarEnv(parent: ExecEnvironment): ExecEnvironment = defaultEnv(parent).also {
+        fun constVarEnv(parent: ExecEnvironment, pos: PosInfo): ExecEnvironment = defaultEnv(parent, pos).also {
             it.varsAreImmutable = true
         }
 
-        fun loopEnv(parent: ExecEnvironment): ExecEnvironment = defaultEnv(parent).also {
+        fun loopEnv(parent: ExecEnvironment, pos: PosInfo): ExecEnvironment = defaultEnv(parent, pos).also {
             it.isInLoop = true
         }
     }

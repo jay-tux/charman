@@ -9,7 +9,6 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import cml.InstanceVal
 import cml.Library
 import data.loadItem
 import filterRight
@@ -53,7 +52,7 @@ fun ItemDialog(onClose: () -> Unit, onAdd: (ItemDesc, Int) -> Unit) = DefaultDia
 
     val items = remember {
         Library.typesByKind("Item").map {
-            Character.loadItem(InstanceVal(it, Character.posRender))
+            Character.loadItem(it.construct(Character.posRender))
                 .map { (desc, _) -> desc }
                 .mapLeft { err -> CMLOut.addError(err.localizedMessage) }
         }.filterRight().sortedBy { it.name }

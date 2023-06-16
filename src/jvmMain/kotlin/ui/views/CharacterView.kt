@@ -21,18 +21,17 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import cml.CMLException
-import cml.IntVal
-import cml.Library
-import cml.Value
+import cml.*
 import ui.Renderer
 import ui.dialogs.CurrencyDialog
 import ui.dialogs.ItemDialog
+import ui.dialogs.RollDialog
 import ui.dialogs.choiceDispatcher
 import ui.widgets.*
 import uiData.Character
 import uiData.CharacterData
 import uiData.ClassDesc
+import uiData.toMod
 import withSign
 
 @Composable
@@ -87,13 +86,15 @@ fun RowScope.sheetTopRow(data: Character) {
     val race by data.race
     val background by data.background
     val racialTraits by data.racialTraits
-    val classTraits by data.classTraits
+    var classTraits by data.classTraits
     var count by remember { mutableStateOf(0) }
     var options by remember { mutableStateOf(listOf<Value>()) }
     var setCallback by remember { mutableStateOf({ _: Value -> }) }
     val choiceNo = remember { mutableStateOf(0) }
+    var addingHP by remember { mutableStateOf(false) }
+    var addDice by remember { mutableStateOf(DiceVal(1, 1, Character.posRender)) }
 
-    val levelUp = { cName: String, cl: ClassDesc ->
+    val startLevelUp = { cName: String, cl: ClassDesc ->
         Library.withChoices(
             c = data,
             selector = { it.classesChoices[cName] },
@@ -103,19 +104,15 @@ fun RowScope.sheetTopRow(data: Character) {
         ) {
             val args = listOf(IntVal(cl.level + 1, Character.posInit))
 
-            cl.cls.type.functions["onLevelUp"]?.call(args, Character.posInit)
+            cl.cls.invoke("onLevelUp", args, Character.posInit)
                 ?: CMLOut.addWarning("Cannot call onLevelUp for $cName")
-            classTraits.forEach { trait ->
-                trait.value.third.type.functions["onLevelUp"]?.call(args, Character.posInit)
-                    ?: CMLOut.addWarning("Cannot call onLevelUp for class trait ${trait.key}")
-            }
-            race.second.type.functions["onLevelUp"]?.call(args, Character.posInit)
-            racialTraits.forEach { (_, trait) ->
-                trait.second.type.functions["onLevelUp"]?.call(args, Character.posInit)
-            }
-            CMLOut.addInfo("All level up functions have been called :)")
+            data.callOnTraits("onLevelUp", args)
             classes += Pair(cName, cl.copy(level = cl.level + 1))
+
+            data.onUpdate()
             CharacterData.refreshUI()
+            addingHP = true
+            addDice = cl.hitDice
         }
     }
 
@@ -126,9 +123,9 @@ fun RowScope.sheetTopRow(data: Character) {
                 Text("Classes", fontWeight = FontWeight.Bold)
             }
             items(classes.toList()) { (cl, lvl) ->
-                indented(Modifier.clickable { levelUp(cl, lvl) }) {
+                indented(if(lvl.level < 20) Modifier.clickable { startLevelUp(cl, lvl) } else Modifier) {
                     Text("$cl (level ${lvl.level}")
-                    Icon(Icons.Default.ArrowDropUp, "")
+                    if(lvl.level < 20) Icon(Icons.Default.ArrowDropUp, "")
                     Text(")")
                 }
             }
@@ -148,6 +145,13 @@ fun RowScope.sheetTopRow(data: Character) {
         choiceDispatcher(
             count, choiceNo.value, options, { count = 0 }, setCallback
         )
+    }
+    if(addingHP) {
+        val conMod = data.abilities.value.firstNotNullOfOrNull { if(it.value.name == "Constitution") it.value.score.toMod() else null } ?: 0
+        RollDialog(addDice, conMod, { /* automatically done by other lambda */ }) { add ->
+            data.hp.value += add
+            addingHP = false
+        }
     }
 }
 
@@ -180,14 +184,14 @@ fun RowScope.sheetProficiencies(data: Character) {
         Spacer(Modifier.weight(0.025f))
         LazyScrollColumn(Modifier.weight(0.55f)) {
             items(skillProf.toList().sortedBy { it.first }) { (name, skill) ->
-                ModScoreCard("$name (${skill.third})", skill.first, skill.second)
+                ModScoreCard("$name (${skill.third})", skill.first + skill.fourth, skill.second)
             }
         }
     }
 }
 
 enum class Tabs(val title: String) {
-    ACTIONS("Actions"), SPELLS("Spells"), TRAITS("Traits"), INVENTORY("Inventory")
+    ACTIONS("Actions"), SPELLS("Spells"), TRAITS("Traits"), INVENTORY("Inventory"), MISC("Miscellaneous")
 }
 
 @Composable
@@ -214,6 +218,7 @@ fun ColumnScope.sheetTraitsAndActions(data: Character, onDetails: (Renderer) -> 
                 Tabs.SPELLS -> sheetSpellsPanel(data) { r -> onDetails(r) }
                 Tabs.TRAITS -> sheetTraitsPanel(data)
                 Tabs.INVENTORY -> sheetInventoryPanel(data)
+                Tabs.MISC -> sheetMiscPanel(data)
             }
         }
     }
@@ -222,10 +227,11 @@ fun ColumnScope.sheetTraitsAndActions(data: Character, onDetails: (Renderer) -> 
 @Composable
 fun BoxScope.sheetActionsPanel(data: Character, onDetails: (Renderer) -> Unit) {
     val profs by data.itemProficiencies
+    val actions by data.actions
     LazyScrollColumn(Modifier.fillMaxSize()) {
-        items(data.actions.value) { action ->
-            Box(Modifier.clickable { onDetails(Renderer { action.renderFull(data, this, it) }) }) {
-                action.render(data, profs)
+        items(actions) { action ->
+            Box(Modifier.clickable { onDetails(Renderer { action.action.renderFull(data, this, it) }) }) {
+                action.action.render(data, profs) { c, am -> data.useCharge(c, am) }
             }
             Spacer(Modifier.height(5.dp))
         }
@@ -237,31 +243,10 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
     val level by data.casterLevelX6
     val specialCasting by data.specialCasting
     val used by data.usedSpellSlots
+    val usedSpecial by data.usedSpellSlotsSpecial
     val spells by data.spells
     val classes by data.classes
-
-    val currentSlots = remember {
-        val res = mutableListOf(0, 0, 0, 0, 0, 0, 0, 0, 0)
-        val actualL = level / 6
-        if(actualL > 0) {
-            val ref = Character.defaultSpellSlots[actualL - 1]
-            for(i in 0 until 9) {
-                res[i] += ref[i]
-            }
-        }
-        specialCasting.forEach { (n, d) ->
-            val l = classes[n]?.level
-            if(l == null) { CMLOut.addWarning("Spell slots have been added for class $n, but ${data.name} is not of this class.") }
-            else if(l > 0) {
-                val ref = d.second[l - 1]
-                for(i in 0 until 9) {
-                    res[i] += ref[i]
-                }
-            }
-        }
-
-        res
-    }
+    val charges by data.charges
 
     if(level == 0 && specialCasting.isEmpty() && spells.isEmpty()) {
         Box(Modifier.fillMaxSize()) {
@@ -294,7 +279,7 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
             }
             items(spells.filter { it.level == 0 }) {
                 indented {
-                    SpellCard(it) { onDetails(Renderer { m -> spellDetails(it, m) }) }
+                    SpellCard(it, getCharges = { charges[it] }, useCharge = { c, am -> data.useCharge(c, am) }) { onDetails(Renderer { m -> spellDetails(it, m) }) }
                 }
             }
 
@@ -303,16 +288,35 @@ fun BoxScope.sheetSpellsPanel(data: Character, onDetails: (Renderer) -> Unit) {
                     Box(Modifier.fillMaxWidth().background(MaterialTheme.colors.primary.copy(alpha = 0.2f)).padding(2.dp)) {
                         Text("Level $i Spells", Modifier.align(Alignment.TopStart), fontWeight = FontWeight.Bold)
 
-                        SpellSlots(
-                            amount = currentSlots[i - 1],
-                            used = used[i - 1],
-                            modifier = Modifier.align(Alignment.TopEnd)
-                        ) { data.useSpellSlot(i) }
+                        Row(Modifier.align(Alignment.TopEnd)) {
+                            if(level > 0) {
+                                SpellSlots(
+                                    amount = Character.defaultSpellSlots[level / 6 - 1][i],
+                                    used = used[i],
+                                    modifier = Modifier
+                                ) { data.useSpellSlot(i) }
+                            }
+
+                            specialCasting.forEach { (cls, count) ->
+                                val l = classes[cls]?.level
+                                if (l == null) {
+                                    CMLOut.addWarning("Spell slots have been added for class $cls, but ${data.name.value} is not of this class.")
+                                } else {
+                                    if(usedSpecial[cls] == null) { CMLOut.addWarning("Special spells slots have been added for class $cls, but ${data.name.value} does not track its spell slots.") }
+                                    SpellSlots(
+                                        amount = count.second[l - 1][i],
+                                        used = usedSpecial[cls]?.get(i) ?: count.second[l - 1][i],
+                                        overset = { Text("${cls[0]}", style = MaterialTheme.typography.subtitle2) },
+                                        modifier = Modifier
+                                    ) { data.useSpecialSpellSlot(i, cls) }
+                                }
+                            }
+                        }
                     }
                 }
                 items(spells.filter { it.level == i }) {
                     indented {
-                        SpellCard(it) { onDetails(Renderer { m -> spellDetails(it, m) }) }
+                        SpellCard(it, getCharges = { charges[it] }, useCharge = { c, am -> data.useCharge(c, am) }) { onDetails(Renderer { m -> spellDetails(it, m) }) }
                     }
                 }
             }
@@ -327,21 +331,56 @@ fun BoxScope.sheetTraitsPanel(data: Character) {
     val racialTraits by data.racialTraits
     val classTraits by data.classTraits
     val backgroundTraits by data.backgroundTraits
+    val charges by data.charges
+
+    val chData = { c: Pair<String, Int>? ->
+        Pair(c?.first?.let { charges[it] }, c?.second?.let { { data.useCharge(c.first, it) } })
+    }
 
     LazyScrollColumn(Modifier.fillMaxSize()) {
         items(racialTraits.toList()) { (name, desc) ->
-            TraitCard(name, race.first, desc.first)
-            Spacer(Modifier.height(7.dp))
+            Column(Modifier.fillMaxWidth()) {
+                val (c, c2) = chData(desc.charge)
+                TraitCard(name, race.first, desc.desc, c, c2)
+                if (desc.charge != null && c == null) {
+                    Text(
+                        "Charge is set but not registered (charge `${desc.charge.first}')",
+                        Modifier.align(Alignment.End),
+                        color = MaterialTheme.colors.error
+                    )
+                }
+                Spacer(Modifier.height(7.dp))
+            }
         }
 
-        items(classTraits.toList().sortedBy { it.second.second }) { (name, desc) ->
-            TraitCard(name, desc.second, desc.first)
-            Spacer(Modifier.height(7.dp))
+        items(classTraits.toList().sortedBy { it.second.source }) { (name, desc) ->
+            Column(Modifier.fillMaxWidth()) {
+                val (c, c2) = chData(desc.charge)
+                TraitCard(name, desc.source, desc.desc, c, c2)
+                if (desc.charge != null && c == null) {
+                    Text(
+                        "Charge is set but not registered (charge `${desc.charge.first}')",
+                        Modifier.align(Alignment.End),
+                        color = MaterialTheme.colors.error
+                    )
+                }
+                Spacer(Modifier.height(7.dp))
+            }
         }
 
         items(backgroundTraits.toList()) { (name, desc) ->
-            TraitCard(name, background.first, desc.first)
-            Spacer(Modifier.height(7.dp))
+            Column(Modifier.fillMaxWidth()) {
+                val (c, c2) = chData(desc.charge)
+                TraitCard(name, background.first, desc.desc, c, c2)
+                if (desc.charge != null && c == null) {
+                    Text(
+                        "Charge is set but not registered (charge `${desc.charge.first}')",
+                        Modifier.align(Alignment.End),
+                        color = MaterialTheme.colors.error
+                    )
+                }
+                Spacer(Modifier.height(7.dp))
+            }
         }
     }
 }
@@ -430,6 +469,31 @@ fun BoxScope.sheetInventoryPanel(data: Character) {
             onClose = { addingItem = false },
             onAdd = { item, count -> data.addItem(item, count) }
         )
+    }
+}
+
+@Composable
+fun BoxScope.sheetMiscPanel(data: Character) {
+    var notes by data.notes
+    LazyScrollColumn {
+        item {
+            Text("Passage of Time", fontStyle = FontStyle.Italic)
+            indented {
+                Row {
+                    Button({ data.shortRest() }, Modifier.weight(0.3f)) { Text("Short Rest") }
+                    Spacer(Modifier.weight(0.0166f))
+                    Button({ data.longRest() }, Modifier.weight(0.3f)) { Text("Long Rest") }
+                    Spacer(Modifier.weight(0.0166f))
+                    Button({ data.dawn() }, Modifier.weight(0.3f)) { Text("Next Dawn") }
+                }
+            }
+        }
+        item {
+            Text("Notes", fontStyle = FontStyle.Italic)
+            indented {
+                OutlinedTextField(notes, { notes = it }, Modifier.fillMaxWidth(), minLines = 5, maxLines = 5)
+            }
+        }
     }
 }
 

@@ -104,10 +104,10 @@ fun MultiChoiceDialog(
         }.filter { it.isNotEmpty() }
     }
 
-    val append = { v: Int ->
+    val append = { v: Int, c: Int ->
         val upd = selected.toMutableList()
         if(!selected.contains(v)) upd.add(v)
-        while(upd.size > count) upd.removeAt(0) // pop front
+        while(upd.size > c) upd.removeAt(0) // pop front
         selected = upd
     }
 
@@ -121,7 +121,7 @@ fun MultiChoiceDialog(
         Text("Select $count of the options below:", Modifier.weight(0.1f))
         LazyScrollColumn(Modifier.weight(0.8f)) {
             itemsIndexed(choices) { idx, option ->
-                Row(Modifier.fillMaxWidth().clickable { append(idx) }) {
+                Row(Modifier.fillMaxWidth().clickable { append(idx, count) }) {
                     Icon(
                         if(selected.contains(idx)) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
                         ""

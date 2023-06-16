@@ -47,6 +47,11 @@ object StdLib {
 object Library {
     fun ctxPos(fn: String) = PosInfo("<lib:context:$fn>", 0, 0)
 
+    private val dndFunctions = mutableMapOf<String, (List<Value>, PosInfo) -> Value>(
+        Pair("isCharacterScope") { args, pos -> isCharacterScope(args, pos) },
+        Pair("isChoiceScope") { args, pos -> isChoiceScope(args, pos) }
+    )
+
     private val contextFunctions = mutableMapOf<String, CharacterScope.(List<Value>, PosInfo) -> Value>(
         Pair("abilityIncrease") { args, pos -> abilityIncrease(args, pos) },
         Pair("addMaxHP") { args, pos -> addMaxHP(args, pos) },
@@ -58,17 +63,32 @@ object Library {
         Pair("addItemProficiencies") { args, pos -> addItemProficiencies(args, pos) },
         Pair("addClassTraits") { args, pos -> addClassTraits(args, pos) },
         Pair("getAbilityMod") { args, pos -> getAbilityMod(args, pos) },
+        Pair("getAbilities") { args, pos -> getAbilities(args, pos) },
         Pair("getProficiency") { args, pos -> getProficiency(args, pos) },
         Pair("getArmor") { args, pos -> getArmor(args, pos) },
         Pair("addItem") { args, pos -> addItem(args, pos) },
         Pair("addAction") { args, pos -> addAction(args, pos) },
         Pair("addSpell") { args, pos -> addSpell(args, pos) },
+        Pair("addSpellUsing") { args, pos -> addSpellUsing(args, pos) },
         Pair("setFullCaster") { args, pos -> setFullCaster(args, pos) },
         Pair("setHalfCaster") { args, pos -> setHalfCaster(args, pos) },
         Pair("setThirdCaster") { args, pos -> setThirdCaster(args, pos) },
         Pair("setSpecialCaster") { args, pos -> setSpecialCaster(args, pos) },
         Pair("setAC") { args, pos -> setAC(args, pos) },
         Pair("modAC") { args, pos -> modAC(args, pos) },
+        Pair("addDCAction") { args, pos -> addDCAction(args, pos) },
+        Pair("addDCActionUsing") { args, pos -> addDCActionUsing(args, pos) },
+        Pair("getSkills") { args, pos -> getSkills(args, pos) },
+        Pair("updSkillMod") { args, pos -> updSkillMod(args, pos) },
+        Pair("isProficientSkill") { args, pos -> isProficientSkill(args, pos) },
+        Pair("recoverSpellSlots") { args, pos -> recoverSpellSlots(args, pos) },
+        Pair("recoverSpellSlotsFor") { args, pos -> recoverSpellSlotsFor(args, pos) },
+        Pair("registerCharges") { args, pos -> registerCharges(args, pos) },
+        Pair("recoverCharges") { args, pos -> recoverCharges(args, pos) },
+        Pair("getName") { args, pos -> getName(args, pos) },
+        Pair("getSpells") { args, pos -> getSpells(args, pos) },
+        Pair("modSpeed") { args, pos -> modSpeed(args, pos) },
+        Pair("getClassLevel") { args, pos -> getClassLevel(args, pos) },
     )
     private val choiceFunctions = mutableMapOf<String, ChoiceScope.(List<Value>, PosInfo) -> Value>(
         Pair("chooseDataByKind") { args, pos -> chooseDataByKind(args, pos) },
@@ -78,13 +98,18 @@ object Library {
         Pair("chooseNCantrips") { args, pos -> chooseNCantrips(args, pos) },
         Pair("chooseNSpellsUpTo") { args, pos -> chooseNSpellsUpTo(args, pos) },
         Pair("chooseItem") { args, pos -> chooseItem(args, pos) },
+        Pair("chooseNItems") { args, pos -> chooseNItems(args, pos) },
+        Pair("chooseNSpellsOrCantripsUpTo") { args, pos -> chooseNSpellsOrCantripsUpTo(args, pos) },
+        Pair("selectPreparedSpells") { args, pos -> selectPreparedSpells(args,pos) }
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()
     private val globals = mutableMapOf<String, Variable>()
 
-    private var currentCharScope: CharacterScope? = null
-    private var currentChoiceScope: ChoiceScope? = null
+    var currentCharScope: CharacterScope? = null
+        private set
+    var currentChoiceScope: ChoiceScope? = null
+        private set
 
     val isInScope
         get() = currentChoiceScope != null || currentCharScope != null
@@ -96,31 +121,37 @@ object Library {
     }
 
     fun isLibFunc(name: String): Boolean =
-        functions.containsKey(name) || contextFunctions.containsKey(name) || choiceFunctions.containsKey(name)
+        functions.containsKey(name) || dndFunctions.containsKey(name) || contextFunctions.containsKey(name) || choiceFunctions.containsKey(name)
     fun invoke(name: String, args: List<Value>, callSite: PosInfo): Value? {
         val f = functions[name]
         if(f == null) {
-            val cf = contextFunctions[name]
-            if(cf == null) {
-                val csF = choiceFunctions[name]
-                if(csF == null) {
-                    CMLOut.addError(CMLException.invokeNonFun(name, callSite).localizedMessage)
-                    return null
+            val df = dndFunctions[name]
+            if(df == null) {
+                val cf = contextFunctions[name]
+                if (cf == null) {
+                    val csF = choiceFunctions[name]
+                    if (csF == null) {
+                        CMLOut.addError(CMLException.invokeNonFun(name, callSite).localizedMessage)
+                        return null
+                    }
+                    if (currentChoiceScope == null) {
+                        CMLOut.addError(CMLException("Cannot call function `$name' outside of a choice-scope. Function called at $callSite").localizedMessage)
+                        return null
+                    }
+                    return ExecutionStack.call(callSite) {
+                        csF(currentChoiceScope!!, args, callSite)
+                    }
                 }
-                if(currentChoiceScope == null) {
-                    CMLOut.addError(CMLException("Cannot call function `$name' outside of a choice-scope. Function called at $callSite").localizedMessage)
+                if (currentCharScope == null) {
+                    CMLOut.addError(CMLException("Cannot call function `$name' outside of a character-scope. Function called at $callSite").localizedMessage)
                     return null
                 }
                 return ExecutionStack.call(callSite) {
-                    csF(currentChoiceScope!!, args, callSite)
+                    cf(currentCharScope!!, args, callSite)
                 }
             }
-            if(currentCharScope == null) {
-                CMLOut.addError(CMLException("Cannot call function `$name' outside of a character-scope. Function called at $callSite").localizedMessage)
-                return null
-            }
             return ExecutionStack.call(callSite) {
-                cf(currentCharScope!!, args, callSite)
+                df(args, callSite)
             }
         }
         return f.call(args, callSite)
@@ -131,19 +162,18 @@ object Library {
     }
     fun addGlobal(glob: GlobalDecl) {
         if(globals.containsKey(glob.name)) throw CMLException.redeclareGlob(glob.name, globals[glob.name]!!.value.pos, glob.pos)
-        globals[glob.name] = glob.toVar(ExecEnvironment(mapOf()))
+        globals[glob.name] = glob.toVar(ExecEnvironment(mapOf(), PosInfo("<runtime:global>", 0, 0)))
     }
 
     fun isLibType(name: String): Boolean = types.containsKey(name)
-    fun construct(name: String, pos: PosInfo): InstanceVal? = types[name]?.let { InstanceVal(it.construct(), pos) }
+    fun construct(name: String, pos: PosInfo): InstanceVal? = types[name]?.construct(pos)
     fun addType(name: String, type: TopLevelDecl) {
-        if(types.containsKey(name)) throw LibraryException.libTypeAlreadyExists(name)
+        if(types.containsKey(name)) throw LibraryException.libTypeAlreadyExists(name, types[name]!!.pos, type.pos)
         types[name] = type
     }
 
-    fun types() = types
+    fun types(): Map<String, TopLevelDecl> = types
     fun typesByKind(kind: String): List<TopLevelDecl> = types.filter { it.value.kind == kind }.map { it.value }
-    fun functions() = functions.keys.union(contextFunctions.keys)
 
     fun getGlobal(name: String): Variable? = globals[name]
 
@@ -171,12 +201,17 @@ object Library {
         c: Character,
         selector: (Choices) -> MutableMap<Value, Value>?,
         render: (count: Int, options: List<Value>, onSet: (Value) -> Unit) -> Unit,
+        onError: ((CMLException) -> Unit)? = null,
         action: () -> T
     ) {
         currentChoiceScope = ChoiceScope()
         thread {
             currentChoiceScope?.runScript(
-                script = { withCharacter(c, action).mapLeft { CMLOut.addError(it.localizedMessage) } },
+                script = {
+                    withCharacter(c, action).mapLeft {
+                        if (onError != null) onError(it)
+                    }
+                },
                 onRequireRender = { options, count, lock ->
                     render(count, options) { lock.update(it) }
                 },
@@ -193,13 +228,14 @@ object Library {
         }
     }
 
+    val phonyPos = PosInfo("<~phony~>", 0, 0)
     fun phonyType() = TopLevelDecl(
         kind = "~phony",
         name = "~phony",
         functions = mapOf(),
         fieldsPre = mapOf(),
-        declPos = PosInfo("<~phony~>", 0, 0)
+        declPos = phonyPos
     )
 
-    fun phonyInstance() = InstanceVal(phonyType(), phonyType().pos)
+    fun phonyInstance() = phonyType().construct(phonyPos)
 }

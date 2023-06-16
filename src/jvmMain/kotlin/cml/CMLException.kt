@@ -96,6 +96,13 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
 
         fun nonSerializable(v: Value): CMLException =
             CMLException("Values of type `${typeName(v)}' are not serializable.")
+
+        fun invalidRange(begin: Int, end: Int, inclusive: Boolean, pos: PosInfo): CMLException =
+            CMLException("Invalid range: [$begin, $end${if(inclusive) ']' else ')'} at $pos")
+
+        fun thisInvalid(pos: PosInfo): CMLException = CMLException("Cannot use keyword `this' at $pos")
+
+        fun stackOverflow(pos: PosInfo): CMLException = CMLException("Stack overflow (recursion too deep) at $pos")
     }
 }
 
@@ -119,6 +126,7 @@ object ExecutionStack {
     }
 
     fun <T> call(pos: PosInfo, fn: () -> T): T {
+        if(stack.size >= 512) throw CMLException.stackOverflow(pos)
         push(pos)
         val res = fn()
         pop()

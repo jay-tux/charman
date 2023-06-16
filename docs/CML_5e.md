@@ -7,6 +7,7 @@
 	- [addAction](#addaction)
 	- [addBackgroundTraits](#addbackgroundtraits)
 	- [addClassTraits](#addclasstraits)
+	- [addDCAction](#addDCAction)
 	- [addItem](#additem)
 	- [addItemProficiencies](#additemproficiencies)
 	- [addLanguages](#addlanguages)
@@ -15,6 +16,7 @@
 	- [addSaveProficiencies](#addsaveproficiencies)
 	- [addSkillProficiencies](#addskillproficiencies)
 	- [addSpell](#addspell)
+	- [getAbilities](#getAbilities)
 	- [getAbilityMod](#getabilitymod)
 	- [getArmor](#getarmor)
 	- [getProficiency](#getproficiency)
@@ -93,6 +95,21 @@ addClassTraits(name, traits)
 *Return value:* nothing
 
 Adds one or more traits to the player (the source being the given class).
+
+### addDCAction
+```cml
+addDCAction(action, ability)
+```
+*Arguments:* 
+
+ **Argument Name** | **Expected Type** | <i></i>
+ ---|---|---
+ `action` | instance of a type of kind `Action` | The action to add
+ `ability` | instance of a type of kind `Ability` | The ability which determines the Save DC
+ 
+*Return value:* nothing
+
+Adds an action with a save DC (e.g. the Dragonborn's Breath Weapon) available to the player. The supplied `action` should be a `SpellDCAction`.
 
 ### addItem
 ```cml
@@ -206,6 +223,26 @@ addSpell(spell)
 
 Adds the spell to the player's currently available spells, and its action to the player's available actions.
 
+### getAbilities
+```cml
+getAbilities()
+```
+*Arguments:* None
+ 
+*Return value:* list of instance of Ability
+
+Gets all abilities known in the system.
+
+### getSkills
+```cml
+getSkills()
+```
+*Arguments:* None
+ 
+*Return value:* list of instance of Skill
+
+Gets all skills known in the system.
+
 ### getAbilityMod
 ```cml
 getAbilityMod(ability)
@@ -240,6 +277,20 @@ getProficiency()
 
 Gets the player's current proficiency bonus.
 
+### isProficientSkill
+```cml
+isProficientSkill(skill)
+```
+*Arguments:*
+
+ **Argument Name** | **Expected Type** | <i></i>
+ --|--|--
+ `skill` | instance of a type of kind `Skill` | The skill to check proficiency for.
+ 
+*Return value:* boolean
+
+Checks whether the character is proficient in the given skill, and returns `true` if so.
+
 ### modAC
 ```cml
 modAC(delta)
@@ -253,6 +304,29 @@ modAC(delta)
 *Return value:* nothing
 
 Adds a modifier to the player's AC (e.g. equipping a shield might call `modAC(2)`).
+
+### recoverSpellSlots
+```cml
+recoverSpellSlots()
+```
+*Arguments:* None   
+*Return value:* nothing
+
+Recover all of a character's normal spells slots (slots gained by the `setFullCaster`, `setHalfCaster` and `setThirdCaster` functions).
+
+### recoverSpellSlotsFor
+```cml
+recoverSpellSlotsFor(class)
+```
+*Arguments:* 
+
+ **Argument Name** | **Expected Type** | <i></i>
+ ---|---|---
+ `class` | string | The name of the class whose spell slots to recover.
+ 
+*Return value:* nothing
+
+Recover all of a character's spell slots granted by a certain class (slots associated with the `setSpecialCaster` function).
 
 ### setAC
 ```cml
@@ -425,6 +499,27 @@ chooseNFrom(tag, n, options)
 *Return value:* sub-list of length `n` of `options`
 
 Asks the user to select `n` unique value from the given list. These values are then returned in a list.
+
+### chooseNItems
+```cml
+chooseNItems(tag, count, tags, options)
+```
+*Arguments:* 
+
+ **Argument Name** | **Expected Type** | <i></i>
+ ---|---|---
+ `tag` | string | The name of the choice. Can be used later to restore it.
+ `count` | int | Amount of choices the user can make.
+ `tags` | list of string | Tags the items have to satisfy.
+ `options` | list | Additional options (should be list of `Item` instances).
+ 
+*Return value:* instance of a matching item, or one of the options
+
+Asks the user to choose `count` from either
+ - any item that matches all given `tags` (e.g. a simple melee weapon), or
+ - any option in the `options` list.
+The chosen values are then returned (as list of instances).
+
 
 ### chooseNSpellsUpTo
 ```cml

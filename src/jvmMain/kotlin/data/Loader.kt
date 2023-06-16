@@ -25,8 +25,8 @@ import kotlin.io.path.*
 
 object Scripts {
     private val pos = PosInfo("<repl>", 0, 0)
-    private val templates = mutableMapOf<String, TemplateDecl>()
-    private val instances = mutableMapOf<String, InstanceDecl>()
+    private val templates = mutableListOf<TemplateDecl>()
+    private val instances = mutableListOf<InstanceDecl>()
     private val globals = mutableListOf<GlobalDecl>()
     var loading = true
         private set
@@ -43,17 +43,7 @@ object Scripts {
         return Library.construct(type, pos)
     }
 
-    private inline fun <reified T : Value> maybeGetVar(type: TopLevelDecl, name: String) : T? {
-        val tmp = type.fields.getVar(name)?.value
-        if(tmp !is T?) return null
-        return tmp
-    }
-
-    private fun maybeInvoke(type: TopLevelDecl, func: String, args: List<Value>): Value? {
-        return type.functions[func]?.call(args, pos)
-    }
-
-    private fun loadFile(f: String) {
+    fun loadFile(f: String) {
         file = f
         FileInputStream(file).use { stream ->
             lateinit var ast: TLDeclSet
@@ -80,30 +70,34 @@ object Scripts {
                     Library.addType(it.name, it)
                 }
             } catch(ex: LibraryException) {
-                ex.message?.let { CMLOut.addError(it) }
+                CMLOut.addError(ex.localizedMessage)
+                println(ex.localizedMessage)
                 return@use
             }
 
             globals.addAll(ast.globals)
-            templates.putAll(ast.templates.map { Pair(it.name, it) })
-            instances.putAll(ast.instances.map { Pair(it.name, it) })
+            templates.addAll(ast.templates)
+            instances.addAll(ast.instances)
         }
     }
 
     private fun instantiateAll() {
-        instances.forEach { (name, instance) ->
+        instances.forEach { instance ->
             try {
                 Library.addType(
-                    name,
-                    templates[instance.template]?.instantiate(instance) ?:
-                        throw AstException.undefinedTemplate(instance.template, name, instance.pos)
+                    instance.name,
+                    templates.firstOrNull { it.name == instance.template }?.instantiate(instance) ?:
+                        throw AstException.undefinedTemplate(instance.template, instance.name, instance.pos)
                 )
             } catch(ex: LibraryException) {
-                ex.message?.let { CMLOut.addError(it) }
+                CMLOut.addError(ex.localizedMessage)
+                println(ex.localizedMessage)
             } catch(ex: AstException) {
-                ex.message?.let { CMLOut.addError(it) }
+                CMLOut.addError(ex.localizedMessage)
+                println(ex.localizedMessage)
             } catch(ex: CMLException) {
-                ex.message?.let { CMLOut.addError(it) }
+                CMLOut.addError(ex.localizedMessage)
+                println(ex.localizedMessage)
             }
         }
     }
@@ -230,14 +224,16 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                             clsI.ifInstVerifyGetName("Class", posInit).flatMap { (classN, classI) ->
                                 lvlI.requireInt(posInit).flatMap { lvl ->
                                     if(lvl.value <= 0 || lvl.value > 20) CMLException("Class level should be at least 1 and no more than 20, ${lvl.value} given for class `$classN' at $posInit").left()
-                                    else Pair(classN, ClassDesc(classI, lvl.value, false)).right()
+                                    else classI.getDice("hitDie", posInit).map { dice ->
+                                        Pair(classN, ClassDesc(classI, lvl.value, dice, false))
+                                    }
                                 }
                             }
                         }.map { v -> v.toMutableMap() }.flatMap { classes ->
                             valid.getInst("primary", "Class", posInit).flatMap { cls ->
                                 cls.getName(posInit).flatMap { initN ->
                                     classes[initN]?.let {
-                                        classes[initN] = ClassDesc(it.cls, it.level, true)
+                                        classes[initN] = ClassDesc(it.cls, it.level, it.hitDice, true)
                                         Unit.right()
                                     } ?: CMLException("Primary class is not one of the character's classes at ${cls.pos}").left()
                                 }.map { classes }
@@ -266,7 +262,27 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     }
                 }
             }
+        }.flatMap{ char ->
+            valid.getDictV("charges", posInit).flatMap { charges ->
+                charges.value.mapOrEither { (chrg, useMax) ->
+                    chrg.requireString(posInit).flatMap { charge ->
+                        useMax.requireListV(posInit).flatMap { uML ->
+                            uML.requireSize(2).flatMap { sized ->
+                                sized[0].requireInt(posInit).flatMap { used ->
+                                    sized[1].requireInt(posInit).map { max ->
+                                        Pair(charge, Pair(used.value, max.value))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }.map { chargesParsed ->
+                    char.charges.value = chargesParsed
+                    char
+                }
+            }
         }.map{ char ->
+            char.onUpdate()
             Pair(char, Choices())
         }.flatMap { (c, ch) ->
             valid.getDictV("choicesRace", posRest).flatMap { cR ->
@@ -307,25 +323,14 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
         }.flatMap { (char, choices) ->
             Library.withCharacter(char) {
                 val level = IntVal(char.classes.value.values.sumOf { it.level }, posRest)
-                char.race.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
-                val raceUpd = mutableListOf<Triple<String, String, Pair<String, InstanceVal>>>()
+                char.race.value.second.invoke("onRestore", listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 char.racialTraits.value.forEach { (k, v) ->
-                    v.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)?.let {
-                        v.second.getString("name", posRest).flatMap { name ->
-                            v.second.getString("desc", posRest).map { desc ->
-                                raceUpd.add(Triple(k, name, Pair(desc, v.second)))
-                            }
-                        }.fold({ CMLOut.addError(it.localizedMessage) }, {})
-                    }
-                }
-                raceUpd.forEach { (kOld, k, upd) ->
-                    char.racialTraits.value -= kOld
-                    char.racialTraits.value += Pair(k, upd)
+                    v.instance.invoke("onRestore", listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 }
 
                 val altMap = mutableMapOf<String, MutableMap<Value, Value>>()
                 char.classes.value.forEach { e ->
-                    e.value.cls.type.functions["onRestore"]?.call(
+                    e.value.cls.invoke("onRestore",
                         choices.classesChoices[e.key]?.let {
                             altMap[e.key] = it
                             listOf(DictVal(it, posRest), IntVal(e.value.level, posRest), BoolVal(e.value.isPrimary, posRest))
@@ -334,26 +339,22 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     )
                 }
 
-                // ugly iteration hack to avoid java.util.ConcurrentModificationException
                 altMap.forEach { (cls, ch) ->
-                    char.classTraits.value.filter { it.value.second == cls }.forEach { (k, v) ->
-                        val classUpd = mutableListOf<Triple<String, String, Triple<String, String, InstanceVal>>>()
-                        v.third.type.functions["onRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)?.let {
-                            v.third.getString("name", posRest).flatMap { name ->
-                                v.third.getString("desc", posRest).map { desc ->
-                                    classUpd.add(Triple(k, name, Triple(desc, v.second, v.third)))
-                                }
-                            }.fold({ CMLOut.addError(it.localizedMessage) }, {})
-                        }
-                        classUpd.forEach { (kOld, k, upd) ->
-                            char.classTraits.value -= kOld
-                            char.classTraits.value += Pair(k, upd)
-                        }
+                    char.classTraits.value.filter { it.value.source == cls }.forEach { (k, v) ->
+                        v.instance.invoke("onRestore", listOf(DictVal(ch, posRest), level), posRest)
                     }
                 }
 
-                char.background.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
+                char.background.value.second.invoke("onRestore", listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
+
+                altMap.forEach { (cls, ch) ->
+                    char.classTraits.value.filter { it.value.source == cls }.forEach { (k, v) ->
+                        v.instance.invoke("onLateRestore", listOf(DictVal(ch, posRest), level), posRest)
+                    }
+                }
+
                 char.choices.value = choices
+                char.refreshData()
                 char
             }
         }.flatMap { char ->
@@ -362,6 +363,7 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                 .flatMap{ valid.getInt("tempHP", posInit) }.map { char.tempHp.value = it }
                 .flatMap{ valid.getInt("speed", posInit) }.map { char.speed.value = it }
                 .flatMap{ valid.getBool("inspiration", posInit) }.map { char.inspiration.value = it }
+                .flatMap{ valid.getString("notes", posInit) }.map { char.notes.value = it }
                 .flatMap{ valid.getInt("deathSavesFailed", posInit) }.flatMap { failed ->
                     valid.getInt("deathSavesSucceeded", posInit).map { Pair(failed, it) }
                 }.map { char.deathSaves.value = it }
@@ -407,12 +409,37 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
                     char
                 }
             }
+        }.flatMap { char ->
+            valid.getList("usedSpellSlots", posInit).flatMap { uSS ->
+                uSS.requireSize(9).flatMap { slots ->
+                    slots.mapOrEither { it.requireInt(posInit).map { it.value } }.map {
+                        char.usedSpellSlots.value = SpellSlots.from(it)
+                        char
+                    }
+                }
+            }
+        }.flatMap { char ->
+            valid.getDict("usedSpellSlotsSpecial", posInit).flatMap { uSSS ->
+                uSSS.mapOrEither { (clsPre, slotsPre) ->
+                    clsPre.requireString(posInit).flatMap { cls ->
+                        slotsPre.requireListV(posInit).flatMap { slotsUncounted ->
+                            slotsUncounted.requireSize(9).flatMap { slotsUnchecked ->
+                                slotsUnchecked.mapOrEither { it.requireInt(posInit).map { i -> i.value } }
+                            }.map { slots ->
+                                Pair(cls, SpellSlots.from(slots))
+                            }
+                        }
+                    }
+                }.map { slotData ->
+                    char.usedSpellSlotsSpecial.value = slotData
+                    char
+                }
+            }
         }
+    }.mapLeft {
+        it.message?.let { msg -> CMLOut.addError(msg) }
+        it
     }
-        .mapLeft {
-            it.message?.let { msg -> CMLOut.addError(msg) }
-            it
-        }
 }
 
 fun Character.Companion.loadItem(item: Value): Either<CMLException, Pair<ItemDesc, List<InstanceVal>>> {
@@ -444,7 +471,7 @@ fun Character.Companion.loadItem(item: Value): Either<CMLException, Pair<ItemDes
                         inst.getList("tags", posInit).flatMap { tags ->
                             tags.value.mapOrEither { it.requireString(posInit) }
                         }.map { tags ->
-                            ItemDesc(name, weight, price, actions, traits, tags, inst, inst.type.functions.containsKey("onDon"))
+                            ItemDesc(name, weight, price, actions, traits, tags, inst, inst.type.isFun("onDon"))
                         }
                     }
                 }

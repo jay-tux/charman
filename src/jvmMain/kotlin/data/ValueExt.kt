@@ -26,8 +26,11 @@ fun Value.requireDice(p: PosInfo): Either<CMLException, DiceVal> =
 fun Value.requireDict(p: PosInfo): Either<CMLException, MutableMap<Value, Value>> =
     requires<DictVal>("Dict", p).map { it.value }
 
+fun Value.requireListV(p: PosInfo): Either<CMLException, ListVal> =
+    requires<ListVal>("List", p)
+
 fun Value.requireList(p: PosInfo): Either<CMLException, List<Value>> =
-    requires<ListVal>("List", p).map { it.value }
+    requireListV(p).map { it.value }
 
 fun Value.requireBool(p: PosInfo): Either<CMLException, BoolVal> =
     requires<BoolVal>("Bool", p)
@@ -40,3 +43,7 @@ fun Value.ifInstVerifyGetString(field: String, t: String, p: PosInfo): Either<CM
 
 fun Value.ifInstVerifyGetName(t: String, p: PosInfo): Either<CMLException, Pair<String, InstanceVal>> =
     ifInstVerifyGetString("name", t, p)
+
+fun ListVal.requireSize(wanted: Int): Either<CMLException, List<Value>> =
+    if(value.size != wanted) CMLException("Expected a list of size $wanted, got ${value.size} at $pos.").left()
+    else value.right()

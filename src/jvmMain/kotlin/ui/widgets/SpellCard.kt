@@ -19,27 +19,63 @@ import cardinal
 import uiData.SpellDesc
 
 @Composable
-fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Row(modifier.clickable { onClick() }) {
-        Spacer(Modifier.weight(0.03f))
-        Column(Modifier.weight(0.32f)) {
-            Text(spell.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(spell.source, fontStyle = FontStyle.Italic)
+fun SpellCard(spell: SpellDesc, modifier: Modifier = Modifier, getCharges: (String) -> Pair<Int, Int>?, useCharge: (String, Int) -> Unit, onClick: () -> Unit) {
+    Column {
+        Row(modifier.clickable { onClick() }) {
+            Spacer(Modifier.weight(0.03f))
+            Column(Modifier.weight(0.32f)) {
+                Text(spell.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(spell.source, fontStyle = FontStyle.Italic)
+            }
+                    Text(spell.castingTime, Modifier.weight(0.20f).align(Alignment.CenterVertically))
+                    Text(spell.duration, Modifier.weight(0.25f).align(Alignment.CenterVertically))
+            Column(Modifier.weight(0.2f).align(Alignment.CenterVertically)) {
+                Text(
+                    spell.components.joinToString(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                val ch = spell.charge?.let { getCharges(it.first) }
+                if(ch != null) {
+                    Box(Modifier.fillMaxWidth()) {
+                        Row(Modifier.align(Alignment.CenterEnd)) {
+                            ChargesWidget(ch) { useCharge(spell.charge.first, spell.charge.second) }
+                        }
+                    }
+                }
+            }
         }
-        Text(spell.castingTime, Modifier.weight(0.20f).align(Alignment.CenterVertically))
-        Text(spell.duration, Modifier.weight(0.25f).align(Alignment.CenterVertically))
-        Text(spell.components.joinToString(), Modifier.weight(0.20f).align(Alignment.CenterVertically), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
-fun SpellSlots(amount: Int, used: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun ChargesWidget(pair: Pair<Int, Int>, modifier: Modifier = Modifier, onClick: () -> Unit) = Row(modifier) {
+    Text("Charges: ", fontStyle = FontStyle.Italic)
+    SpellSlots(pair.second, pair.first) { onClick() }
+}
+
+@Composable
+fun SpellSlots(amount: Int, used: Int, modifier: Modifier = Modifier, overset: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
     Row(modifier.clickable { onClick() }) {
         for(i in 1..used) {
-            Icon(Icons.Default.RadioButtonChecked, "")
+            Box {
+                Icon(Icons.Default.RadioButtonChecked, "")
+                if(overset != null) {
+                    Box(Modifier.align(Alignment.Center)) {
+                        overset()
+                    }
+                }
+            }
         }
         for(i in used until amount) {
-            Icon(Icons.Default.RadioButtonUnchecked, "")
+            Box {
+                Icon(Icons.Default.RadioButtonUnchecked, "")
+                if(overset != null) {
+                    Box(Modifier.align(Alignment.Center)) {
+                        overset()
+                    }
+                }
+            }
         }
     }
 }
@@ -61,5 +97,12 @@ fun BoxScope.spellDetails(spell: SpellDesc, modifier: Modifier) {
         BoldAndNot("Duration: ", spell.duration)
         Spacer(Modifier.height(5.dp))
         Text(spell.desc)
+    }
+}
+
+@Composable
+fun BoxScope.noDetails(name: String, modifier: Modifier) {
+    Column(modifier.fillMaxHeight().align(Alignment.CenterEnd).padding(10.dp)) {
+        Text("Spell or action `$name' has no details.")
     }
 }

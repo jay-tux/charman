@@ -1,5 +1,7 @@
 package cml
 
+import CMLOut
+
 // TODO: in evaluate - handle void
 
 abstract class Expression(pos: PosInfo) : AstNode(pos) {
@@ -7,12 +9,20 @@ abstract class Expression(pos: PosInfo) : AstNode(pos) {
     abstract fun instantiate(instantiations: Map<String, Expression>): Expression
 }
 
-abstract class VarRef(pos: PosInfo) : Expression(pos) {
+abstract class LValue(pos: PosInfo) : Expression(pos) {
     override fun instantiate(instantiations: Map<String, Expression>): Expression = instantiateVR(instantiations)
     override fun evaluate(ctxt: ExecEnvironment): Value = evaluateToRef(ctxt).value
-    abstract fun instantiateVR(instantiations: Map<String, Expression>): VarRef
+    abstract fun instantiateVR(instantiations: Map<String, Expression>): LValue
     abstract fun evaluateToRef(ctxt: ExecEnvironment): Variable
 
+}
+
+fun Expression.evaluateOrRef(ctxt: ExecEnvironment): Pair<Value, Boolean> {
+    if(this is LValue) {
+        val tmp = this.evaluateToRef(ctxt)
+        return Pair(tmp.value, tmp.isImmutable)
+    }
+    return Pair(this.evaluate(ctxt), false)
 }
 
 class ExpressionSet(pos: PosInfo) : AstNode(pos) {
@@ -32,38 +42,86 @@ class LiteralExpr(private val literal: Value, pos: PosInfo): Expression(pos) {
         LiteralExpr(literal, pos)
 }
 
-class VarExpr(val ident: String, pos: PosInfo): VarRef(pos) {
+class ThisExpr(pos: PosInfo): Expression(pos) {
+    override fun evaluate(ctxt: ExecEnvironment): Value {
+        return ctxt.currentThis() ?: throw CMLException.thisInvalid(pos)
+    }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression = this
+
+}
+
+class VarExpr(val ident: String, pos: PosInfo): LValue(pos) {
     override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
-        return ctxt.getVar(ident) ?: throw CMLException.undeclaredVar(ident, pos)
+        return ctxt.getVar(ident) ?: throw CMLException.undeclaredVar(ident, pos).also {
+            CMLOut.addWarning("Variables in scope: ${ctxt.listVars()}")
+            CMLOut.addWarning("Value of `this': ${ctxt.currentThis()}")
+            if(ctxt.thisVar != null) CMLOut.addWarning("Fields of `this': ${ctxt.currentThis()?.fields?.listVars()}")
+        }
     }
 
     override fun instantiateVR(instantiations: Map<String, Expression>) = VarExpr(ident, pos)
 }
 
-class FieldExpr(val base: VarRef, val name: String, pos: PosInfo): VarRef(pos) {
+class FieldExpr(val base: Expression, val name: String, pos: PosInfo): LValue(pos) {
     override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
-        val baseE = base.evaluateToRef(ctxt)
-        if(baseE.value !is InstanceVal) {
-            throw CMLException.nonObjectVar(name, baseE.value, pos)
+        val (baseE, _) = base.evaluateOrRef(ctxt)
+
+        if(baseE !is InstanceVal) {
+            throw CMLException.nonObjectVar(name, baseE, pos)
         }
-        return (baseE.value as InstanceVal).type.getFieldAsVar(name)
-            ?: throw CMLException.invalidField((baseE.value as InstanceVal).type.name, name, pos)
+        return baseE.getFieldAsVar(name)
+            ?: throw CMLException.invalidField(baseE.type.name, name, pos)
     }
 
-    override fun instantiateVR(instantiations: Map<String, Expression>): VarRef {
-        return FieldExpr(base.instantiateVR(instantiations), name, pos)
+    override fun instantiateVR(instantiations: Map<String, Expression>): LValue {
+        return FieldExpr(base.instantiate(instantiations), name, pos)
     }
 }
 
-class IndexExpr(val base: Expression, val index: Expression, pos: PosInfo) : Expression(pos) {
-    override fun evaluate(ctxt: ExecEnvironment): Value {
-        return when(val baseE = base.evaluate(ctxt)) {
+class IndexExpr(val base: Expression, val index: Expression, pos: PosInfo) : LValue(pos) {
+    override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
+        val (baseE, isImmutable) = base.evaluateOrRef(ctxt)
+        return when(baseE) {
             is ListVal -> {
                 val indexE = index.evaluate(ctxt)
                 if(indexE !is IntVal) throw CMLException.invalidIndexType("list", "int", pos)
                 if(indexE.value < 0 || indexE.value >= baseE.value.size)
                     throw CMLException.listOutOfRange(indexE.value, baseE.value.size, pos)
-                baseE.value[indexE.value]
+                ListIndexVariable(baseE.value, indexE.value, isImmutable, baseE.pos)
+            }
+            is DictVal -> {
+                val indexE = index.evaluate(ctxt)
+                DictIndexVariable(baseE.value, indexE, isImmutable, baseE.pos)
+            }
+
+            else -> throw CMLException.nonIndexableVar(pos)
+        }
+    }
+
+    private fun splice(l: List<Value>, min: Int, max: Int, inclusive: Boolean): ListVal {
+        if(max < min) throw CMLException.invalidRange(min, max, inclusive, pos)
+        if(min == max) return ListVal(mutableListOf(), pos)
+        if(min < 0 || min >= l.size) throw CMLException.listOutOfRange(min, l.size, pos)
+        if(inclusive && max >= l.size) throw CMLException.listOutOfRange(max, l.size, pos)
+        if(!inclusive && max >= l.size) throw CMLException.listOutOfRange(max - 1, l.size, pos)
+        return ListVal(l.subList(min, max).toMutableList(), pos)
+    }
+
+    override fun evaluate(ctxt: ExecEnvironment): Value {
+        return when(val baseE = base.evaluate(ctxt)) {
+            is ListVal -> {
+                when (val indexE = index.evaluate(ctxt)) {
+                    is IntVal -> {
+                        if (indexE.value < 0 || indexE.value >= baseE.value.size)
+                            throw CMLException.listOutOfRange(indexE.value, baseE.value.size, pos)
+                        baseE.value[indexE.value]
+                    }
+
+                    is RangeVal -> splice(baseE.value, indexE.begin, indexE.end, true)
+                    is UntilVal -> splice(baseE.value, indexE.begin, indexE.end, false)
+                    else -> throw CMLException.invalidIndexType("list", "int", pos)
+                }
             }
             is RangeVal -> {
                 val indexE = index.evaluate(ctxt)
@@ -87,7 +145,7 @@ class IndexExpr(val base: Expression, val index: Expression, pos: PosInfo) : Exp
         }
     }
 
-    override fun instantiate(instantiations: Map<String, Expression>): Expression {
+    override fun instantiateVR(instantiations: Map<String, Expression>): LValue {
         return IndexExpr(base.instantiate(instantiations), index.instantiate(instantiations), pos)
     }
 }
@@ -319,7 +377,7 @@ class ObjFuncCallExpr(
         if(objE !is InstanceVal) throw CMLException.nonObjectVar(name, objE, pos)
 
         val argsE = args.map { it.evaluate(ctxt) }
-        return objE.type.functions[name]?.call(argsE, pos) ?: throw CMLException.invalidMemberFunction(objE.type.name, name, pos)
+        return objE.invoke(name, argsE, pos) ?: throw CMLException.invalidMemberFunction(objE.type.name, name, pos)
     }
 
     override fun instantiate(instantiations: Map<String, Expression>): Expression {

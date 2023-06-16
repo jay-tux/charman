@@ -1,7 +1,5 @@
 package cml
 
-import arrow.core.Tuple4
-
 class ArgsDecl(pos: PosInfo) : AstNode(pos) {
     val names = mutableListOf<String>()
 }
@@ -12,78 +10,63 @@ class FunDecl(
     val body: List<Statement>,
     declPos: PosInfo
 ) : AstNode(declPos) {
-    var parent: TopLevelDecl? = null
-    fun call(args: List<Value>, callSite: PosInfo): Value {
+    fun call(args: List<Value>, callSite: PosInfo, env: ExecEnvironment? = null): Value {
         if(argNames.size != args.size) throw CMLException.argCount(name, argNames.size, args.size, pos, callSite)
 
-        val baseEnv = parent?.fields ?: ExecEnvironment(mapOf())
-        val argEnv = ExecEnvironment.constVarEnv(baseEnv)
+        val baseEnv = env ?: ExecEnvironment(mapOf(), pos)
+        val argEnv = ExecEnvironment.constVarEnv(baseEnv, pos)
         argNames.zip(args).forEach { (n, v) ->
             // "declaration" of this "variable" is at top of function
             argEnv.addVar(n, v, pos)
         }
 
-        ExecutionStack.push(callSite)
-        val callEnv = ExecEnvironment.defaultEnv(argEnv)
-        run returning@{
-            body.forEach {
-                it.execute(callEnv)
-                if(callEnv.hitReturn) {
-                    return@returning
-                }
-            }
+        ExecutionStack.call(callSite) {
+            runStmtBlock(body, argEnv)
         }
-        ExecutionStack.pop()
-        return callEnv.returnValue
+        return argEnv.returnValue
     }
 
-    fun argCount(): Int = argNames.size
-
-    fun copy() = FunDecl(name, argNames, body, pos)
 }
 
 open class TopLevelDecl(
     val kind: String,
     val name: String,
-    val functions: Map<String, FunDecl>,
+    private val functions: Map<String, FunDecl>,
     val fieldsPre: Map<String, Expression>,
     declPos: PosInfo
 ) : AstNode(declPos) {
-    private constructor(
-        kind: String, name: String, functions: Map<String, FunDecl>,
-        env: ExecEnvironment, declPos: PosInfo
-    ) : this(kind, name, functions, mapOf(), declPos) {
-        fields = env
-    }
-
-    var fields = ExecEnvironment(functions)
-        private set
+    private val loadedFields = mutableMapOf<String, Value>()
     private var readied = false
 
-    override fun equals(other: Any?): Boolean {
-        if(other !is TopLevelDecl) return false
-        return kind == other.kind && name == other.name && functions.keys == other.functions.keys && fields == other.fields
-    }
-
-    override fun hashCode(): Int = Tuple4(kind, name, functions, fields).hashCode()
+    private constructor(
+        kind: String, name: String, functions: Map<String, FunDecl>, declPos: PosInfo
+    ) : this(kind, name, functions, mapOf(), declPos) {}
 
     fun ready() {
-        if(readied) return;
-
-        readied = true
-        fieldsPre.forEach {
-            fields.addVar(it.key, it.value.evaluate(fields), it.value.pos)
+        if(!readied) {
+            val fields = ExecEnvironment(mapOf(), pos)
+            readied = true
+            fieldsPre.forEach { (k, v) ->
+                val eval = v.evaluate(fields)
+                fields.addVar(k, eval, v.pos)
+                loadedFields[k] = eval
+            }
         }
     }
 
-    fun getField(field: String): Value? = getFieldAsVar(field)?.value
+    override fun equals(other: Any?): Boolean {
+        if(other !is TopLevelDecl) return false
+        return kind == other.kind && name == other.name && functions.keys == other.functions.keys
+    }
 
-    fun getFieldAsVar(field: String): Variable? = fields.getVar(field)
+    override fun hashCode(): Int = Triple(kind, name, functions).hashCode()
 
-    fun construct(): TopLevelDecl {
+    fun isFun(name: String) = functions.containsKey(name)
+    fun invokeWith(name: String, args: List<Value>, env: ExecEnvironment, callSite: PosInfo) = functions[name]?.call(args, callSite, env)
+
+    fun construct(pos: PosInfo): InstanceVal {
         if(!readied) ready()
-        val fns = functions.map { (fn, decl) -> Pair(fn, decl.copy()) }.associate { it }
-        return TopLevelDecl(kind, name, fns, fields.copy(fns), pos).also { it.functions.forEach{ (_, f) -> f.parent = it } }
+        return InstanceVal(this, loadedFields, pos)
     }
 }
 
@@ -96,21 +79,17 @@ class TemplateDecl(
         declPos: PosInfo) : this(kind, kind, argNames, functions, fieldsPre, declPos)
 
     fun instantiate(target: InstanceDecl): TopLevelDecl {
-        if(argNames.size != target.args.size)
+        if (argNames.size != target.args.size)
             throw AstException.templateArgCount(kind, target.name, argNames.size, target.args.size, target.pos)
 
         val inst = argNames.zip(target.args).associate { it }
-        val res = TopLevelDecl(
+        return TopLevelDecl(
             kind = kind,
             name = target.name,
             functions = functions.map { (k, v) -> Pair(k, v.instantiate(inst)) }.toMap(),
             fieldsPre = fieldsPre.map { (k, v) -> Pair(k, v.instantiate(inst)) }.toMap(),
-            declPos = pos
+            declPos = target.pos
         )
-        res.functions.forEach { (_, v) ->
-            v.parent = res
-        }
-        return res
     }
 }
 

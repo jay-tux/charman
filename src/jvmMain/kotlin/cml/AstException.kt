@@ -13,6 +13,9 @@ class AstException(msg: String) : Exception(msg) {
         fun templateArgCount(template: String, impl: String, expected: Int, got: Int, pos: PosInfo) =
             AstException("Instantiation of `$template' requires $expected arguments, $got given at $pos\n" +
                     "\tIn the instantiation of `$impl'")
+
+        fun nonAssignable(pos: PosInfo) =
+            AstException("Assignment to non-lvalue is invalid at $pos")
     }
 }
 
@@ -22,7 +25,7 @@ class LibraryException(msg: String) : Exception(msg) {
             LibraryException("Standard library function `$name' already exists.")
         fun libFunAlreadyExists(name: String) =
             LibraryException("Library free function `$name' already exists.")
-        fun libTypeAlreadyExists(name: String) =
-            LibraryException("Library type `$name' already exists.")
+        fun libTypeAlreadyExists(name: String, og: PosInfo, pos: PosInfo) =
+            LibraryException("Library type `$name' (declared at $og) already exists (redeclaration at $pos).")
     }
 }

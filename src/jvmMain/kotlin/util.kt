@@ -99,3 +99,5 @@ fun Int.cardinal(): String {
 fun <E, V> List<Either<E, V>>.filterRight(): List<V> {
     return this.filterIsInstance<Either.Right<V>>().map { it.value }
 }
+
+fun <V> Either<V, V>.fold() = this.fold({ it }, { it })

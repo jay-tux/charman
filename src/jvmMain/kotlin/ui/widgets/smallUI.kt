@@ -39,10 +39,15 @@ fun indented(modifier: Modifier = Modifier, content: @Composable RowScope.() -> 
 }
 
 @Composable
-fun TraitCard(name: String, source: String, desc: String) = Column {
+fun TraitCard(name: String, source: String, desc: String, charge: Pair<Int, Int>?, useCharge: (() -> Unit)?) = Column {
     boldThenItalic(name, "($source)")
     indented {
         Text(desc)
+    }
+    if(charge != null && useCharge != null) {
+        Column(Modifier.fillMaxWidth()) {
+            ChargesWidget(charge, modifier = Modifier.align(Alignment.End)) { useCharge() }
+        }
     }
 }
 
@@ -116,13 +121,18 @@ fun ColumnScope.IntStringCard(v: Int, s: String, withSign: Boolean = false) {
 }
 
 @Composable
-fun CenteredBox(title: String, value: String, modifier: Modifier = Modifier) {
+fun CenteredBox(title: String, modifier: Modifier = Modifier, isCenter: Boolean = false, innerMod: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     Box(modifier) {
-        Column(Modifier.align(Alignment.Center)) {
-            Text(title, fontStyle = FontStyle.Italic, modifier = Modifier.align(Alignment.CenterHorizontally))
-            Text(value, style = MaterialTheme.typography.h6, modifier = Modifier.align(Alignment.CenterHorizontally))
+        Text(title, fontStyle = FontStyle.Italic, modifier = Modifier.align(if(isCenter) Alignment.TopCenter else Alignment.TopStart))
+        Box(innerMod.align(Alignment.Center)) {
+            content()
         }
     }
+}
+
+@Composable
+fun CenteredBox(title: String, value: String, modifier: Modifier = Modifier) = CenteredBox(title, modifier, innerMod = Modifier.fillMaxSize(), isCenter = true) {
+    Text(value, style = MaterialTheme.typography.h6, modifier = Modifier.align(Alignment.Center))
 }
 
 @Composable

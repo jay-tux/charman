@@ -16,11 +16,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import arrow.core.flatMap
-import cml.InstanceVal
-import cml.Library
-import cml.Value
+import cml.*
 import data.*
 import filterRight
+import fold
 import ui.dialogs.CreationPage.*
 import ui.widgets.LazyScrollColumn
 import ui.widgets.TraitCard
@@ -56,7 +55,8 @@ fun CharacterCreationDialog(onClose: () -> Unit) = DefaultDialog(onClose, 600.dp
     var result by remember { Mutable.stateFrom(Character.mold()) }
     var currentPage by remember { mutableStateOf(NAME) }
     var canGoNext by remember { mutableStateOf(true) }
-    var choiceNo = remember { mutableStateOf(0) }
+    val choiceNo = remember { mutableStateOf(0) }
+    var exception by remember { mutableStateOf("") }
 
     val save = {
         val mod = Library.construct("Constitution", Character.posInit)?.let {
@@ -66,7 +66,7 @@ fun CharacterCreationDialog(onClose: () -> Unit) = DefaultDialog(onClose, 600.dp
 
         result.value.onUpdate()
         Scripts.saveChar(result.value)
-        CMLOut.refresh()
+        CMLOut.refresh(clear = false)
         onClose()
     }
 
@@ -75,13 +75,17 @@ fun CharacterCreationDialog(onClose: () -> Unit) = DefaultDialog(onClose, 600.dp
         result = result
     }
 
+    val onError = { err: CMLException ->
+        exception = "An error occurred while creating your character:\n${err.localizedMessage}"
+    }
+
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(0.95f)) {
             when (currentPage) {
-                NAME -> namePage(result.value, { canGoNext = it }) { fn -> update(fn) }
-                RACE -> racePage(result.value, choiceNo, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
-                CLASS -> classPage(result.value, choiceNo, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
-                BACKGROUND -> backgroundPage(result.value, choiceNo, { canGoNext = it }, { currentPage = next(currentPage) }) { fn -> update(fn) }
+                NAME -> namePage(result.value, { canGoNext = it })
+                RACE -> racePage(result.value, choiceNo, { canGoNext = it }, { currentPage = next(currentPage) }, { e -> onError(e) }) { fn -> update(fn) }
+                CLASS -> classPage(result.value, choiceNo, { canGoNext = it }, { currentPage = next(currentPage) }, { e -> onError(e) }) { fn -> update(fn) }
+                BACKGROUND -> backgroundPage(result.value, choiceNo, { canGoNext = it }, { currentPage = next(currentPage) }, { e -> onError(e) }) { fn -> update(fn) }
                 ABILITIES -> abilitiesPage(result.value, { canGoNext = it }) { fn -> update(fn) }
             }
         }
@@ -94,6 +98,13 @@ fun CharacterCreationDialog(onClose: () -> Unit) = DefaultDialog(onClose, 600.dp
                 onNo = { if(prev(currentPage) == currentPage) { onClose() } else { currentPage = prev(currentPage) } },
                 onYes = { if(next(currentPage) == currentPage) { save() } else { currentPage = next(currentPage) } }
             )
+        }
+    }
+
+    if(exception != "") {
+        errorDialog(exception) {
+            exception = ""
+            onClose()
         }
     }
 }
@@ -112,7 +123,7 @@ fun header(text: String, subTitle: String? = null) {
 }
 
 @Composable
-fun namePage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Character) -> Unit) -> Unit) {
+fun namePage(data: Character, toggleNext: (Boolean) -> Unit) {
     var name by data.name
     toggleNext(name != "")
 
@@ -128,7 +139,10 @@ fun namePage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Character)
 }
 
 @Composable
-fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+fun racePage(
+    data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit,
+    onError: (CMLException) -> Unit, delta: ((Character) -> Unit) -> Unit
+) {
     var raceV by data.race
 
     var selected by remember { mutableStateOf(-1) }
@@ -142,14 +156,20 @@ fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean)
     val onSelect = { race: Pair<String, InstanceVal> ->
          delta {
              raceV = race
+             it.speed.value = race.second.getInt("speed", Character.posInit).mapLeft { err ->
+                 CMLOut.addWarning("Couldn't load race's base speed. Assume 30 feet.")
+                 CMLOut.addError(err.localizedMessage)
+                 30
+             }.fold()
              Library.withChoices(
                  c = it,
                  selector = { c -> c.raceChoices },
                  render = { cnt, opts, onSet ->
                      choiceNo.value++; count = cnt; options = opts; setCallback = onSet
-                 }
+                 },
+                 onError = { e -> onError(e) }
              ) {
-                 race.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
+                 race.second.invoke("onSelect", listOf(), Character.posInit)?.let { goNext() }
                      ?: CMLOut.addWarning("Cannot call onSelect for ${race.first}")
              }
          }
@@ -157,7 +177,7 @@ fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean)
 
     val validRaces = remember {
         Library.typesByKind("Race").map { race ->
-            val inst = InstanceVal(race.construct(), Character.posRender)
+            val inst = race.construct(Character.posRender)
             inst.getName(Character.posRender).map {
                 val traits = inst.getList("traits", Character.posRender).map { l ->
                     l.value.map { t ->
@@ -194,7 +214,7 @@ fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean)
                     if(expanded) {
                         Text("Below are some traits this race will give you. Others might depends on additional choices.", fontStyle = FontStyle.Italic)
                         traits.forEach { (tName, tDesc) ->
-                            TraitCard(tName, name, tDesc)
+                            TraitCard(tName, name, tDesc, null, null)
                         }
                         Button({ onSelect(Pair(name, inst)) }) {
                             Spacer(Modifier.width(10.dp))
@@ -217,7 +237,10 @@ fun racePage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean)
 }
 
 @Composable
-fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+fun classPage(
+    data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit,
+    onError: (CMLException) -> Unit, delta: ((Character) -> Unit) -> Unit
+) {
     var selected by remember { mutableStateOf(-1) }
     var classes by data.classes
 
@@ -229,12 +252,12 @@ fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean
 
     val onSelect = { classV: Pair<String, InstanceVal> ->
         delta {
-            classes += Pair(classV.first, ClassDesc(classV.second, 1, true))
             val hitDie = classV.second.getDice("hitDie", Character.posInit).fold(
-                { CMLOut.addError("Hit Die not defined for class `${classV.first}."); 0 },
-                { k -> k.kind }
+                { CMLOut.addError("Hit Die not defined for class `${classV.first}."); DiceVal(1, 1, Character.posInit) },
+                { k -> k }
             )
-            it.hitDice.value += Pair(hitDie, 1)
+            classes += Pair(classV.first, ClassDesc(classV.second, 1, hitDie, true))
+            it.hitDice.value += Pair(hitDie.kind, 1)
             it.choices.value.classesChoices[classV.first] = mutableMapOf()
 
             Library.withChoices(
@@ -244,17 +267,18 @@ fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean
                 },
                 render = { cnt, opts, onSet ->
                     choiceNo.value++; count = cnt; options = opts; setCallback = onSet
-                }
+                },
+                onError = { e -> onError(e) }
             ) {
-                classV.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
+                classV.second.invoke("onSelect", listOf(), Character.posInit)?.let { goNext() }
                     ?: CMLOut.addWarning("Cannot call onSelect for ${classV.first}")
             }
         }
     }
 
     val validClasses = remember {
-        Library.typesByKind("Class").map { race ->
-            val inst = InstanceVal(race.construct(), Character.posRender)
+        Library.typesByKind("Class").map { cls ->
+            val inst = cls.construct(Character.posRender)
             inst.getName(Character.posRender).map {
                 Pair(it, inst)
             }
@@ -300,7 +324,10 @@ fun classPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean
 }
 
 @Composable
-fun backgroundPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit, delta: ((Character) -> Unit) -> Unit) {
+fun backgroundPage(
+    data: Character, choiceNo: MutableState<Int>, toggleNext: (Boolean) -> Unit, goNext: () -> Unit,
+    onError: (CMLException) -> Unit, delta: ((Character) -> Unit) -> Unit
+) {
     var selected by remember { mutableStateOf(-1) }
     var background by data.background
 
@@ -318,17 +345,18 @@ fun backgroundPage(data: Character, choiceNo: MutableState<Int>, toggleNext: (Bo
                 selector = { c -> c.backgroundChoices },
                 render = { cnt, opts, onSet ->
                     choiceNo.value++; count = cnt; options = opts; setCallback = onSet
-                }
+                },
+                onError = { e -> onError(e) }
             ) {
-                back.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
+                back.second.invoke("onSelect", listOf(), Character.posInit)?.let { goNext() }
                     ?: CMLOut.addWarning("Cannot call onSelect for ${back.first}")
             }
         }
     }
 
     val validBackgrounds = remember {
-        Library.typesByKind("Background").map { race ->
-            val inst = InstanceVal(race.construct(), Character.posRender)
+        Library.typesByKind("Background").map { bg ->
+            val inst = bg.construct(Character.posRender)
             inst.getName(Character.posRender).map {
                 Pair(it, inst)
             }
@@ -411,6 +439,16 @@ fun abilitiesPage(data: Character, toggleNext: (Boolean) -> Unit, delta: ((Chara
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun errorDialog(msg: String, onClose: () -> Unit) = DefaultDialog({ onClose() }, 750.dp, 250.dp) {
+    Column {
+        Text(msg, color = MaterialTheme.colors.error)
+        Button({ onClose() }, Modifier.fillMaxWidth()) {
+            Text("Close")
         }
     }
 }
