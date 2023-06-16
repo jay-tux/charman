@@ -287,7 +287,7 @@ fun CharacterScope.addSpellUsing(args: List<Value>, p: PosInfo): Value {
 fun CharacterScope.getAbilities(args: List<Value>, p: PosInfo): Value {
     return argCnt("getAbilities", 0, args, p).map { (pos, _) ->
         ListVal(
-            Library.typesByKind("Ability").map { d -> InstanceVal(d, pos) }.toMutableList(),
+            Library.typesByKind("Ability").map { d -> d.construct(pos) }.toMutableList(),
             pos
         )
     }.handle()
@@ -332,7 +332,7 @@ fun CharacterScope.getProficiency(args: List<Value>, p: PosInfo): Value {
 fun CharacterScope.getSkills(args: List<Value>, p: PosInfo): Value {
     return argCnt("getSkills", 0, args, p).map { (pos, _) ->
         ListVal(
-            Library.typesByKind("Skill").map { d -> InstanceVal(d, pos) }.toMutableList(),
+            Library.typesByKind("Skill").map { d -> d.construct(pos) }.toMutableList(),
             pos
         )
     }.handle()
@@ -341,7 +341,7 @@ fun CharacterScope.getSkills(args: List<Value>, p: PosInfo): Value {
 fun CharacterScope.getSpells(args: List<Value>, p: PosInfo): Value {
     return argCnt("getSpells", 0, args, p).map { (pos, _) ->
         ListVal(
-            Library.typesByKind("Spell").map { d -> InstanceVal(d, pos) }.toMutableList(), pos
+            Library.typesByKind("Spell").map { d -> d.construct(pos) }.toMutableList(), pos
         )
     }.handle()
 }
@@ -636,9 +636,7 @@ fun ChoiceScope.chooseDataByKind(args: List<Value>, p: PosInfo): Value {
     return argCnt("chooseDataByKind", 2, args, p).flatMap { (pos, _) ->
         args[0].requireString(pos).flatMap { name ->
             args[1].requireString(pos).flatMap { kind ->
-                val options = Library.typesByKind(kind).map { type ->
-                    InstanceVal(type, pos)
-                }
+                val options = Library.typesByKind(kind).map { type -> type.construct(pos) }
 
                 if(options.isEmpty()) {
                     CMLException("No types with kind `$kind' defined. Error thrown at $pos").left()
@@ -676,7 +674,7 @@ fun ChoiceScope.chooseItem(args: List<Value>, p: PosInfo): Value {
             }.flatMap { tags ->
                 Library.typesByKind("Item").mapOrEither { decl ->
                     ExecutionStack.run {
-                        Character.loadItem(InstanceVal(decl, pos))
+                        Character.loadItem(decl.construct(pos))
                     }
                 }.map { sub ->
                     sub.filter { item ->
@@ -705,9 +703,7 @@ fun ChoiceScope.chooseNByKind(args: List<Value>, p: PosInfo): Value {
         args[0].requireString(pos).flatMap { name ->
             args[1].requireInt(pos).flatMap { count ->
                 args[2].requireString(pos).flatMap { kind ->
-                    val options = Library.typesByKind(kind).map { type ->
-                        InstanceVal(type, pos)
-                    }
+                    val options = Library.typesByKind(kind).map { type -> type.construct(pos) }
 
                     if(options.isEmpty()) {
                         CMLException("No types with kind `$kind' defined. Error thrown at $pos").left()
@@ -823,7 +819,7 @@ fun ChoiceScope.chooseNItems(args: List<Value>, p: PosInfo): Value {
                 }.flatMap { tags ->
                     Library.typesByKind("Item").mapOrEither { decl ->
                         ExecutionStack.run {
-                            Character.loadItem(InstanceVal(decl, pos))
+                            Character.loadItem(decl.construct(pos))
                         }
                     }.map { sub ->
                         sub.filter { item ->
@@ -899,7 +895,7 @@ fun ChoiceScope.selectPreparedSpells(args: List<Value>, p: PosInfo): Value {
 
 // region Helper functions (bis)
 fun filterSpellsByLevel(baseList: List<InstanceVal>, classN: String, pred: (Int) -> Boolean): List<InstanceVal> {
-    return baseList.map{ Pair(it, true) }.union(Library.typesByKind("Spell").map { Pair(InstanceVal(it, ChoiceScope.choicePos), false) }).map {
+    return baseList.map{ Pair(it, true) }.union(Library.typesByKind("Spell").map { Pair(it.construct(ChoiceScope.choicePos), false) }).map {
         it.first.getInt("level", ChoiceScope.choicePos).map { l ->
             val spellLists = it.first.getList("onSpellLists", ChoiceScope.choicePos).fold({ listOf<String>() }) { list ->
                 list.value.map { sp ->

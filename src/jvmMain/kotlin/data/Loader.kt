@@ -43,12 +43,6 @@ object Scripts {
         return Library.construct(type, pos)
     }
 
-    private inline fun <reified T : Value> maybeGetVar(type: TopLevelDecl, name: String) : T? {
-        val tmp = type.fields.getVar(name)?.value
-        if(tmp !is T?) return null
-        return tmp
-    }
-
     private fun maybeInvoke(type: TopLevelDecl, func: String, args: List<Value>): Value? {
         return type.functions[func]?.call(args, pos)
     }

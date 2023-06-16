@@ -166,7 +166,7 @@ object Library {
     }
 
     fun isLibType(name: String): Boolean = types.containsKey(name)
-    fun construct(name: String, pos: PosInfo): InstanceVal? = types[name]?.let { InstanceVal(it.construct(), pos) }
+    fun construct(name: String, pos: PosInfo): InstanceVal? = types[name]?.construct(pos)
     fun addType(name: String, type: TopLevelDecl) {
         if(types.containsKey(name)) throw LibraryException.libTypeAlreadyExists(name, types[name]!!.pos, type.pos)
         types[name] = type
@@ -174,7 +174,6 @@ object Library {
 
     fun types(): Map<String, TopLevelDecl> = types
     fun typesByKind(kind: String): List<TopLevelDecl> = types.filter { it.value.kind == kind }.map { it.value }
-    fun functions() = functions.keys.union(contextFunctions.keys)
 
     fun getGlobal(name: String): Variable? = globals[name]
 
@@ -229,13 +228,14 @@ object Library {
         }
     }
 
+    val phonyPos = PosInfo("<~phony~>", 0, 0)
     fun phonyType() = TopLevelDecl(
         kind = "~phony",
         name = "~phony",
         functions = mapOf(),
         fieldsPre = mapOf(),
-        declPos = PosInfo("<~phony~>", 0, 0)
+        declPos = phonyPos
     )
 
-    fun phonyInstance() = InstanceVal(phonyType(), phonyType().pos)
+    fun phonyInstance() = phonyType().construct(phonyPos)
 }

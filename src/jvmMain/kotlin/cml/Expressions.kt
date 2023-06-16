@@ -64,7 +64,7 @@ class FieldExpr(val base: Expression, val name: String, pos: PosInfo): LValue(po
         if(baseE !is InstanceVal) {
             throw CMLException.nonObjectVar(name, baseE, pos)
         }
-        return baseE.type.getFieldAsVar(name)
+        return baseE.getFieldAsVar(name)
             ?: throw CMLException.invalidField(baseE.type.name, name, pos)
     }
 
@@ -371,7 +371,7 @@ class ObjFuncCallExpr(
         if(objE !is InstanceVal) throw CMLException.nonObjectVar(name, objE, pos)
 
         val argsE = args.map { it.evaluate(ctxt) }
-        return objE.type.functions[name]?.call(argsE, pos) ?: throw CMLException.invalidMemberFunction(objE.type.name, name, pos)
+        return objE.invoke(name, argsE, pos) ?: throw CMLException.invalidMemberFunction(objE.type.name, name, pos)
     }
 
     override fun instantiate(instantiations: Map<String, Expression>): Expression {

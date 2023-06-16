@@ -93,9 +93,15 @@ class VoidVal(pos: PosInfo): Value(pos) {
     override fun copy(newPos: PosInfo): Value = VoidVal(newPos)
     override fun hashCode(): Int = javaClass.hashCode()
 }
-class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
+class InstanceVal private constructor(val type: TopLevelDecl, val fields: ExecEnvironment, pos: PosInfo): Value(pos) {
+    constructor(type: TopLevelDecl, fields: Map<String, Value>, pos: PosInfo): this(type, ExecEnvironment(fields), pos)
+
+    init {
+        fields.thisVar = this
+    }
+
     override fun repr(): String = "(instance of ${type.name}, kind: ${type.kind})"
-    override fun copy(newPos: PosInfo): Value = InstanceVal(type.construct(), newPos)
+    override fun copy(newPos: PosInfo): Value = InstanceVal(type, fields, newPos)
 
     override fun equals(other: Any?): Boolean {
         if(other !is InstanceVal) return false
@@ -110,23 +116,22 @@ class InstanceVal(val type: TopLevelDecl, pos: PosInfo): Value(pos) {
     }
 
     inline fun <reified T: Value> attemptFieldAs(field: String, typename: String, rPos: PosInfo): Either<CMLException, T> {
-        return when(val variable = type.getField(field)) {
+        return when(val variable = fields.getVar(field)?.value) {
             null -> Either.Left(CMLException.invalidField(repr(), field, rPos))
             !is T -> Either.Left(CMLException.typeError(typename, variable, rPos))
             else -> Either.Right(variable)
         }
     }
 
-    inline fun <reified T: Value> ifKindGetFieldAs(kind: String, field: String, typename: String, rPos: PosInfo): T {
-        if(type.kind != kind) { throw CMLException.wrongKind(kind, type.kind, rPos) }
-        return getFieldAs(field, typename, rPos)
-    }
-
     inline fun <reified T: Value> getFieldAs(field: String, typename: String, rPos: PosInfo): T {
-        val variable = type.getField(field) ?: throw CMLException.invalidField(repr(), field, rPos)
+        val variable = fields.getVar(field)?.value ?: throw CMLException.invalidField(repr(), field, rPos)
         if(variable !is T) throw CMLException.typeError(typename, variable, rPos)
         return variable
     }
+
+    fun invoke(name: String, args: List<Value>, callSite: PosInfo) = type.invokeWith(name, args, fields, callSite)
+
+    fun getFieldAsVar(field: String) = fields.getVar(field)
 }
 
 class DelayedVal(val scope: ChoiceScope, val name: String, pos: PosInfo): Value(pos) {
@@ -192,6 +197,13 @@ open class Variable protected constructor(allowVoid: Boolean, val name: String, 
     fun isDice() = value is DiceVal
 
     fun copy(): Variable = Variable(name, value.copy(), isImmutable, declPos)
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + isImmutable.hashCode()
+        result = 31 * result + declPos.hashCode()
+        result = 31 * result + value.hashCode()
+        return result
+    }
 }
 
 class ListIndexVariable(val l: MutableList<Value>, val i: Int, isImmutable: Boolean, declPos: PosInfo) : Variable("[index variable]", l[i], isImmutable, declPos) {
@@ -211,20 +223,17 @@ class DictIndexVariable(val d: MutableMap<Value, Value>, val k: Value, isImmutab
 class ExecEnvironment private constructor(
     private val parent: ExecEnvironment?, ignore: Boolean
 ) {
-    constructor(parent: ExecEnvironment) : this(parent, false) {
-        functions = parent.functions
+    constructor(parent: ExecEnvironment) : this(parent, false) {}
+
+    constructor(vars: Map<String, Value>) : this(null, false) {
+        variables.putAll(vars.map { Pair(it.key, Variable(it.key, it.value, false, it.value.pos)) })
     }
 
-    constructor(funcs: Map<String, FunDecl>) : this(null, false) {
-        functions = funcs
+    constructor(vars: Map<String, Value>, thisV: InstanceVal) : this(vars) {
+        thisVar = thisV
     }
 
-    constructor(funcs: Map<String, FunDecl>, thisVar: InstanceVal) : this(funcs) {
-        this.thisVar = thisVar
-    }
-
-    private var thisVar: InstanceVal? = null
-    private var functions = mapOf<String, FunDecl>()
+    var thisVar: InstanceVal? = null
     private val variables = mutableMapOf<String, Variable>()
 
     var varsAreImmutable: Boolean = false
@@ -249,17 +258,20 @@ class ExecEnvironment private constructor(
     fun vars() = variables.keys
     fun log() = variables.map { "${it.key} = ${it.value.value.repr()}" }.joinToString(", ")
 
+    fun isEnvFunction(name: String): Boolean = thisVar?.type?.isFun(name) == true || parent?.isEnvFunction(name) == true
+
     fun isFunction(name: String): Boolean =
-        StdLib.isStd(name) || Library.isLibFunc(name) || functions.containsKey(name)
+        StdLib.isStd(name) || Library.isLibFunc(name) || isEnvFunction(name)
+
+    fun currentThis(): InstanceVal? = thisVar ?: parent?.currentThis()
 
     fun invoke(name: String, args: List<Value>, callSite: PosInfo): Value? {
-        val f = functions[name]
-        if(f == null) {
-            if(Library.isLibFunc(name)) return Library.invoke(name, args, callSite)
-            if(StdLib.isStd(name)) return StdLib.invoke(name, args, callSite)
-            return null
+        if(isEnvFunction(name)) {
+            return currentThis()?.type?.invokeWith(name, args, this, callSite)
         }
-        return functions[name]?.call(args, callSite)
+        return if(Library.isLibFunc(name)) Library.invoke(name, args, callSite)
+            else if(StdLib.isStd(name)) StdLib.invoke(name, args, callSite)
+            else null
     }
 
     fun addVar(name: String, value: Value, currPos: PosInfo) {
@@ -267,13 +279,9 @@ class ExecEnvironment private constructor(
         variables[name] = Variable(name, value, varsAreImmutable, currPos)
     }
 
-    fun getThis(currPos: PosInfo): Value {
-        TODO()
-    }
-
-    fun copy(useFuns: Map<String, FunDecl>): ExecEnvironment {
+    fun copy(): ExecEnvironment {
         if(parent != null) throw CMLException.internalCopyExecEnv()
-        val res = ExecEnvironment(useFuns)
+        val res = ExecEnvironment(null, false)
         res.varsAreImmutable = varsAreImmutable
         res.isInLoop = isInLoop
         res.hitBreak = hitBreak

@@ -146,7 +146,7 @@ class Character(
     val hitDice = mutableStateOf(mapOf<Int, Int>()) // (dice type, amount)
     val inventory = mutableStateOf(mapOf<ItemDesc, Int>())
     val money = mutableStateOf(Library.typesByKind("Currency").map { decl ->
-        val inst = InstanceVal(decl, posInit)
+        val inst = decl.construct(posInit)
         inst.getName(posInit).flatMap { name ->
             inst.getString("abbrev", posInit).flatMap { abbrev ->
                 inst.getInt("conversionRatio", posInit).map { ratio ->
@@ -234,7 +234,7 @@ class Character(
         }
 
         Library.withCharacter(this) {
-            val dex = Library.types()["Dexterity"]?.let { InstanceVal(it, posRender) }
+            val dex = Library.types()["Dexterity"]?.let { it.construct(posRender) }
             if (dex == null) CMLOut.addWarning("Ability Dexterity does not exist.")
             else {
                 val mod = abilityMod(dex)
@@ -262,13 +262,14 @@ class Character(
 
         val skillModsM = mutableMapOf<String, Tuple4<Int, Boolean, String, Int>>()
         Library.typesByKind("Skill").forEach { decl ->
-            val name = decl.fields.getVar("name")
+            val inst = decl.construct(posRender)
+            val name = inst.getFieldAsVar("name")
 
             if(name == null) CMLOut.addWarning(CMLException.invalidField(decl.name, "name", posRender).localizedMessage)
             else if(name.value !is StringVal) CMLOut.addWarning(CMLException.typeError("String", name.value, posRender).localizedMessage)
             else {
                 val fourth = skillMods.value[(name.value as StringVal).value]?.fourth ?: 0
-                val ability = decl.fields.getVar("reliesOn")
+                val ability = inst.getFieldAsVar("reliesOn")
                 var mod = 0
                 var ab = "Invalid"
                 if(ability == null) CMLOut.addWarning(CMLException.invalidField(decl.name, "reliesOn", posRender).localizedMessage)
@@ -281,7 +282,7 @@ class Character(
                     }
                 }
 
-                if(skillProficiencies.value.contains(InstanceVal(decl, posRender))) skillModsM[(name.value as StringVal).value] = Tuple4(mod + proficiency(), true, ab, fourth)
+                if(skillProficiencies.value.contains(inst)) skillModsM[(name.value as StringVal).value] = Tuple4(mod + proficiency(), true, ab, fourth)
                 else skillModsM[(name.value as StringVal).value] = Tuple4(mod, false, ab, fourth)
             }
         }
@@ -546,7 +547,7 @@ class Character(
         // data class AbilityDesc(val name: String, val instance: InstanceVal, val score: Int)
         fun loadAbilities() =
             Library.typesByKind("Ability").map { ability ->
-                val inst = InstanceVal(ability, posInit)
+                val inst = ability.construct(posInit)
                 inst.getString("abbrev", posInit).flatMap { abbrev ->
                     inst.getName(posInit)
                         .map { name -> AbilityDesc(name, inst, 0) }
@@ -597,7 +598,7 @@ object CharacterData {
     }
 
     fun loadFromLibrary() {
-        _characters.value = _characters.value + Library.typesByKind("Character").map { InstanceVal(it, runtimeLoadPos).right() }
+        _characters.value = _characters.value + Library.typesByKind("Character").map { it.construct(runtimeLoadPos).right() }
         _loadedCharacters.value = characters.value.map { pre -> pre.mapLeft { it.second }.flatMap { Character.loadFromInstance(it) } }
     }
 

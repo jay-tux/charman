@@ -177,7 +177,7 @@ fun racePage(
 
     val validRaces = remember {
         Library.typesByKind("Race").map { race ->
-            val inst = InstanceVal(race.construct(), Character.posRender)
+            val inst = race.construct(Character.posRender)
             inst.getName(Character.posRender).map {
                 val traits = inst.getList("traits", Character.posRender).map { l ->
                     l.value.map { t ->
@@ -277,8 +277,8 @@ fun classPage(
     }
 
     val validClasses = remember {
-        Library.typesByKind("Class").map { race ->
-            val inst = InstanceVal(race.construct(), Character.posRender)
+        Library.typesByKind("Class").map { cls ->
+            val inst = cls.construct(Character.posRender)
             inst.getName(Character.posRender).map {
                 Pair(it, inst)
             }
@@ -355,8 +355,8 @@ fun backgroundPage(
     }
 
     val validBackgrounds = remember {
-        Library.typesByKind("Background").map { race ->
-            val inst = InstanceVal(race.construct(), Character.posRender)
+        Library.typesByKind("Background").map { bg ->
+            val inst = bg.construct(Character.posRender)
             inst.getName(Character.posRender).map {
                 Pair(it, inst)
             }

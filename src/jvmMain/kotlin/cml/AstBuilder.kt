@@ -563,9 +563,7 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
                 functions = body.functions.associateBy { it.name },
                 fieldsPre = body.fields.associate { Pair(it.name, it.init) },
                 declPos = c.start.getPos(file)
-            ).also {
-                it.functions.forEach { (_, v) -> v.parent = it }
-            }
+            )
         }
     }
 
