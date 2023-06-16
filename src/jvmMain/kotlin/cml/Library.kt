@@ -162,7 +162,7 @@ object Library {
     }
     fun addGlobal(glob: GlobalDecl) {
         if(globals.containsKey(glob.name)) throw CMLException.redeclareGlob(glob.name, globals[glob.name]!!.value.pos, glob.pos)
-        globals[glob.name] = glob.toVar(ExecEnvironment(mapOf()))
+        globals[glob.name] = glob.toVar(ExecEnvironment(mapOf(), PosInfo("<runtime:global>", 0, 0)))
     }
 
     fun isLibType(name: String): Boolean = types.containsKey(name)

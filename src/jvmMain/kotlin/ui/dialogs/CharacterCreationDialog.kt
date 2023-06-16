@@ -169,7 +169,7 @@ fun racePage(
                  },
                  onError = { e -> onError(e) }
              ) {
-                 race.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
+                 race.second.invoke("onSelect", listOf(), Character.posInit)?.let { goNext() }
                      ?: CMLOut.addWarning("Cannot call onSelect for ${race.first}")
              }
          }
@@ -270,7 +270,7 @@ fun classPage(
                 },
                 onError = { e -> onError(e) }
             ) {
-                classV.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
+                classV.second.invoke("onSelect", listOf(), Character.posInit)?.let { goNext() }
                     ?: CMLOut.addWarning("Cannot call onSelect for ${classV.first}")
             }
         }
@@ -348,7 +348,7 @@ fun backgroundPage(
                 },
                 onError = { e -> onError(e) }
             ) {
-                back.second.type.functions["onSelect"]?.call(listOf(), Character.posInit)?.let { goNext() }
+                back.second.invoke("onSelect", listOf(), Character.posInit)?.let { goNext() }
                     ?: CMLOut.addWarning("Cannot call onSelect for ${back.first}")
             }
         }

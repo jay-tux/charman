@@ -43,10 +43,6 @@ object Scripts {
         return Library.construct(type, pos)
     }
 
-    private fun maybeInvoke(type: TopLevelDecl, func: String, args: List<Value>): Value? {
-        return type.functions[func]?.call(args, pos)
-    }
-
     fun loadFile(f: String) {
         file = f
         FileInputStream(file).use { stream ->
@@ -327,14 +323,14 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
         }.flatMap { (char, choices) ->
             Library.withCharacter(char) {
                 val level = IntVal(char.classes.value.values.sumOf { it.level }, posRest)
-                char.race.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
+                char.race.value.second.invoke("onRestore", listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 char.racialTraits.value.forEach { (k, v) ->
-                    v.instance.type.functions["onRestore"]?.call(listOf(DictVal(choices.raceChoices, posRest), level), posRest)
+                    v.instance.invoke("onRestore", listOf(DictVal(choices.raceChoices, posRest), level), posRest)
                 }
 
                 val altMap = mutableMapOf<String, MutableMap<Value, Value>>()
                 char.classes.value.forEach { e ->
-                    e.value.cls.type.functions["onRestore"]?.call(
+                    e.value.cls.invoke("onRestore",
                         choices.classesChoices[e.key]?.let {
                             altMap[e.key] = it
                             listOf(DictVal(it, posRest), IntVal(e.value.level, posRest), BoolVal(e.value.isPrimary, posRest))
@@ -345,15 +341,15 @@ fun Character.Companion.loadFromInstance(inst: InstanceVal): Either<CMLException
 
                 altMap.forEach { (cls, ch) ->
                     char.classTraits.value.filter { it.value.source == cls }.forEach { (k, v) ->
-                        v.instance.type.functions["onRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)
+                        v.instance.invoke("onRestore", listOf(DictVal(ch, posRest), level), posRest)
                     }
                 }
 
-                char.background.value.second.type.functions["onRestore"]?.call(listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
+                char.background.value.second.invoke("onRestore", listOf(DictVal(choices.backgroundChoices, posRest)), posRest)
 
                 altMap.forEach { (cls, ch) ->
                     char.classTraits.value.filter { it.value.source == cls }.forEach { (k, v) ->
-                        v.instance.type.functions["onLateRestore"]?.call(listOf(DictVal(ch, posRest), level), posRest)
+                        v.instance.invoke("onLateRestore", listOf(DictVal(ch, posRest), level), posRest)
                     }
                 }
 
@@ -475,7 +471,7 @@ fun Character.Companion.loadItem(item: Value): Either<CMLException, Pair<ItemDes
                         inst.getList("tags", posInit).flatMap { tags ->
                             tags.value.mapOrEither { it.requireString(posInit) }
                         }.map { tags ->
-                            ItemDesc(name, weight, price, actions, traits, tags, inst, inst.type.functions.containsKey("onDon"))
+                            ItemDesc(name, weight, price, actions, traits, tags, inst, inst.type.isFun("onDon"))
                         }
                     }
                 }

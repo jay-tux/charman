@@ -163,19 +163,19 @@ class Character(
 
     private fun callOnAll(fn: String, args: List<Value> = listOf(), withResult: (Value) -> Unit) {
         Library.withCharacter(this) {
-            race.value.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
+            race.value.second.invoke(fn, args, posRender)?.let(withResult)
             classes.value.forEach { (_, v) ->
-                v.cls.type.functions[fn]?.call(args, posRender)?.let(withResult)
+                v.cls.invoke(fn, args, posRender)?.let(withResult)
             }
-            background.value.second.type.functions[fn]?.call(args, posRender)?.let(withResult)
+            background.value.second.invoke(fn, args, posRender)?.let(withResult)
         }.mapLeft { CMLOut.addError(it.localizedMessage) }
     }
 
     fun callOnTraits(fn: String, args: List<Value> = listOf()) {
         Library.withCharacter(this) {
-            classTraits.value.forEach { it.value.instance.type.functions[fn]?.call(args, posRender) }
-            racialTraits.value.forEach { it.value.instance.type.functions[fn]?.call(args, posRender) }
-            backgroundTraits.value.forEach { it.value.instance.type.functions[fn]?.call(args, posRender) }
+            classTraits.value.forEach { it.value.instance.invoke(fn, args, posRender) }
+            racialTraits.value.forEach { it.value.instance.invoke(fn, args, posRender) }
+            backgroundTraits.value.forEach { it.value.instance.invoke(fn, args, posRender) }
         }
         refreshData()
     }
@@ -215,7 +215,7 @@ class Character(
         Library.withCharacter(this) {
             inventory.value.forEach { (desc, _) ->
                 if (desc.equipped) {
-                    desc.instance.type.functions["onDon"]?.call(listOf(), posRender)
+                    desc.instance.invoke("onDon", listOf(), posRender)
                 }
             }
 

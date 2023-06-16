@@ -13,40 +13,29 @@ class FunDecl(
     fun call(args: List<Value>, callSite: PosInfo, env: ExecEnvironment? = null): Value {
         if(argNames.size != args.size) throw CMLException.argCount(name, argNames.size, args.size, pos, callSite)
 
-        val baseEnv = env ?: ExecEnvironment(mapOf())
-        val argEnv = ExecEnvironment.constVarEnv(baseEnv)
+        val baseEnv = env ?: ExecEnvironment(mapOf(), pos)
+        val argEnv = ExecEnvironment.constVarEnv(baseEnv, pos)
         argNames.zip(args).forEach { (n, v) ->
             // "declaration" of this "variable" is at top of function
             argEnv.addVar(n, v, pos)
         }
 
-        ExecutionStack.push(callSite)
-        val callEnv = ExecEnvironment.defaultEnv(argEnv)
-        run returning@{
-            body.forEach {
-                it.execute(callEnv)
-                if(callEnv.hitReturn) {
-                    return@returning
-                }
-            }
+        ExecutionStack.call(callSite) {
+            runStmtBlock(body, argEnv)
         }
-        ExecutionStack.pop()
-        return callEnv.returnValue
+        return argEnv.returnValue
     }
 
-    fun argCount(): Int = argNames.size
-
-    fun copy() = FunDecl(name, argNames, body, pos)
 }
 
 open class TopLevelDecl(
     val kind: String,
     val name: String,
-    val functions: Map<String, FunDecl>,
+    private val functions: Map<String, FunDecl>,
     val fieldsPre: Map<String, Expression>,
     declPos: PosInfo
 ) : AstNode(declPos) {
-    private val fields = ExecEnvironment(mapOf())
+    private val loadedFields = mutableMapOf<String, Value>()
     private var readied = false
 
     private constructor(
@@ -55,8 +44,13 @@ open class TopLevelDecl(
 
     fun ready() {
         if(!readied) {
-            fieldsPre.forEach { (k, v) -> fields.addVar(k, v.evaluate(fields), v.pos) }
+            val fields = ExecEnvironment(mapOf(), pos)
             readied = true
+            fieldsPre.forEach { (k, v) ->
+                val eval = v.evaluate(fields)
+                fields.addVar(k, eval, v.pos)
+                loadedFields[k] = eval
+            }
         }
     }
 
@@ -72,7 +66,7 @@ open class TopLevelDecl(
 
     fun construct(pos: PosInfo): InstanceVal {
         if(!readied) ready()
-        return InstanceVal(this, fieldsPre.map { Pair(it.key, it.value.evaluate(fields.copy())) }.associate { it }, pos)
+        return InstanceVal(this, loadedFields, pos)
     }
 }
 

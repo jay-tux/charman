@@ -103,7 +103,7 @@ class ForStmt(
 
     override fun execute(ctxt: ExecEnvironment) {
         val rangeE = range.evaluate(ctxt)
-        val checkScope = ExecEnvironment.constVarEnv(ctxt)
+        val checkScope = ExecEnvironment.constVarEnv(ctxt, pos)
         // iteration "variable" is declared in for header
 
         when (rangeE) {
@@ -162,7 +162,9 @@ class ReturnStmt(val value: Expression?, pos: PosInfo): Statement(pos) {
 }
 
 fun runStmtBlock(block: List<Statement>, env: ExecEnvironment, shouldBeLoopEnv: Boolean = false): Boolean {
-    val subScope = if(shouldBeLoopEnv) ExecEnvironment.loopEnv(env) else ExecEnvironment.defaultEnv(env)
+    if(block.isEmpty()) return false
+
+    val subScope = if(shouldBeLoopEnv) ExecEnvironment.loopEnv(env, block[0].pos) else ExecEnvironment.defaultEnv(env, block[0].pos)
     for(stmt in block) {
         stmt.execute(subScope)
         if(subScope.hitReturn) {

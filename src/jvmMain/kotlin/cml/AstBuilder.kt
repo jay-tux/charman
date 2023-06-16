@@ -113,6 +113,8 @@ class AstBuilder(private val file: String) : CMLBaseVisitor<AstNode>() {
         }
     }
 
+    override fun visitThisExpr(ctx: CMLParser.ThisExprContext?): AstNode = nonNull(ctx) { ThisExpr(it.start.getPos(file)) }
+
     override fun visitParenExpr(ctx: CMLParser.ParenExprContext?): AstNode {
         return nonNull(ctx) { ParenExpr(visit(it.expr()) as Expression, it.start.getPos(file)) }
     }

@@ -104,7 +104,7 @@ fun RowScope.sheetTopRow(data: Character) {
         ) {
             val args = listOf(IntVal(cl.level + 1, Character.posInit))
 
-            cl.cls.type.functions["onLevelUp"]?.call(args, Character.posInit)
+            cl.cls.invoke("onLevelUp", args, Character.posInit)
                 ?: CMLOut.addWarning("Cannot call onLevelUp for $cName")
             data.callOnTraits("onLevelUp", args)
             classes += Pair(cName, cl.copy(level = cl.level + 1))

@@ -1,5 +1,7 @@
 package cml
 
+import CMLOut
+
 // TODO: in evaluate - handle void
 
 abstract class Expression(pos: PosInfo) : AstNode(pos) {
@@ -42,7 +44,7 @@ class LiteralExpr(private val literal: Value, pos: PosInfo): Expression(pos) {
 
 class ThisExpr(pos: PosInfo): Expression(pos) {
     override fun evaluate(ctxt: ExecEnvironment): Value {
-        TODO("Not yet implemented")
+        return ctxt.currentThis() ?: throw CMLException.thisInvalid(pos)
     }
 
     override fun instantiate(instantiations: Map<String, Expression>): Expression = this
@@ -51,7 +53,11 @@ class ThisExpr(pos: PosInfo): Expression(pos) {
 
 class VarExpr(val ident: String, pos: PosInfo): LValue(pos) {
     override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
-        return ctxt.getVar(ident) ?: throw CMLException.undeclaredVar(ident, pos)
+        return ctxt.getVar(ident) ?: throw CMLException.undeclaredVar(ident, pos).also {
+            CMLOut.addWarning("Variables in scope: ${ctxt.listVars()}")
+            CMLOut.addWarning("Value of `this': ${ctxt.currentThis()}")
+            if(ctxt.thisVar != null) CMLOut.addWarning("Fields of `this': ${ctxt.currentThis()?.fields?.listVars()}")
+        }
     }
 
     override fun instantiateVR(instantiations: Map<String, Expression>) = VarExpr(ident, pos)
