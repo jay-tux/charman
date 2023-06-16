@@ -10,6 +10,7 @@ import java.util.*
 object CMLOut {
     enum class MessageKind { INFO, WARNING, ERROR }
 
+    private var alsoStdout = false
     private val _stream = mutableStateOf(listOf<Pair<MessageKind, String>>())
     val stream: State<List<Pair<MessageKind, String>>> = _stream
 
@@ -17,6 +18,7 @@ object CMLOut {
     private fun add(msg: String, kind: MessageKind) {
         val message = "${formatTime()} $msg".replace("\t", "  ")
         _stream.value += Pair(kind, message)
+        if(alsoStdout) println(message)
     }
     fun addInfo(msg: String) { add(msg, MessageKind.INFO) }
     fun addWarning(msg: String) { add(msg, MessageKind.WARNING) }
@@ -31,6 +33,8 @@ object CMLOut {
         Library.clear()
         Scripts.loadCache()
     }
+
+    fun tee() { alsoStdout = true }
 
     fun formatTime(): String {
         return SimpleDateFormat("[hh:mm:ss]:").format(Date())

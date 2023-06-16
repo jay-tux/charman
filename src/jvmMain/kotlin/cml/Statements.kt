@@ -56,28 +56,7 @@ class IfStmt(
         val result = cond.evaluate(ctxt)
         if(result !is BoolVal) throw CMLException.typeError("bool", result, pos)
 
-        run returning@{
-            val subScope = ExecEnvironment.defaultEnv(ctxt)
-            if (result.value) {
-                bodyTrue.forEach {
-                    it.execute(subScope)
-                    if(subScope.hitReturn) {
-                        ctxt.hitReturn = true
-                        ctxt.returnValue = subScope.returnValue
-                        return@returning
-                    }
-                }
-            } else {
-                bodyFalse.forEach {
-                    it.execute(subScope)
-                    if(subScope.hitReturn) {
-                        ctxt.hitReturn = true
-                        ctxt.returnValue = subScope.returnValue
-                        return@returning
-                    }
-                }
-            }
-        }
+        runStmtBlock(if(result.value) bodyTrue else bodyFalse, ctxt)
     }
 
     override fun instantiate(instantiations: Map<String, Expression>): Statement =
@@ -98,21 +77,10 @@ class WhileStmt(
         var value = cond.evaluate(ctxt)
         if(value !is BoolVal) throw CMLException.typeError("bool", value, pos)
 
-        run breaking@{
-            while ((value as BoolVal).value) {
-                val subScope = ExecEnvironment.loopEnv(ctxt)
-                body.forEach {
-                    it.execute(subScope)
-                    if (subScope.hitBreak) return@breaking
-                    if(subScope.hitReturn) {
-                        ctxt.hitReturn = true
-                        ctxt.returnValue = subScope.returnValue
-                    }
-                }
-
-                value = cond.evaluate(ctxt)
-                if (value !is BoolVal) throw CMLException.typeError("bool", value, pos)
-            }
+        while((value as BoolVal).value) {
+            if(runStmtBlock(body, ctxt, true)) break
+            value = cond.evaluate(ctxt)
+            if(value !is BoolVal) throw CMLException.typeError("bool", value, pos)
         }
     }
 
@@ -127,21 +95,9 @@ class ForStmt(
     pos: PosInfo
 ): Statement(pos) {
     private fun <T> runLoop(check: ExecEnvironment, range: Iterable<T>, conversion: (T) -> Value) {
-        run breaking@{
-            range.forEach { elem ->
-                check.getVar(varN)?.forceOverwrite(conversion(elem))
-                val subScope = ExecEnvironment.loopEnv(check)
-                body.forEach {
-                    it.execute(subScope)
-                    if(subScope.hitBreak) return@breaking
-
-                    if(subScope.hitReturn) {
-                        check.hitReturn = true
-                        check.returnValue = subScope.returnValue
-                        return@breaking
-                    }
-                }
-            }
+        for(elem in range) {
+            check.getVar(varN)?.forceOverwrite(conversion(elem))
+            if(runStmtBlock(body, check, true)) break
         }
     }
 
@@ -188,7 +144,7 @@ class ForStmt(
 
 class BreakStmt(pos: PosInfo): Statement(pos) {
     override fun execute(ctxt: ExecEnvironment) {
-        if(ctxt.isInLoop) ctxt.hitBreak = true
+        if(ctxt.isInLoop()) ctxt.hitBreak = true
         else throw CMLException.invalidBreak(pos)
     }
 
@@ -203,4 +159,21 @@ class ReturnStmt(val value: Expression?, pos: PosInfo): Statement(pos) {
 
     override fun instantiate(instantiations: Map<String, Expression>): Statement =
         ReturnStmt(value?.instantiate(instantiations), pos)
+}
+
+fun runStmtBlock(block: List<Statement>, env: ExecEnvironment, shouldBeLoopEnv: Boolean = false): Boolean {
+    val subScope = if(shouldBeLoopEnv) ExecEnvironment.loopEnv(env) else ExecEnvironment.defaultEnv(env)
+    for(stmt in block) {
+        stmt.execute(subScope)
+        if(subScope.hitReturn) {
+            env.returnValue = subScope.returnValue
+            env.hitReturn = true
+            return true
+        }
+        if(subScope.hitBreak) {
+            if(!shouldBeLoopEnv) env.hitBreak = true
+            return true
+        }
+    }
+    return false
 }

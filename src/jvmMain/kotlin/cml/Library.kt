@@ -47,6 +47,11 @@ object StdLib {
 object Library {
     fun ctxPos(fn: String) = PosInfo("<lib:context:$fn>", 0, 0)
 
+    private val dndFunctions = mutableMapOf<String, (List<Value>, PosInfo) -> Value>(
+        Pair("isCharacterScope") { args, pos -> isCharacterScope(args, pos) },
+        Pair("isChoiceScope") { args, pos -> isChoiceScope(args, pos) }
+    )
+
     private val contextFunctions = mutableMapOf<String, CharacterScope.(List<Value>, PosInfo) -> Value>(
         Pair("abilityIncrease") { args, pos -> abilityIncrease(args, pos) },
         Pair("addMaxHP") { args, pos -> addMaxHP(args, pos) },
@@ -82,6 +87,8 @@ object Library {
         Pair("recoverCharges") { args, pos -> recoverCharges(args, pos) },
         Pair("getName") { args, pos -> getName(args, pos) },
         Pair("getSpells") { args, pos -> getSpells(args, pos) },
+        Pair("modSpeed") { args, pos -> modSpeed(args, pos) },
+        Pair("getClassLevel") { args, pos -> getClassLevel(args, pos) },
     )
     private val choiceFunctions = mutableMapOf<String, ChoiceScope.(List<Value>, PosInfo) -> Value>(
         Pair("chooseDataByKind") { args, pos -> chooseDataByKind(args, pos) },
@@ -93,13 +100,16 @@ object Library {
         Pair("chooseItem") { args, pos -> chooseItem(args, pos) },
         Pair("chooseNItems") { args, pos -> chooseNItems(args, pos) },
         Pair("chooseNSpellsOrCantripsUpTo") { args, pos -> chooseNSpellsOrCantripsUpTo(args, pos) },
+        Pair("selectPreparedSpells") { args, pos -> selectPreparedSpells(args,pos) }
     )
     private val functions = mutableMapOf<String, FunDecl>()
     private val types = mutableMapOf<String, TopLevelDecl>()
     private val globals = mutableMapOf<String, Variable>()
 
-    private var currentCharScope: CharacterScope? = null
-    private var currentChoiceScope: ChoiceScope? = null
+    var currentCharScope: CharacterScope? = null
+        private set
+    var currentChoiceScope: ChoiceScope? = null
+        private set
 
     val isInScope
         get() = currentChoiceScope != null || currentCharScope != null
@@ -111,31 +121,37 @@ object Library {
     }
 
     fun isLibFunc(name: String): Boolean =
-        functions.containsKey(name) || contextFunctions.containsKey(name) || choiceFunctions.containsKey(name)
+        functions.containsKey(name) || dndFunctions.containsKey(name) || contextFunctions.containsKey(name) || choiceFunctions.containsKey(name)
     fun invoke(name: String, args: List<Value>, callSite: PosInfo): Value? {
         val f = functions[name]
         if(f == null) {
-            val cf = contextFunctions[name]
-            if(cf == null) {
-                val csF = choiceFunctions[name]
-                if(csF == null) {
-                    CMLOut.addError(CMLException.invokeNonFun(name, callSite).localizedMessage)
-                    return null
+            val df = dndFunctions[name]
+            if(df == null) {
+                val cf = contextFunctions[name]
+                if (cf == null) {
+                    val csF = choiceFunctions[name]
+                    if (csF == null) {
+                        CMLOut.addError(CMLException.invokeNonFun(name, callSite).localizedMessage)
+                        return null
+                    }
+                    if (currentChoiceScope == null) {
+                        CMLOut.addError(CMLException("Cannot call function `$name' outside of a choice-scope. Function called at $callSite").localizedMessage)
+                        return null
+                    }
+                    return ExecutionStack.call(callSite) {
+                        csF(currentChoiceScope!!, args, callSite)
+                    }
                 }
-                if(currentChoiceScope == null) {
-                    CMLOut.addError(CMLException("Cannot call function `$name' outside of a choice-scope. Function called at $callSite").localizedMessage)
+                if (currentCharScope == null) {
+                    CMLOut.addError(CMLException("Cannot call function `$name' outside of a character-scope. Function called at $callSite").localizedMessage)
                     return null
                 }
                 return ExecutionStack.call(callSite) {
-                    csF(currentChoiceScope!!, args, callSite)
+                    cf(currentCharScope!!, args, callSite)
                 }
             }
-            if(currentCharScope == null) {
-                CMLOut.addError(CMLException("Cannot call function `$name' outside of a character-scope. Function called at $callSite").localizedMessage)
-                return null
-            }
             return ExecutionStack.call(callSite) {
-                cf(currentCharScope!!, args, callSite)
+                df(args, callSite)
             }
         }
         return f.call(args, callSite)
@@ -156,7 +172,7 @@ object Library {
         types[name] = type
     }
 
-    fun types() = types
+    fun types(): Map<String, TopLevelDecl> = types
     fun typesByKind(kind: String): List<TopLevelDecl> = types.filter { it.value.kind == kind }.map { it.value }
     fun functions() = functions.keys.union(contextFunctions.keys)
 

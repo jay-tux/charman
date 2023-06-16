@@ -219,13 +219,17 @@ class ExecEnvironment private constructor(
         functions = funcs
     }
 
+    constructor(funcs: Map<String, FunDecl>, thisVar: InstanceVal) : this(funcs) {
+        this.thisVar = thisVar
+    }
+
+    private var thisVar: InstanceVal? = null
     private var functions = mapOf<String, FunDecl>()
     private val variables = mutableMapOf<String, Variable>()
 
     var varsAreImmutable: Boolean = false
         private set
-    var isInLoop: Boolean = false
-        private set
+    private var isInLoop: Boolean = false
     var hitBreak = false
     var hitReturn = false
     var returnValue: Value = VoidVal(PosInfo("", 0, 0))
@@ -237,6 +241,7 @@ class ExecEnvironment private constructor(
 
     override fun hashCode(): Int = Triple(variables, varsAreImmutable, isInLoop).hashCode()
 
+    fun isInLoop() = isInLoop || (parent?.isInLoop ?: false)
     fun isInThisEnv(name: String) = variables.containsKey(name)
     fun isInEnv(name: String): Boolean = isInThisEnv(name) || (parent?.isInEnv(name) ?: false)
     fun containing(name: String): ExecEnvironment? = if(variables.containsKey(name)) this else parent?.containing(name)
@@ -260,6 +265,10 @@ class ExecEnvironment private constructor(
     fun addVar(name: String, value: Value, currPos: PosInfo) {
         if(variables.containsKey(name)) throw CMLException.redeclareVar(name, variables[name]!!.declPos, currPos)
         variables[name] = Variable(name, value, varsAreImmutable, currPos)
+    }
+
+    fun getThis(currPos: PosInfo): Value {
+        TODO()
     }
 
     fun copy(useFuns: Map<String, FunDecl>): ExecEnvironment {

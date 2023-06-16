@@ -40,6 +40,15 @@ class LiteralExpr(private val literal: Value, pos: PosInfo): Expression(pos) {
         LiteralExpr(literal, pos)
 }
 
+class ThisExpr(pos: PosInfo): Expression(pos) {
+    override fun evaluate(ctxt: ExecEnvironment): Value {
+        TODO("Not yet implemented")
+    }
+
+    override fun instantiate(instantiations: Map<String, Expression>): Expression = this
+
+}
+
 class VarExpr(val ident: String, pos: PosInfo): LValue(pos) {
     override fun evaluateToRef(ctxt: ExecEnvironment): Variable {
         return ctxt.getVar(ident) ?: throw CMLException.undeclaredVar(ident, pos)
@@ -84,14 +93,29 @@ class IndexExpr(val base: Expression, val index: Expression, pos: PosInfo) : LVa
         }
     }
 
+    private fun splice(l: List<Value>, min: Int, max: Int, inclusive: Boolean): ListVal {
+        if(max < min) throw CMLException.invalidRange(min, max, inclusive, pos)
+        if(min == max) return ListVal(mutableListOf(), pos)
+        if(min < 0 || min >= l.size) throw CMLException.listOutOfRange(min, l.size, pos)
+        if(inclusive && max >= l.size) throw CMLException.listOutOfRange(max, l.size, pos)
+        if(!inclusive && max >= l.size) throw CMLException.listOutOfRange(max - 1, l.size, pos)
+        return ListVal(l.subList(min, max).toMutableList(), pos)
+    }
+
     override fun evaluate(ctxt: ExecEnvironment): Value {
         return when(val baseE = base.evaluate(ctxt)) {
             is ListVal -> {
-                val indexE = index.evaluate(ctxt)
-                if(indexE !is IntVal) throw CMLException.invalidIndexType("list", "int", pos)
-                if(indexE.value < 0 || indexE.value >= baseE.value.size)
-                    throw CMLException.listOutOfRange(indexE.value, baseE.value.size, pos)
-                baseE.value[indexE.value]
+                when (val indexE = index.evaluate(ctxt)) {
+                    is IntVal -> {
+                        if (indexE.value < 0 || indexE.value >= baseE.value.size)
+                            throw CMLException.listOutOfRange(indexE.value, baseE.value.size, pos)
+                        baseE.value[indexE.value]
+                    }
+
+                    is RangeVal -> splice(baseE.value, indexE.begin, indexE.end, true)
+                    is UntilVal -> splice(baseE.value, indexE.begin, indexE.end, false)
+                    else -> throw CMLException.invalidIndexType("list", "int", pos)
+                }
             }
             is RangeVal -> {
                 val indexE = index.evaluate(ctxt)

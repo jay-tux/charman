@@ -53,7 +53,7 @@ object Scripts {
         return type.functions[func]?.call(args, pos)
     }
 
-    private fun loadFile(f: String) {
+    fun loadFile(f: String) {
         file = f
         FileInputStream(file).use { stream ->
             lateinit var ast: TLDeclSet

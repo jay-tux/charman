@@ -96,6 +96,9 @@ class CMLException(msg: String) : Exception(ExecutionStack.formatError(msg)) {
 
         fun nonSerializable(v: Value): CMLException =
             CMLException("Values of type `${typeName(v)}' are not serializable.")
+
+        fun invalidRange(begin: Int, end: Int, inclusive: Boolean, pos: PosInfo): CMLException =
+            CMLException("Invalid range: [$begin, $end${if(inclusive) ']' else ')'} at $pos")
     }
 }
 

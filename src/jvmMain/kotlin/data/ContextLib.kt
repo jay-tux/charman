@@ -22,6 +22,20 @@ fun argCnt(name: String, cnt: Int, args: List<Value>, cp: PosInfo): Either<CMLEx
     return Pair(p, args).right()
 }
 
+// region Without Scope
+fun isCharacterScope(args: List<Value>, pos: PosInfo): Value {
+    return argCnt("isCharacterScope", 0, args, pos).map { (pos, _) ->
+        BoolVal(Library.currentCharScope != null, pos)
+    }.handle()
+}
+
+fun isChoiceScope(args: List<Value>, pos: PosInfo): Value {
+    return argCnt("isChoiceScope", 0, args, pos).map { (pos, _) ->
+        BoolVal(Library.currentChoiceScope != null, pos)
+    }.handle()
+}
+// endregion
+
 // region Character Scope
 fun CharacterScope.abilityIncrease(args: List<Value>, p: PosInfo): Value {
     return argCnt("abilityIncrease", 2, args, p).flatMap { (pos, arg) ->
@@ -293,6 +307,16 @@ fun CharacterScope.getArmor(args: List<Value>, p: PosInfo): Value {
     }.handle()
 }
 
+fun CharacterScope.getClassLevel(args: List<Value>, p: PosInfo): Value {
+    return argCnt("getClassLevel", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { c ->
+            val res = char.classes.value[c]?.level
+            if(res == null) CMLException("Character `${char.name.value}' is not of class `$c'").left()
+            else IntVal(res, pos).right()
+        }
+    }.handle()
+}
+
 fun CharacterScope.getName(args: List<Value>, p: PosInfo): Value {
     return argCnt("getName", 0, args, p).map { (pos, _) ->
         StringVal(char.name.value, pos)
@@ -334,6 +358,14 @@ fun CharacterScope.modAC(args: List<Value>, p: PosInfo): Value {
     return argCnt("modAC", 1, args, p).flatMap { (pos, arg) ->
         arg[0].requireInt(pos).map {
             char.acDelta += it.value
+        }
+    }.handle(p)
+}
+
+fun CharacterScope.modSpeed(args: List<Value>, p: PosInfo): Value {
+    return argCnt("modSpeed", 1, args, p).flatMap { (pos, arg) ->
+        arg[0].requireInt(pos).map {
+            char.speed.value += it.value
         }
     }.handle(p)
 }
@@ -813,6 +845,55 @@ fun ChoiceScope.chooseNItems(args: List<Value>, p: PosInfo): Value {
             }
         }
     }.ensureList(p).handle()
+}
+
+fun ChoiceScope.selectPreparedSpells(args: List<Value>, p: PosInfo): Value {
+    return argCnt("selectPreparedSpells", 6, args, p).flatMap { (pos, arg) ->
+        arg[0].requireString(pos).flatMap { choice ->
+            arg[1].requireString(pos).flatMap { cName ->
+                arg[2].ifInstVerify("Ability", pos).flatMap { castAbility ->
+                    arg[3].requireList(pos).flatMap { spellList ->
+                        spellList.mapOrEither { it.ifInstVerify("Spell", pos) }
+                    }.flatMap { spellList ->
+                        arg[4].requireList(pos).flatMap { overrides ->
+                            overrides.mapOrEither {
+                                it.ifInstVerify("Spell", pos).flatMap { s -> s.getName(pos) }
+                            }
+                        }.flatMap { overrides ->
+                            arg[5].requireInt(pos).flatMap inner@{ maxLvl ->
+                                val scope = Library.currentCharScope
+                                if (scope == null) CMLException("Cannot call `selectPreparedSpells' outside of a character scope; at $pos").left()
+                                else {
+                                    // remove current spells
+                                    scope.char.spells.value = scope.char.spells.value.filter {
+                                        it.source != cName || it.name !in overrides
+                                    }
+
+                                    // calculate amount to prepare
+                                    val level = scope.char.classes.value[cName]?.level
+                                        ?: return@inner CMLException("Character `${scope.char.name.value}' is not a member of $cName.").left()
+                                    val abilityMod = scope.char.abilityMod(castAbility)
+                                    val count = level + abilityMod
+
+                                    // choose
+                                    val options = filterSpellsByLevel(spellList, cName) { it > 0 && it <= maxLvl.value }
+                                    if (options.size < count) {
+                                        CMLException("Cannot choose $count option(s) from a list of size ${options.size}. Error thrown at $pos").left()
+                                    } else {
+                                        val res = requireChoice(choice, count, options, pos)
+                                        (res as ListVal).value.forEach {
+                                            scope.addSpell(listOf(it, castAbility, StringVal(cName, pos)), pos)
+                                        }
+                                        res.right()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }.handle()
 }
 // endregion
 

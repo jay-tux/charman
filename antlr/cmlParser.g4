@@ -61,6 +61,7 @@ expr:
 //    |           value=varRef                                        #varExpr
     |           ph=PLACEHOLDER                                      #placeholderExpr
 // Variable references
+    |           THIS                                                #thisExpr
     |           name=IDENT                                          #varName
     |           e=expr DOT name=IDENT                               #fieldExpr
     |           e=expr BR_O index=expr BR_C                         #indexExpr
